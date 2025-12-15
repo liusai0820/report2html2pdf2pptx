@@ -374,8 +374,13 @@ GOVERNMENT_THEME = Theme(
         size_page_title=34,
         size_section_title=44,
         size_heading=22,
-        size_body=18,
-        size_small=14,
+        size_body=16,        # 调小正文，防溢出
+        size_small=12,
+    ),
+    layout=Layout(
+        padding_horizontal=50,
+        padding_vertical=40,
+        gap_large=40,
     ),
     chart=ChartConfig(
         colors=["#C41E3A", "#FFD700", "#1A1A1A", "#4A4A4A", "#8A8A8A"],
@@ -400,6 +405,16 @@ GOVERNMENT_THEME = Theme(
 .main-title {
     border-bottom: 2px solid #C41E3A;
     padding-bottom: 20px;
+}
+/* 增加正文透气感 */
+.big-list li {
+    line-height: 1.8 !important;
+    margin-bottom: 12px !important;
+}
+/* 卡片优化 */
+.data-card {
+    padding: 20px !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 """
 )

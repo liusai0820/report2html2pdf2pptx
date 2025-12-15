@@ -22,6 +22,7 @@ from config import (
     TEMPERATURE,
 )
 from .context_builder import PresentationContext
+from prompts.prompt_engine import create_prompt_engine
 
 console = Console()
 
@@ -111,33 +112,23 @@ class AIOrchestrator:
         - 每章几页
         - 每页讲什么
         """
-        prompt = f"""
-{context.to_prompt_context()}
-
-# 你的任务
-
-请为这份演示文稿规划正文大纲（封面、目录、封底由系统自动生成，你只需规划正文内容）。
-
-## 输出要求
-
-1. 每行一条，格式：`类型|标题|内容要点`
-2. 类型只有两种：
-   - SECTION：章节分隔页（如"第一部分 xxx"）
-   - CONTENT：正文内容页
-3. 不要生成 COVER、AGENDA、CLOSING 类型（系统会自动添加）
-4. 标题必须是结论，不是主题
-5. 内容要点要具体，包含关键数据和观点
-
-## 示例
-
-SECTION|第一部分 市场洞察|
-CONTENT|市场规模5年翻倍，年复合增长率达23%|2023年500亿，2028年预计1200亿；驱动因素：政策+技术+需求
-CONTENT|头部三家占70%份额，格局已定|A公司35%、B公司20%、C公司15%；中小企业空间被压缩
-SECTION|第二部分 竞争分析|
-CONTENT|技术壁垒是核心护城河|专利数量、研发投入、人才储备三大指标领先
-
-请开始规划（目标约{context.target_pages}页正文内容）：
-"""
+        # 使用 PromptEngine 生成大纲提示词
+        # 提取主题配置
+        theme_config = {}
+        if context.theme:
+            theme_config = context.theme.to_dict()
+            
+        engine = create_prompt_engine(
+            scenario=context.scenario,
+            theme_config=theme_config
+        )
+        
+        # 使用 generate_system_prompt 作为系统提示词的一部分（或者整合）
+        # 这里为了保持架构简单，我们直接用 generate_outline_prompt
+        prompt = engine.generate_outline_prompt(
+            content=context.to_prompt_context(),
+            target_pages=context.target_pages
+        )
         
         response = await self._generate(prompt)
         return self._parse_outline(response)
@@ -157,411 +148,36 @@ CONTENT|技术壁垒是核心护城河|专利数量、研发投入、人才储�
         - 放什么内容
         - 怎么呈现
         """
-        page_type = page_info.get("type", "CONTENT")
-        title = page_info.get("title", "")
-        content_hints = page_info.get("content", "")
+        # 准备配置
+        user_config = {
+            "organization": context.organization,
+            "project_name": context.project_name,
+            "target_pages": context.target_pages,
+            "content_depth": context.content_depth
+        }
         
-        prompt = self._get_content_prompt(context, page_info, page_num, total_pages)
+        theme_config = {}
+        if context.theme:
+            theme_config = context.theme.to_dict()
+            
+        # 创建 Prompt 引擎
+        engine = create_prompt_engine(
+            scenario=context.scenario,
+            user_config=user_config,
+            theme_config=theme_config
+        )
         
-        if page_type == "COVER":
-            prompt = self._get_cover_prompt(context, title)
-        elif page_type == "SECTION":
-            # 使用正确的章节序号，而非 HTML 页码
-            section_num = page_info.get("section_num", 1)
-            prompt = self._get_section_prompt(title, section_num)
-        elif page_type == "CLOSING":
-            prompt = self._get_closing_prompt()
+        # 生成提示词
+        # 注意：这里我们不再需要手动判断 page_type，PromptEngine 会处理
+        prompt = engine.generate_page_prompt(
+            page_num=page_num,
+            total_pages=total_pages,
+            page_data=page_info,
+            source_material=context.document_content[:2000] # 提供一部分原始内容作为参考
+        )
         
         html = await self._generate(prompt)
         return self._clean_html(html)
-    
-    def _get_content_prompt(self, context: PresentationContext, page_info: Dict, page_num: int, total_pages: int) -> str:
-        """正文页提示词 - 多种布局和图表支持"""
-        title = page_info.get("title", "")
-        content_hints = page_info.get("content", "")
-        
-        return f"""
-# 背景信息
-- 场景：{context.scenario_description[:200]}
-- 单位：{context.organization}
-- 风格：{context.tone or '专业严谨'}
-
-# 当前任务
-生成第 {page_num}/{total_pages} 页的 HTML 代码。
-
-## 页面信息
-- 标题：{title}
-- 内容要点：{content_hints}
-
-## 核心要求
-1. 标题"{title}"是结论，正文要支撑这个结论
-2. 底部结论框直接写核心启示，禁止出现"So What"字样
-3. 数据必须来自内容要点，禁止编造
-4. 根据内容特点选择最合适的布局
-
-## 输出规范（极其重要，必须遵守）
-1. **只输出 HTML 代码**，不要输出任何其他内容
-2. **禁止输出解释、说明、选择理由**
-3. **禁止输出 ```html 标记**
-4. **第一个字符必须是 <**
-5. 违反以上规则会导致页面显示失败
-
-## 样式规范
-1. **简洁设计**：不要使用边框装饰（border-left、border-top 等）
-2. **颜色克制**：
-   - 主色：#003366（深蓝）用于标题
-   - 辅助色：#0066CC（亮蓝）用于图表
-   - 背景：#F5F7FA（浅灰）用于卡片
-   - 避免过多颜色，保持专业简洁
-3. **中文标点**：使用中文引号""、逗号，、句号。
-4. **排版规范**（重要）：
-   - 列表项、段落文字必须左对齐（text-align: left）
-   - 避免单字掉行：使用 white-space: nowrap 或调整文字长度
-   - 底部结论框的文字要完整，不要出现"值。"这种单字掉行
-   - 示例：错误 → "提升理论模型的普适性与实践价<br>值。" 正确 → "提升理论模型的普适性与实践价值。"
-5. **间距规范**（重要）：
-   - 内容区域和底部结论框之间必须有明显间距
-   - 不要让卡片背景和底部结论框背景连在一起
-   - 底部结论框前面要有足够的留白（至少 30px）
-
-## 布局选择
-根据内容特点选择布局，避免连续使用相同布局：
-- 数据对比 → 图表
-- 并列要点 → 多栏布局
-- 对比分析 → 左右对比
-- 论述内容 → 双栏文字
-- 避免连续3页以上使用相同布局类型
-
-## 可用布局模板
-
-### 布局1: 左文右图表（适合数据展示）
-<div class="slide-container">
-  <main class="content-area">
-    <div class="title-box"><h1 class="page-title">标题</h1></div>
-    <div class="layout-box two-col">
-      <div class="col">
-        <h3 class="sub-head">关键发现</h3>
-        <ul class="big-list">
-          <li>要点1</li>
-          <li>要点2</li>
-        </ul>
-      </div>
-      <div class="col">
-        <div class="chart-container" id="chart_{page_num}" style="width:100%;height:350px;"></div>
-        <script>
-          var chart_{page_num} = echarts.init(document.getElementById('chart_{page_num}'));
-          chart_{page_num}.setOption({{
-            color: ['#003366', '#0066CC', '#00AA88'],
-            tooltip: {{}},
-            xAxis: {{ type: 'category', data: ['A', 'B', 'C'] }},
-            yAxis: {{ type: 'value' }},
-            series: [{{ type: 'bar', data: [120, 200, 150] }}]
-          }});
-        </script>
-      </div>
-    </div>
-    <div class="bottom-box"><div class="bottom-text">核心启示内容</div></div>
-  </main>
-  <footer class="slide-footer"><span>数据来源</span></footer>
-</div>
-
-### 布局2: 三栏数据卡片（适合多指标展示）
-<div class="slide-container">
-  <main class="content-area">
-    <div class="title-box"><h1 class="page-title">标题</h1></div>
-    <div class="layout-box three-col">
-      <div class="col">
-        <div style="background: #F5F7FA; padding: 25px; border-radius: 8px; text-align: center;">
-          <div style="font-size: 48px; color: #003366; font-weight: bold; margin-bottom: 10px;">100+</div>
-          <div style="font-size: 18px; color: #666;">指标说明</div>
-        </div>
-        <ul class="big-list" style="margin-top: 15px; text-align: left;">
-          <li style="font-size: 15px;">要点描述</li>
-        </ul>
-      </div>
-      <div class="col">
-        <div style="background: #F5F7FA; padding: 25px; border-radius: 8px; text-align: center;">
-          <div style="font-size: 48px; color: #0066CC; font-weight: bold; margin-bottom: 10px;">50%</div>
-          <div style="font-size: 18px; color: #666;">核心指标</div>
-        </div>
-        <ul class="big-list" style="margin-top: 15px; text-align: left;">
-          <li style="font-size: 15px;">要点描述</li>
-        </ul>
-      </div>
-      <div class="col">
-        <div style="background: #F5F7FA; padding: 25px; border-radius: 8px; text-align: center;">
-          <div style="font-size: 48px; color: #003366; font-weight: bold; margin-bottom: 10px;">3x</div>
-          <div style="font-size: 18px; color: #666;">增长倍数</div>
-        </div>
-        <ul class="big-list" style="margin-top: 15px; text-align: left;">
-          <li style="font-size: 15px;">要点描述</li>
-        </ul>
-      </div>
-    </div>
-    <div class="bottom-box"><div class="bottom-text">核心启示内容</div></div>
-  </main>
-</div>
-
-### 布局3: 饼图+说明（适合占比分析）
-<div class="slide-container">
-  <main class="content-area">
-    <div class="title-box"><h1 class="page-title">标题</h1></div>
-    <div class="layout-box two-col">
-      <div class="col">
-        <div class="chart-container" id="pie_{page_num}" style="width:100%;height:380px;"></div>
-        <script>
-          var pie_{page_num} = echarts.init(document.getElementById('pie_{page_num}'));
-          pie_{page_num}.setOption({{
-            color: ['#003366', '#0066CC', '#00AA88'],
-            tooltip: {{ trigger: 'item' }},
-            series: [{{
-              type: 'pie', radius: ['40%', '70%'],
-              label: {{ show: true, formatter: '{{b}}: {{d}}%' }},
-              data: [
-                {{ value: 35, name: '类别A' }},
-                {{ value: 30, name: '类别B' }},
-                {{ value: 20, name: '类别C' }},
-                {{ value: 15, name: '其他' }}
-              ]
-            }}]
-          }});
-        </script>
-      </div>
-      <div class="col">
-        <h3 class="sub-head">结构分析</h3>
-        <ul class="big-list">
-          <li><strong>类别A (35%)</strong>：说明</li>
-          <li><strong>类别B (30%)</strong>：说明</li>
-        </ul>
-      </div>
-    </div>
-    <div class="bottom-box"><div class="bottom-text">核心启示内容</div></div>
-  </main>
-</div>
-
-### 布局4: 时间轴/流程（适合发展历程或步骤）
-<div class="slide-container">
-  <main class="content-area">
-    <div class="title-box"><h1 class="page-title">标题</h1></div>
-    <div class="timeline-box">
-      <div class="timeline-item">
-        <div class="timeline-dot"></div>
-        <div class="timeline-content">
-          <div class="timeline-year">2023</div>
-          <div class="timeline-text">阶段描述</div>
-        </div>
-      </div>
-      <div class="timeline-item">
-        <div class="timeline-dot active"></div>
-        <div class="timeline-content">
-          <div class="timeline-year">2024</div>
-          <div class="timeline-text">当前阶段</div>
-        </div>
-      </div>
-      <div class="timeline-item">
-        <div class="timeline-dot"></div>
-        <div class="timeline-content">
-          <div class="timeline-year">2025</div>
-          <div class="timeline-text">目标阶段</div>
-        </div>
-      </div>
-    </div>
-    <div class="bottom-box"><div class="bottom-text">核心启示内容</div></div>
-  </main>
-</div>
-
-### 布局5: 左右对比（适合对比分析）
-<div class="slide-container">
-  <main class="content-area">
-    <div class="title-box"><h1 class="page-title">标题</h1></div>
-    <div class="layout-box two-col compare">
-      <div class="col compare-left">
-        <h3 class="sub-head compare-title negative">现状/问题</h3>
-        <ul class="big-list">
-          <li>问题点1</li>
-          <li>问题点2</li>
-        </ul>
-      </div>
-      <div class="col compare-right">
-        <h3 class="sub-head compare-title positive">目标/方案</h3>
-        <ul class="big-list">
-          <li>解决方案1</li>
-          <li>解决方案2</li>
-        </ul>
-      </div>
-    </div>
-    <div class="bottom-box"><div class="bottom-text">核心启示内容</div></div>
-  </main>
-</div>
-
-### 布局6: 全幅图表（适合趋势分析）
-<div class="slide-container">
-  <main class="content-area">
-    <div class="title-box"><h1 class="page-title">标题</h1></div>
-    <div class="chart-full">
-      <div class="chart-container" id="line_{page_num}" style="width:100%;height:420px;"></div>
-      <script>
-        var line_{page_num} = echarts.init(document.getElementById('line_{page_num}'));
-        line_{page_num}.setOption({{
-          color: ['#003366', '#0066CC'],
-          tooltip: {{ trigger: 'axis' }},
-          legend: {{ data: ['指标1', '指标2'] }},
-          xAxis: {{ type: 'category', data: ['2020', '2021', '2022', '2023', '2024'] }},
-          yAxis: {{ type: 'value' }},
-          series: [
-            {{ name: '指标1', type: 'line', smooth: true, data: [100, 120, 150, 180, 220] }},
-            {{ name: '指标2', type: 'line', smooth: true, data: [80, 100, 130, 160, 200] }}
-          ]
-        }});
-      </script>
-    </div>
-    <div class="bottom-box"><div class="bottom-text">核心启示内容</div></div>
-  </main>
-</div>
-
-### 布局7: 纯文字双栏（适合论述性内容）
-<div class="slide-container">
-  <main class="content-area">
-    <div class="title-box"><h1 class="page-title">标题</h1></div>
-    <div class="layout-box two-col" style="gap: 50px;">
-      <div class="col">
-        <h3 style="font-size: 20px; color: #003366; margin-bottom: 15px; font-weight: bold;">核心观点一</h3>
-        <p style="font-size: 16px; color: #444; line-height: 1.8; margin-bottom: 20px;">详细论述内容，包含具体的分析和说明。这里可以写较长的段落来阐述观点。</p>
-        <h3 style="font-size: 20px; color: #003366; margin-bottom: 15px; font-weight: bold;">核心观点二</h3>
-        <p style="font-size: 16px; color: #444; line-height: 1.8;">继续论述，保持内容的连贯性和逻辑性。</p>
-      </div>
-      <div class="col">
-        <h3 style="font-size: 20px; color: #003366; margin-bottom: 15px; font-weight: bold;">核心观点三</h3>
-        <p style="font-size: 16px; color: #444; line-height: 1.8; margin-bottom: 20px;">右侧栏的内容，与左侧形成呼应或补充。</p>
-        <h3 style="font-size: 20px; color: #003366; margin-bottom: 15px; font-weight: bold;">核心观点四</h3>
-        <p style="font-size: 16px; color: #444; line-height: 1.8;">总结性的内容或延伸讨论。</p>
-      </div>
-    </div>
-    <div class="bottom-box"><div class="bottom-text">核心启示内容</div></div>
-  </main>
-</div>
-
-### 布局8: 表格展示（适合对比数据或分类信息）
-<div class="slide-container">
-  <main class="content-area">
-    <div class="title-box"><h1 class="page-title">标题</h1></div>
-    <table class="clean-table" style="margin-top: 20px;">
-      <thead>
-        <tr>
-          <th style="width: 25%;">维度</th>
-          <th style="width: 25%;">现状</th>
-          <th style="width: 25%;">目标</th>
-          <th style="width: 25%;">措施</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>维度一</strong></td>
-          <td>现状描述</td>
-          <td>目标描述</td>
-          <td>具体措施</td>
-        </tr>
-        <tr>
-          <td><strong>维度二</strong></td>
-          <td>现状描述</td>
-          <td>目标描述</td>
-          <td>具体措施</td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="bottom-box"><div class="bottom-text">核心启示内容</div></div>
-  </main>
-</div>
-
-### 布局9: 大数字突出（适合关键成果展示）
-<div class="slide-container">
-  <main class="content-area">
-    <div class="title-box"><h1 class="page-title">标题</h1></div>
-    <div style="display: flex; justify-content: center; align-items: center; flex: 1; gap: 80px;">
-      <div style="text-align: center;">
-        <div style="font-size: 72px; font-weight: bold; color: #003366;">95%</div>
-        <div style="font-size: 18px; color: #666; margin-top: 10px;">关键指标说明</div>
-      </div>
-      <div style="text-align: center;">
-        <div style="font-size: 72px; font-weight: bold; color: #0066CC;">3.5x</div>
-        <div style="font-size: 18px; color: #666; margin-top: 10px;">增长倍数说明</div>
-      </div>
-      <div style="text-align: center;">
-        <div style="font-size: 72px; font-weight: bold; color: #003366;">100+</div>
-        <div style="font-size: 18px; color: #666; margin-top: 10px;">数量指标说明</div>
-      </div>
-    </div>
-    <div class="bottom-box"><div class="bottom-text">核心启示内容</div></div>
-  </main>
-</div>
-
-**重要提醒**：请根据当前页面的内容特点，从以上9种布局中选择最合适的一种。避免连续使用相同布局！
-
-请根据内容特点选择最合适的布局，生成 HTML：
-"""
-
-    def _get_cover_prompt(self, context: PresentationContext, title: str) -> str:
-        """封面页提示词"""
-        return f"""
-生成封面页 HTML。
-
-信息：
-- 标题：{title}（必须原封不动使用）
-- 单位：{context.organization}
-- 日期：{context.date}
-
-HTML 结构：
-<div class="slide-container cover-slide">
-  <div class="cover-top">
-    <div class="brand-line"></div>
-    <div class="doc-type">专项研究报告</div>
-    <h1 class="main-title">{title}</h1>
-    <h2 class="sub-title">2025 深圳机关党建重点课题研究报告</h2>
-  </div>
-  <div class="cover-middle"></div>
-  <div class="cover-bottom">
-    <div class="footer-row"><div class="footer-item">汇报单位：{context.organization}</div></div>
-    <div class="footer-row"><div class="footer-item">日期：{context.date}</div></div>
-  </div>
-</div>
-
-直接输出 HTML：
-"""
-    
-    def _get_section_prompt(self, title: str, section_num: int) -> str:
-        """章节页提示词"""
-        num_str = f"{section_num:02d}"
-        return f"""
-生成章节过场页 HTML。
-
-标题：{title}
-序号：{num_str}
-
-HTML 结构：
-<div class="slide-container section-slide">
-  <div class="section-bg-pattern"></div>
-  <div class="section-content">
-    <div class="section-number">{num_str}</div>
-    <div class="section-line"></div>
-    <h1 class="section-title">{title}</h1>
-  </div>
-</div>
-
-直接输出 HTML：
-"""
-    
-    def _get_closing_prompt(self) -> str:
-        """封底页提示词"""
-        return """
-生成封底页 HTML。
-
-<div class="slide-container closing-slide">
-  <div class="closing-title">谢 谢 观 看</div>
-  <div class="closing-contact"><p>深圳国家高技术产业创新中心</p></div>
-</div>
-
-直接输出 HTML：
-"""
     
     async def _generate(self, prompt: str, retry_count: int = 0) -> str:
         """调用 AI 生成"""

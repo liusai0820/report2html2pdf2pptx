@@ -226,8 +226,11 @@ class ContextBuilder:
                 content_parts.append(page.get('content', ''))
             self.context.document_content = "\n\n".join(content_parts)
         
-        if 'title' in doc_data:
+        if 'title' in doc_data and doc_data['title']:
             self.context.project_name = doc_data['title']
+        else:
+            # 如果文档中没有提取到标题，使用文件名作为默认标题
+            self.context.project_name = self.context.document_name
         
         return self
     

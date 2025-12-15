@@ -285,6 +285,7 @@ CONTENT|核心问题：产品同质化严重，价格战不可持续|毛利率�
         """生成封面页提示词"""
         org = self.user_config.get("organization", "汇报单位")
         doc_type = self.user_config.get("doc_type", "专项研究报告")
+        date = self.user_config.get("date", "2024年") # 获取动态日期
         
         return f"""
 # 封面页生成
@@ -299,7 +300,7 @@ CONTENT|核心问题：产品同质化严重，价格战不可持续|毛利率�
 - 主标题：{title}
 - 副标题：汇报材料
 - 汇报单位：{org}
-- 日期：2024年12月
+- 日期：{date}
 
 ## HTML 结构
 ```html
@@ -316,7 +317,7 @@ CONTENT|核心问题：产品同质化严重，价格战不可持续|毛利率�
             <div class="footer-item">汇报单位：{org}</div>
         </div>
         <div class="footer-row">
-            <div class="footer-item">日期：2024年12月</div>
+            <div class="footer-item">日期：{date}</div>
         </div>
     </div>
 </div>
@@ -330,24 +331,43 @@ CONTENT|核心问题：产品同质化严重，价格战不可持续|毛利率�
         return f"""
 # 目录页生成
 
-## 要求
-1. 清晰展示报告结构
-2. 每个章节一句话核心观点
-3. 体现逻辑递进关系
+## 任务目标
+将以下章节大纲内容，转换为 HTML 目录列表。
 
-## 章节内容
+## 章节内容（数据源）
 {content}
 
-## HTML 结构
-使用 `.catalog-list` 和 `.catalog-item` 类
+## 生成要求
+1. **必须填充内容**：你必须从上面的"章节内容"中提取每一章的标题和核心观点，填入下方的 HTML 模板中。**严禁输出空的列表！**
+2. **格式规范**：使用 `.catalog-list` 和 `.catalog-item` 类。
+3. **序号对应**：确保序号（01, 02...）与章节内容对应。
 
-## 设计原则
-- 序号要大而醒目
-- 章节标题要简洁
-- 描述要有信息量
-- 整体要有层次感
+## HTML 结构模板
+```html
+<div class="slide-container">
+    <main class="content-area">
+        <div class="title-box">
+            <h1 class="page-title">目录</h1>
+        </div>
+        
+        <!-- 目录列表容器 -->
+        <div style="margin-top: 40px;">
+            <div class="catalog-list">
+                <!-- 请根据实际章节数量重复生成以下 item -->
+                <div class="catalog-item">
+                    <div class="catalog-idx">01</div> <!-- 序号 -->
+                    <div class="catalog-content">
+                        <div class="catalog-name">章节标题</div> <!-- 填入实际标题 -->
+                        <div class="catalog-desc">章节核心观点描述...</div> <!-- 填入实际观点 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+```
 
-直接输出 HTML 代码：
+直接输出填充好内容的 HTML 代码：
 """
 
     def _generate_section_prompt(self, title: str, content: str) -> str:
@@ -410,7 +430,21 @@ CONTENT|核心问题：产品同质化严重，价格战不可持续|毛利率�
         content: str,
         source_material: str = ""
     ) -> str:
-        """生成正文页提示词"""
+        """生成正文页提示词 - 增强版式与高级图表"""
+        
+        # 获取当前主题颜色，用于图表配色
+        colors = self.theme_config.get("colors", {})
+        primary = colors.get("primary", "#003366")
+        accent = colors.get("accent", "#FFD700")
+        # 构建图表配色数组
+        chart_colors = [
+            primary, 
+            accent, 
+            colors.get("primary_light", "#0066CC"),
+            colors.get("success", "#00A86B"), 
+            colors.get("warning", "#FF9500")
+        ]
+        chart_color_str = str(chart_colors)
         
         # 根据场景调整提示词
         scenario_tips = self._get_scenario_specific_tips()
@@ -422,142 +456,238 @@ CONTENT|核心问题：产品同质化严重，价格战不可持续|毛利率�
 - 标题：{title}
 - 内容要点：{content}
 
-## 核心原则
+## 核心任务：拒绝平庸，强制多样化，严格防溢出
+你需要像一位高级视觉设计师一样，选择最直观的版式。同时，必须严格控制字数，**绝对不能让内容溢出屏幕**。
 
-### 1. 标题即结论
-标题"{title}"已经是结论，正文要提供支撑这个结论的证据。
+### 🚨 绝对强制规则 (违反将导致任务失败)
+1. **表格还原**：Markdown 表格**必须**还原为 HTML 表格 ([Complex Table])，严禁转列表。
+2. **拒绝重复**：不要连续两页使用相同布局。
+3. **数据可视化**：有数字必须优先用 [JS Chart] 或 [Key Metrics]。
+4. **字数铁律 (防溢出)**：
+   - **页面标题**：必须精简到 **20字以内**，确保不换行。
+   - **底部结论**：**严禁**写"结论："、"So What："等前缀！直接写那句结论。字数必须控制在 **35字以内** (确保1行，最多2行)。
+   - **正文内容**：如果文字太多，请自动精简摘要，不要照搬原文。
 
-### 2. 内容组织
-- 先说最重要的
-- 用数据支撑观点
-- 每个要点要有依据
+## 当前主题配色 (ECharts专用)
+JS代码中使用：`var themeColors = {chart_color_str};`
 
-### 3. So What
-页面底部要有结论框，回答"这意味着什么"或"我们应该怎么做"。
+## 高级可视化菜单
 
-{scenario_tips}
-
-## 内容要求
-
-### 必须包含
-- 支撑标题结论的 2-3 个关键论据
-- 具体的数据或案例
-- 底部的结论/启示
-
-### 禁止
-- 编造数据
-- 空洞的描述
-- 与标题无关的内容
-- 生成 <style> 标签
-
-## 可用的 HTML 结构
-
-### 双栏布局（左文右数据）
+### 1. [JS Chart] 动态图表 (ECharts)
+HTML 结构：
 ```html
 <div class="slide-container">
     <main class="content-area">
-        <div class="title-box">
-            <h1 class="page-title">{title}</h1>
-        </div>
+        <div class="title-box"><h1 class="page-title">{title}</h1></div>
         <div class="layout-box two-col">
-            <div class="col">
+            <div class="col" style="flex: 1;">
                 <div class="text-block">
-                    <h3 class="sub-head">关键发现</h3>
+                    <h3 class="sub-head">数据洞察</h3>
                     <ul class="big-list">
-                        <li>要点一（有数据支撑）</li>
-                        <li>要点二（有案例支撑）</li>
+                        <li>核心观点1...</li>
+                        <li>核心观点2...</li>
                     </ul>
                 </div>
             </div>
-            <div class="col">
-                <div class="data-card">
-                    <div class="data-val">45%</div>
-                    <div class="data-lbl">关键指标</div>
+            <div class="col" style="flex: 1.5;">
+                <div class="chart-container" style="width: 100%; height: 400px;">
+                    <div id="chart_{page_num}" style="width: 100%; height: 100%;"></div>
                 </div>
             </div>
         </div>
-        <div class="bottom-box">
-            <div class="bottom-text">结论：这意味着...</div>
-        </div>
+        <script>
+            (function(){{
+                var chartDom = document.getElementById('chart_{page_num}');
+                var myChart = echarts.init(chartDom);
+                var themeColors = {chart_color_str};
+                var option;
+                // 此处填入 ECharts option 配置 (参考之前的示例)
+                // ...
+                myChart.setOption(option);
+            }})();
+        </script>
+        <div class="bottom-box"><div class="bottom-text">数据表明... (不要写前缀，35字内)</div></div>
     </main>
-    <footer class="slide-footer">
-        <span>数据来源：XXX</span>
-    </footer>
 </div>
 ```
 
-### 表格布局（数据对比）
+### 2. [Timeline] 发展历程/流程
+HTML 结构：
 ```html
 <div class="slide-container">
     <main class="content-area">
-        <div class="title-box">
-            <h1 class="page-title">{title}</h1>
+        <div class="title-box"><h1 class="page-title">{title}</h1></div>
+        <div class="timeline-box">
+            <div class="timeline-item">
+                <div class="timeline-year">2023</div>
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <div style="font-weight:bold;margin-bottom:5px;">节点名称</div>
+                    <div class="timeline-text">简述...</div>
+                </div>
+            </div>
+            <!-- ... -->
         </div>
-        <table class="clean-table">
-            <thead>
-                <tr><th>维度</th><th>指标1</th><th>指标2</th></tr>
-            </thead>
-            <tbody>
-                <tr><td>项目A</td><td>数据</td><td>数据</td></tr>
-            </tbody>
-        </table>
-        <div class="bottom-box">
-            <div class="bottom-text">结论：...</div>
+        <div class="bottom-box"><div class="bottom-text">关键里程碑达成... (不要写前缀)</div></div>
+    </main>
+</div>
+```
+
+### 3. [Comparison] 左右对比
+HTML 结构：
+```html
+<div class="slide-container">
+    <main class="content-area">
+        <div class="title-box"><h1 class="page-title">{title}</h1></div>
+        <div class="layout-box two-col compare">
+            <div class="col compare-left">
+                <div class="icon-box" style="background:#e53935"><svg>...</svg></div>
+                <h3 class="sub-head negative">痛点 / 现状</h3>
+                <ul class="big-list">
+                    <li>点1...</li>
+                </ul>
+            </div>
+            <div class="col compare-right">
+                <div class="icon-box" style="background:#43a047"><svg>...</svg></div>
+                <h3 class="sub-head positive">对策 / 未来</h3>
+                <ul class="big-list">
+                    <li>点1...</li>
+                </ul>
+            </div>
         </div>
     </main>
 </div>
 ```
 
-## 原始素材（如有）
+### 4. [Complex Table] 复杂表格
+HTML 结构：
+```html
+<div class="slide-container">
+    <main class="content-area">
+        <div class="title-box"><h1 class="page-title">{title}</h1></div>
+        <div style="overflow-x: auto;">
+            <table class="clean-table" style="width: 100%;">
+                <thead>
+                    <tr style="background-color: rgba(0,0,0,0.03);">
+                        <th style="width:20%">类别</th>
+                        <th style="width:40%">详情</th>
+                        <th style="width:40%">备注</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="font-weight:bold;">项目A</td>
+                        <td>详细内容...</td>
+                        <td>说明...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="bottom-box"><div class="bottom-text">表格数据分析结论... (不要写前缀)</div></div>
+    </main>
+</div>
+```
+
+### 5. [Three Columns] 三栏陈列
+HTML 结构：
+```html
+<div class="slide-container">
+    <main class="content-area">
+        <div class="title-box"><h1 class="page-title">{title}</h1></div>
+        <div class="layout-box three-col">
+            <div class="col">
+                <div class="data-card" style="height:100%">
+                    <h3 class="sub-head">01 观点</h3>
+                    <p>内容...</p>
+                </div>
+            </div>
+            <!-- ... -->
+        </div>
+        <div class="bottom-box"><div class="bottom-text">三点核心总结... (不要写前缀)</div></div>
+    </main>
+</div>
+```
+
+### 6. [Key Metrics] 关键指标
+HTML 结构：
+```html
+<div class="slide-container">
+    <main class="content-area">
+        <div class="title-box"><h1 class="page-title">{title}</h1></div>
+        <div class="metric-stack">
+            <div class="metric-item">
+                <div class="metric-value">¥500M</div>
+                <div class="metric-label">营收</div>
+            </div>
+            <!-- ... -->
+        </div>
+        <div class="text-block" style="margin-top: 30px;">
+            <ul class="big-list">
+                <li>数据分析...</li>
+            </ul>
+        </div>
+    </main>
+</div>
+```
+
+## 生成要求
+1. **智能选择**：根据"{content}"的内容特征，从上述菜单中选择**最恰当**的一个版式。
+2. **完整代码**：输出包含 `<script>` 的完整 HTML 片段。
+3. **防溢出**：时刻检查内容量，如果内容太多，请主动删减次要信息。
+
+{scenario_tips}
+
+## 原始素材
 {source_material[:2000] if source_material else "无额外素材"}
 
-直接输出 HTML 代码：
+直接输出 HTML 代码（不包含 markdown 标记）：
 """
 
     def _get_scenario_specific_tips(self) -> str:
-        """获取场景特定提示"""
+        """获取场景特定提示 - 强制植入可视化和防溢出要求"""
+        
+        common_rules = """
+- **数据可视化**：凡是有数据的地方，必须用 [JS Chart] 或 [Key Metrics]！
+- **版式多样性**：拒绝单调，不要连续使用相同布局。
+- **防止溢出**：内容要精简，确保不超出页面范围。
+"""
+
         tips = {
-            "consulting": """
+            "consulting": f"""
 ## 咨询报告特别提示
-- 数据要有来源
-- 分析要有框架
-- 建议要可执行
-- 语言要专业简洁
+- 分析要有深度，但结论要直接
+- 建议要具体可落地
+{common_rules}
 """,
-            "annual_review": """
+            "annual_review": f"""
 ## 年终述职特别提示
-- 成果要量化
-- 突出个人贡献
-- 问题要有解决方案
-- 展示成长和反思
+- 成果要量化，用数据说话
+- 突出个人/团队贡献
+{common_rules}
 """,
-            "company_intro": """
+            "company_intro": f"""
 ## 公司介绍特别提示
-- 突出差异化
-- 用案例说话
-- 强调客户价值
-- 引导下一步行动
+- 突出核心优势和差异化
+- 用成功案例证明实力
+{common_rules}
 """,
-            "academic": """
+            "academic": f"""
 ## 学术报告特别提示
-- 术语要准确
-- 引用要规范
-- 逻辑要严密
-- 贡献要明确
+- 逻辑严密，论证充分
+- 术语使用要准确
+{common_rules}
 """,
-            "creative": """
+            "creative": f"""
 ## 创意提案特别提示
-- 洞察要深刻
-- 创意要有记忆点
-- 执行要可落地
-- 效果要可衡量
+- 观点要新颖，有冲击力
+- 视觉呈现要丰富
+{common_rules}
 """,
-            "government": """
+            "government": f"""
 ## 政府汇报特别提示
-- 表述要规范
-- 数据要准确
-- 措施要具体
-- 责任要明确
+- 表述规范，政治站位高
+- 措施具体，责任明确
+{common_rules}
 """
         }
         return tips.get(self.scenario, tips["consulting"])

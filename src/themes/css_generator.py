@@ -617,10 +617,16 @@ html, body {{
 
 .chart-container {{
     width: 100%;
-    min-height: 300px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    min-height: 400px;
+    position: relative;
+    background: #fff;
+    border-radius: 8px;
+    padding: 10px;
+}}
+
+.chart-container > div {{
+    width: 100% !important;
+    height: 100% !important;
 }}
 
 .chart-title {{
