@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>演示文稿生成平台 - 深国创中心</title>
+    <style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-color: #1a1a2e;
+    --accent-color: #0066cc;
+    --accent-light: #e6f0ff;
+    --success-color: #00a86b;
+    --warning-color: #ff9500;
+    --danger-color: #ff3b30;
+    --bg-color: #f8f9fa;
+    --text-color: #1a1a2e;
+    --text-light: #666666;
+    --border-color: #e0e0e0;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 40px 30px;
+    border-radius: 8px;
+    margin-bottom: 40px;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.logo-section {
+    flex: 1;
+}
+
+.logo-badge {
+    display: inline-block;
+    background-color: var(--accent-color);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+}
+
+.header-content h1 {
+    font-size: 32px;
+    margin-bottom: 12px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.header .subtitle {
+    font-size: 14px;
+    opacity: 0.85;
+    line-height: 1.6;
+    font-weight: 400;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #00a86b;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.main-content {
+    flex: 1;
+}
+
+section {
+    margin-bottom: 30px;
+}
+
+section h2 {
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.upload-section {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.upload-box {
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 50px 30px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background-color: #fafbfc;
+}
+
+.upload-box:hover {
+    border-color: var(--accent-color);
+    background-color: var(--accent-light);
+}
+
+.upload-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.upload-box h2 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    color: var(--text-color);
+}
+
+.upload-box p {
+    color: var(--text-light);
+    margin-bottom: 4px;
+    font-size: 13px;
+}
+
+.file-size-hint {
+    font-size: 12px;
+    color: #999;
+    margin-top: 8px;
+}
+
+.btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-block;
+}
+
+.btn-primary {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #0052a3;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-1px);
+}
+
+.progress-section {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background-color: #e8e8e8;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: var(--accent-color);
+    width: 0%;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 3px;
+}
+
+.progress-text {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+}
+
+#progressPercent {
+    font-weight: 700;
+    color: var(--accent-color);
+    font-size: 16px;
+}
+
+.result-section {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.result-files {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.file-item {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.3s ease;
+    background-color: #fafbfc;
+}
+
+.file-item:hover {
+    border-color: var(--accent-color);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-4px);
+}
+
+.file-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+}
+
+.file-info h3 {
+    font-size: 15px;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.file-info p {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-bottom: 16px;
+}
+
+.error-section {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.error-box {
+    border-left: 4px solid var(--danger-color);
+    padding: 20px;
+    background-color: #fff5f5;
+    border-radius: 4px;
+}
+
+.error-box h2 {
+    color: var(--danger-color);
+    margin-bottom: 12px;
+}
+
+.footer {
+    margin-top: 50px;
+    padding-top: 30px;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.footer-tips {
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--text-light);
+}
+
+.footer-features {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.footer-contact {
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.footer-contact a {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    height: 90%;
+    max-width: 1200px;
+    position: relative;
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-light);
+    z-index: 1001;
+    width: 32px;
+    height: 32px;
+}
+
+#previewFrame {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 12px;
+    }
+
+    .header {
+        flex-direction: column;
+        gap: 16px;
+        padding: 24px 16px;
+    }
+
+    .header h1 {
+        font-size: 24px;
+    }
+
+    .result-files {
+        grid-template-columns: 1fr;
+    }
+}
+    
+
+/* 配置面板 */
+.config-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    margin-bottom: 30px;
+    overflow: hidden;
+}
+
+.config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    background-color: #f5f5f5;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.config-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.btn-small:hover {
+    background-color: #0052a3;
+}
+
+.config-panel {
+    padding: 30px;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 2000px;
+    }
+}
+
+.config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.config-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.config-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.config-group label {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-color);
+}
+
+.config-group input[type="text"],
+.config-group input[type="number"],
+.config-group select {
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.config-group input[type="text"]:focus,
+.config-group input[type="number"]:focus,
+.config-group select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.config-group.checkbox-group {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 16px;
+    grid-column: 1 / -1;
+}
+
+.config-group.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.config-group.checkbox-group input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent-color);
+}
+
+.color-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.color-input-group input[type="color"] {
+    width: 50px;
+    height: 40px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.color-input-group input[type="text"] {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: 'Monaco', 'Courier New', monospace;
+}
+
+.config-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.config-actions .btn {
+    padding: 10px 24px;
+}
+
+
+/* 配置提示 */
+.config-hint {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 8px;
+    padding: 8px 12px;
+    background-color: #f0f4f8;
+    border-left: 3px solid var(--accent-color);
+    border-radius: 3px;
+    line-height: 1.4;
+}
+
+
+/* 上传标题编辑 */
+.upload-title-edit {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.upload-title-edit label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-color);
+}
+
+.upload-title-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.upload-title-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.upload-title-hint {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 6px;
+}
+
+
+
+/* 配置面板 */
+.config-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    margin-bottom: 30px;
+    overflow: hidden;
+}
+
+.config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    background-color: #f5f5f5;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.config-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.btn-small:hover {
+    background-color: #0052a3;
+}
+
+.config-panel {
+    padding: 30px;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 2000px;
+    }
+}
+
+.config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.config-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.config-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.config-group label {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-color);
+}
+
+.config-group input[type="text"],
+.config-group input[type="number"],
+.config-group select {
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.config-group input[type="text"]:focus,
+.config-group input[type="number"]:focus,
+.config-group select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.config-group.checkbox-group {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 16px;
+    grid-column: 1 / -1;
+}
+
+.config-group.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.config-group.checkbox-group input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent-color);
+}
+
+.color-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.color-input-group input[type="color"] {
+    width: 50px;
+    height: 40px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.color-input-group input[type="text"] {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: 'Monaco', 'Courier New', monospace;
+}
+
+.config-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.config-actions .btn {
+    padding: 10px 24px;
+}
+
+
+/* 配置提示 */
+.config-hint {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 8px;
+    padding: 8px 12px;
+    background-color: #f0f4f8;
+    border-left: 3px solid var(--accent-color);
+    border-radius: 3px;
+    line-height: 1.4;
+}
+
+
+/* 上传标题编辑 */
+.upload-title-edit {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.upload-title-edit label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-color);
+}
+
+.upload-title-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.upload-title-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.upload-title-hint {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 6px;
+}
+
+</style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo-badge">深国创中心自研</div>
+                    <h1>演示文稿生成平台</h1>
+                </div>
+                <p class="subtitle">基于SOTA模型能力 × 高级算法 × 工程手段,打造专业咨询级演示文稿</p>
+            </div>
+            <div class="status-indicator" id="statusIndicator">
+                <span class="status-dot"></span>
+                <span class="status-text">就绪</span>
+            </div>
+        </header>
+
+        <!-- 主内容 -->
+        <main class="main-content">
+            <!-- 配置面板 -->
+            <section class="config-section" id="configSection">
+                <div class="config-header">
+                    <h2> 演示文稿配置</h2>
+                    <button class="btn btn-small" type="button" onclick="toggleConfigPanel()">
+                        <span id="toggleText">收起</span>
+                    </button>
+                </div>
+                <div class="config-panel" id="configPanel" style="display: block;">
+                    <div class="config-grid">
+                        <!-- 预设模板 -->
+                        <div class="config-group">
+                            <label for="presetSelect">预设模板</label>
+                            <select id="presetSelect" onchange="loadPreset(this.value)">
+                                <option value="default">默认模板</option>
+                                <option value="hetao">河套合作区</option>
+                                <option value="enterprise">企业咨询</option>
+                                <option value="academic">学术研究</option>
+                            </select>
+                        </div>
+
+                        <!-- 基本信息 -->
+                        <div class="config-group">
+                            <label for="projectName">项目名称</label>
+                            <input type="text" id="projectName" placeholder="演示文稿" value="演示文稿">
+                        </div>
+
+                        <div class="config-group">
+                            <label for="projectTitle">项目标题</label>
+                            <input type="text" id="projectTitle" placeholder="专项咨询研究报告" value="专项咨询研究报告">
+                        </div>
+
+                        <div class="config-group">
+                            <label for="organization">汇报单位</label>
+                            <input type="text" id="organization" placeholder="深圳国家高技术产业创新中心" value="深圳国家高技术产业创新中心">
+                        </div>
+
+                        <!-- 内容配置 -->
+                        <div class="config-group">
+                            <label for="targetPages">目标页数</label>
+                            <input type="number" id="targetPages" min="10" max="100" value="25">
+                        </div>
+
+                        <div class="config-group">
+                            <label for="contentDepth">内容深度</label>
+                            <select id="contentDepth">
+                                <option value="brief">简洁版</option>
+                                <option value="normal" selected>标准版</option>
+                                <option value="detailed">详细版</option>
+                            </select>
+                        </div>
+
+                        <!-- 主题关键词 -->
+                        <div class="config-group full-width">
+                            <label for="themeKeywords">主题关键词 (逗号分隔)</label>
+                            <input type="text" id="themeKeywords" placeholder="如: 河套合作区,深港合作,科技创新">
+                        </div>
+
+                        <!-- 页面类型 -->
+                        <div class="config-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="includeCover" checked>
+                                生成封面
+                            </label>
+                            <label>
+                                <input type="checkbox" id="includeAgenda" checked>
+                                生成目录
+                            </label>
+                            <label>
+                                <input type="checkbox" id="includeClosing" checked>
+                                生成封底
+                            </label>
+                        </div>
+
+                        <!-- 背景体现 -->
+                        <div class="config-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="includeBackground" checked>
+                                在内容中体现主题背景
+                            </label>
+                        </div>
+
+                        <!-- 配色方案 -->
+                        <div class="config-group full-width">
+                            <label for="colorScheme">配色方案</label>
+                            <select id="colorScheme">
+                                <option value="auto" selected> AI自动选择</option>
+                                <option value="ocean"> 海洋蓝 - 科技/金融/学术</option>
+                                <option value="forest"> 森林绿 - 环保/农业/生态</option>
+                                <option value="sunset"> 日落橙 - 创意/文化/消费</option>
+                                <option value="royal"> 皇家紫 - 高端/奢侈/艺术</option>
+                                <option value="tech"> 科技黑 - IT/互联网/创新</option>
+                                <option value="corporate"> 企业灰 - 商务/咨询/管理</option>
+                                <option value="medical"> 医疗红 - 医疗/健康/生命科学</option>
+                                <option value="energy"> 能源黄 - 能源/电力/工业</option>
+                            </select>
+                            <p class="config-hint"> 选择"AI自动选择"会根据文档内容智能推荐最合适的配色方案</p>
+                        </div>
+
+                        <!-- 输出格式 -->
+                        <div class="config-group checkbox-group">
+                            <label>输出格式:</label>
+                            <label>
+                                <input type="checkbox" id="outputPdf" checked>
+                                PDF
+                            </label>
+                            <label>
+                                <input type="checkbox" id="outputPptx" checked>
+                                PPTX
+                            </label>
+                            <label>
+                                <input type="checkbox" id="outputHtml" checked>
+                                HTML
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="config-actions">
+                        <button class="btn btn-secondary" type="button" onclick="resetConfig()">重置</button>
+                        <button class="btn btn-primary" type="button" onclick="saveConfig()">保存配置</button>
+                    </div>
+                </div>
+            </section>
+
+            
+
+            
+
+            
+
+            <!-- 上传区域 -->
+            <section class="upload-section">
+                <div class="upload-box" id="uploadBox">
+                    <div class="upload-icon"></div>
+                    <h2>上传文档</h2>
+                    <p>支持格式: DOCX, DOC, MD, JSON, TXT</p>
+                    <p class="file-size-hint">最大文件: 50MB</p>
+                    <input type="file" id="fileInput" accept=".docx,.doc,.md,.json,.txt" hidden>
+                    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                        选择文件
+                    </button>
+                </div>
+            </section>
+
+            <!-- 处理进度 -->
+            <section class="progress-section" id="progressSection" style="display: none;">
+                <h2>处理进度</h2>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="progressPercent">0%</span>
+                        <span id="progressMessage">准备中...</span>
+                    </div>
+                </div>
+                <div class="task-info">
+                    <p>任务ID: <code id="taskId"></code></p>
+                </div>
+            </section>
+
+            <!-- 结果区域 -->
+            <section class="result-section" id="resultSection" style="display: none;">
+                <h2> 生成完成！</h2>
+                <div class="result-files">
+                    <div class="file-item" id="pdfItem" style="display: none;">
+                        <div class="file-icon"></div>
+                        <div class="file-info">
+                            <h3>PDF演示文稿</h3>
+                            <p>高质量PDF格式</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="downloadFile('pdf')">
+                            下载 PDF
+                        </button>
+                    </div>
+                    <div class="file-item" id="pptxItem" style="display: none;">
+                        <div class="file-icon"></div>
+                        <div class="file-info">
+                            <h3>PowerPoint演示文稿</h3>
+                            <p>可编辑的PPTX格式</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="downloadFile('pptx')">
+                            下载 PPTX
+                        </button>
+                    </div>
+                    <div class="file-item" id="htmlItem" style="display: none;">
+                        <div class="file-icon"></div>
+                        <div class="file-info">
+                            <h3>HTML预览</h3>
+                            <p>在浏览器中预览</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="previewHTML()">
+                            预览 HTML
+                        </button>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="resetForm()">
+                    处理新文档
+                </button>
+            </section>
+
+            <!-- 错误提示 -->
+            <section class="error-section" id="errorSection" style="display: none;">
+                <div class="error-box">
+                    <h2> 处理失败</h2>
+                    <p id="errorMessage"></p>
+                    <button class="btn btn-primary" onclick="resetForm()">
+                        重新开始
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-tips">
+                    <p> 处理时间取决于文档大小和内容复杂度，通常需要5-15分钟</p>
+                </div>
+                <div class="footer-features">
+                    <span> 本地网络服务</span>
+                    <span>•</span>
+                    <span> 高性能处理</span>
+                    <span>•</span>
+                    <span> 数据本地存储</span>
+                </div>
+                <div class="footer-contact">
+                    <p>欢迎提出改进建议 | 联系: <a href="mailto:liusai64@gmail.com">liusai64@gmail.com</a></p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- HTML预览模态框 -->
+    <div id="previewModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closePreview()"></button>
+            <iframe id="previewFrame" src="" frameborder="0"></iframe>
+        </div>
+    </div>
+
+    <script>
+// 全局变量
+let currentTaskId = null;
+let statusCheckInterval = null;
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+    initializeApp();
+    setupEventListeners();
+    checkServerHealth();
+});
+
+function initializeApp() {
+    checkServerHealth();
+}
+
+function setupEventListeners() {
+    const fileInput = document.getElementById('fileInput');
+    fileInput.addEventListener('change', handleFileSelect);
+
+    const uploadBox = document.getElementById('uploadBox');
+    uploadBox.addEventListener('dragover', handleDragOver);
+    uploadBox.addEventListener('dragleave', handleDragLeave);
+    uploadBox.addEventListener('drop', handleDrop);
+}
+
+function checkServerHealth() {
+    fetch('/api/health')
+        .then(response => response.json())
+        .then(data => {
+            const dot = document.querySelector('.status-dot');
+            const text = document.querySelector('.status-text');
+
+            if (data.api_configured) {
+                dot.classList.remove('error');
+                text.textContent = '服务就绪';
+            } else {
+                dot.classList.add('error');
+                text.textContent = ' API未配置';
+            }
+        })
+        .catch(error => {
+            console.error('Health check failed:', error);
+            const dot = document.querySelector('.status-dot');
+            const text = document.querySelector('.status-text');
+            dot.classList.add('error');
+            text.textContent = ' 服务离线';
+        });
+}
+
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+        uploadFile(file);
+    }
+}
+
+function handleDragOver(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    document.getElementById('uploadBox').classList.add('dragover');
+}
+
+function handleDragLeave(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    document.getElementById('uploadBox').classList.remove('dragover');
+}
+
+function handleDrop(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    document.getElementById('uploadBox').classList.remove('dragover');
+
+    const files = event.dataTransfer.files;
+    if (files.length > 0) {
+        uploadFile(files[0]);
+    }
+}
+
+function uploadFile(file) {
+    const allowedExtensions = ['docx', 'doc', 'md', 'json', 'txt'];
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+
+    if (!allowedExtensions.includes(fileExtension)) {
+        showError(`不支持的文件类型: ${fileExtension}`);
+        return;
+    }
+
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+        showError(`文件过大，最大限制: 50MB`);
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showError(data.error);
+            } else {
+                currentTaskId = data.task_id;
+                startProcessing();
+            }
+        })
+        .catch(error => {
+            showError(`上传失败: ${error.message}`);
+        });
+}
+
+function startProcessing() {
+    document.getElementById('uploadBox').style.display = 'none';
+    document.getElementById('progressSection').style.display = 'block';
+    document.getElementById('resultSection').style.display = 'none';
+    document.getElementById('errorSection').style.display = 'none';
+
+    document.getElementById('taskId').textContent = currentTaskId;
+
+    checkTaskStatus();
+    statusCheckInterval = setInterval(checkTaskStatus, 1000);
+}
+
+function checkTaskStatus() {
+    fetch(`/api/task/${currentTaskId}`)
+        .then(response => response.json())
+        .then(data => {
+            updateProgress(data);
+
+            if (data.status === 'completed') {
+                clearInterval(statusCheckInterval);
+                showResults(data.result);
+            } else if (data.status === 'failed') {
+                clearInterval(statusCheckInterval);
+                showError(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Status check failed:', error);
+        });
+}
+
+function updateProgress(task) {
+    const progress = task.progress || 0;
+    const message = task.message || '处理中...';
+
+    document.getElementById('progressFill').style.width = progress + '%';
+    document.getElementById('progressPercent').textContent = progress + '%';
+    document.getElementById('progressMessage').textContent = message;
+}
+
+function showResults(result) {
+    document.getElementById('progressSection').style.display = 'none';
+    document.getElementById('resultSection').style.display = 'block';
+
+    if (result.pdf) {
+        document.getElementById('pdfItem').style.display = 'flex';
+    }
+    if (result.pptx) {
+        document.getElementById('pptxItem').style.display = 'flex';
+    }
+    if (result.html) {
+        document.getElementById('htmlItem').style.display = 'flex';
+    }
+}
+
+function showError(message) {
+    document.getElementById('progressSection').style.display = 'none';
+    document.getElementById('resultSection').style.display = 'none';
+    document.getElementById('errorSection').style.display = 'block';
+    document.getElementById('errorMessage').textContent = message;
+}
+
+function downloadFile(fileType) {
+    if (!currentTaskId) return;
+    const url = `/api/download/${currentTaskId}/${fileType}`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.click();
+}
+
+function previewHTML() {
+    if (!currentTaskId) return;
+    const modal = document.getElementById('previewModal');
+    const frame = document.getElementById('previewFrame');
+    frame.src = `/api/preview/${currentTaskId}`;
+    modal.style.display = 'flex';
+}
+
+function closePreview() {
+    document.getElementById('previewModal').style.display = 'none';
+    document.getElementById('previewFrame').src = '';
+}
+
+function resetForm() {
+    currentTaskId = null;
+    if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+    }
+
+    document.getElementById('uploadBox').style.display = 'block';
+    document.getElementById('progressSection').style.display = 'none';
+    document.getElementById('resultSection').style.display = 'none';
+    document.getElementById('errorSection').style.display = 'none';
+
+    document.getElementById('fileInput').value = '';
+
+    document.getElementById('pdfItem').style.display = 'none';
+    document.getElementById('pptxItem').style.display = 'none';
+    document.getElementById('htmlItem').style.display = 'none';
+}
+
+document.addEventListener('click', (event) => {
+    const modal = document.getElementById('previewModal');
+    if (event.target === modal) {
+        closePreview();
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        closePreview();
+    }
+});
+    
+
+// 配置管理
+function toggleConfigPanel() {
+    const panel = document.getElementById('configPanel');
+    const toggleText = document.getElementById('toggleText');
+    
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        toggleText.textContent = '收起';
+    } else {
+        panel.style.display = 'none';
+        toggleText.textContent = '展开';
+    }
+}
+
+function loadPreset(presetName) {
+    const presets = {
+        default: {
+            projectName: '演示文稿',
+            projectTitle: '专项咨询研究报告',
+            organization: '深圳国家高技术产业创新中心',
+            targetPages: 25,
+            contentDepth: 'normal',
+            themeKeywords: '',
+            includeBackground: false,
+            colorScheme: 'auto'
+        },
+        hetao: {
+            projectName: '河套合作区',
+            projectTitle: '河套深港科技创新合作区专项咨询研究报告',
+            organization: '深圳国家高技术产业创新中心',
+            targetPages: 30,
+            contentDepth: 'detailed',
+            themeKeywords: '河套合作区,深港合作,科技创新',
+            includeBackground: true,
+            colorScheme: 'auto'
+        },
+        enterprise: {
+            projectName: '企业咨询',
+            projectTitle: '企业战略咨询报告',
+            organization: '咨询公司',
+            targetPages: 20,
+            contentDepth: 'normal',
+            themeKeywords: '',
+            includeBackground: false,
+            colorScheme: 'auto'
+        },
+        academic: {
+            projectName: '学术研究',
+            projectTitle: '学术研究报告',
+            organization: '研究机构',
+            targetPages: 35,
+            contentDepth: 'detailed',
+            themeKeywords: '',
+            includeBackground: false,
+            colorScheme: 'auto'
+        }
+    };
+    
+    const preset = presets[presetName] || presets.default;
+    
+    // 填充表单
+    document.getElementById('projectName').value = preset.projectName;
+    document.getElementById('projectTitle').value = preset.projectTitle;
+    document.getElementById('organization').value = preset.organization;
+    document.getElementById('targetPages').value = preset.targetPages;
+    document.getElementById('contentDepth').value = preset.contentDepth;
+    document.getElementById('themeKeywords').value = preset.themeKeywords;
+    document.getElementById('includeBackground').checked = preset.includeBackground;
+    document.getElementById('colorScheme').value = preset.colorScheme;
+}
+
+function saveConfig() {
+    const config = {
+        projectName: document.getElementById('projectName').value,
+        projectTitle: document.getElementById('projectTitle').value,
+        organization: document.getElementById('organization').value,
+        targetPages: parseInt(document.getElementById('targetPages').value),
+        contentDepth: document.getElementById('contentDepth').value,
+        themeKeywords: document.getElementById('themeKeywords').value,
+        includeCover: document.getElementById('includeCover').checked,
+        includeAgenda: document.getElementById('includeAgenda').checked,
+        includeClosing: document.getElementById('includeClosing').checked,
+        includeBackground: document.getElementById('includeBackground').checked,
+        colorScheme: document.getElementById('colorScheme').value,
+        outputFormats: {
+            pdf: document.getElementById('outputPdf').checked,
+            pptx: document.getElementById('outputPptx').checked,
+            html: document.getElementById('outputHtml').checked
+        }
+    };
+    
+    currentConfig = config;
+    
+    // 保存到本地存储
+    localStorage.setItem('pptConfig', JSON.stringify(config));
+    
+    // 显示提示
+    alert('配置已保存！');
+}
+
+function resetConfig() {
+    if (confirm('确定要重置为默认配置吗？')) {
+        loadPreset('default');
+        saveConfig();
+    }
+}
+
+function loadConfigFromStorage() {
+    const saved = localStorage.getItem('pptConfig');
+    if (saved) {
+        try {
+            currentConfig = JSON.parse(saved);
+            // 恢复表单值
+            document.getElementById('projectName').value = currentConfig.projectName;
+            document.getElementById('projectTitle').value = currentConfig.projectTitle;
+            document.getElementById('organization').value = currentConfig.organization;
+            document.getElementById('targetPages').value = currentConfig.targetPages;
+            document.getElementById('contentDepth').value = currentConfig.contentDepth;
+            document.getElementById('themeKeywords').value = currentConfig.themeKeywords;
+            document.getElementById('includeCover').checked = currentConfig.includeCover;
+            document.getElementById('includeAgenda').checked = currentConfig.includeAgenda;
+            document.getElementById('includeClosing').checked = currentConfig.includeClosing;
+            document.getElementById('includeBackground').checked = currentConfig.includeBackground;
+            document.getElementById('colorScheme').value = currentConfig.colorScheme || 'auto';
+            
+            if (currentConfig.outputFormats) {
+                document.getElementById('outputPdf').checked = currentConfig.outputFormats.pdf;
+                document.getElementById('outputPptx').checked = currentConfig.outputFormats.pptx;
+                document.getElementById('outputHtml').checked = currentConfig.outputFormats.html;
+            }
+        } catch (e) {
+            console.error('Failed to load config:', e);
+        }
+    }
+}
+
+function setupEventListeners() {
+    // 文件输入
+    const fileInput = document.getElementById('fileInput');
+    fileInput.addEventListener('change', handleFileSelect);
+
+    // 拖拽上传
+    const uploadBox = document.getElementById('uploadBox');
+    uploadBox.addEventListener('dragover', handleDragOver);
+    uploadBox.addEventListener('dragleave', handleDragLeave);
+    uploadBox.addEventListener('drop', handleDrop);
+}
+
+function checkServerHealth() {
+    fetch('/api/health')
+        .then(response => response.json())
+        .then(data => {
+            const indicator = document.querySelector('.status-indicator');
+            const dot = document.querySelector('.status-dot');
+            const text = document.querySelector('.status-text');
+
+            if (data.api_configured) {
+                dot.classList.remove('error');
+                text.textContent = '服务就绪';
+            } else {
+                dot.classList.add('error');
+                text.textContent = ' API未配置';
+            }
+        })
+        .catch(error => {
+            console.error('Health check failed:', error);
+            const dot = document.querySelector('.status-dot');
+            const text = document.querySelector('.status-text');
+            dot.classList.add('error');
+            text.textContent = ' 服务离线';
+        });
+}
+
+// 文件处理
+
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+# 核心依赖
+openai>=1.0.0
+python-dotenv>=1.0.0
+rich>=13.0.0
+
+# 文档处理
+python-docx>=0.8.11
+jieba>=0.42.1
+
+# PDF 处理
+PyPDF2>=3.0.0
+pyppeteer>=1.0.2
+
+# Adobe PDF Services
+adobe-pdfservices-sdk>=4.0.0
+
+# Web API (可选)
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+aiofiles>=23.2.1

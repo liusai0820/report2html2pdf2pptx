@@ -1,0 +1,29 @@
+{
+  "name": "ai-presentation-generator",
+  "version": "1.0.0",
+  "description": "AI驱动的演示文稿生成系统",
+  "main": "run.py",
+  "scripts": {
+    "start": "python run.py",
+    "install": "npm install",
+    "clean": "rm -rf output/* generated-slides/"
+  },
+  "keywords": [
+    "ai",
+    "presentation",
+    "pdf",
+    "pptx",
+    "generator",
+    "puppeteer"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^24.32.0",
+    "puppeteer-core": "^21.11.0"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "python": ">=3.8.0"
+  }
+}

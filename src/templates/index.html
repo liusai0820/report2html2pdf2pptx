@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>演示文稿生成平台 - 深国创中心</title>
+    <!-- Web字体 - 思源黑体（微软雅黑的完美替代品，支持PDF嵌入） -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* 字体优先级：本地微软雅黑 > Web字体思源黑体 > 系统字体 */
+        @font-face {
+            font-family: 'Microsoft YaHei Web';
+            src: local('Microsoft YaHei'), 
+                 local('微软雅黑'),
+                 url('https://fonts.gstatic.com/s/notosanssc/v21/PbynFmwt4aIE7Lssw6LLW-2xvzCvQcMhWA.woff2') format('woff2');
+            font-weight: 400;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Microsoft YaHei Web';
+            src: local('Microsoft YaHei Bold'), 
+                 local('微软雅黑 Bold'),
+                 url('https://fonts.gstatic.com/s/notosanssc/v21/PbynFmwt4aIE7Lssw6LLW-2xvzCvQcMhWA.woff2') format('woff2');
+            font-weight: 700;
+            font-display: swap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo-badge">深国创中心自研</div>
+                    <h1>演示文稿生成平台</h1>
+                </div>
+                <p class="subtitle">基于SOTA模型能力 × 高级算法 × 工程手段,打造专业咨询级演示文稿</p>
+            </div>
+            <div class="status-indicator" id="statusIndicator">
+                <span class="status-dot"></span>
+                <span class="status-text">就绪</span>
+            </div>
+        </header>
+
+        <!-- 主内容 -->
+        <main class="main-content">
+            <!-- 配置面板 -->
+            <section class="config-section" id="configSection">
+                <div class="config-header">
+                    <h2>演示文稿配置</h2>
+                    <button class="btn btn-small" type="button" onclick="toggleConfigPanel()">
+                        <span id="toggleText">收起</span>
+                    </button>
+                </div>
+                <div class="config-panel" id="configPanel" style="display: block;">
+                    <div class="config-grid">
+                        <!-- 预设模板 -->
+                        <div class="config-group">
+                            <label for="presetSelect">预设模板</label>
+                            <select id="presetSelect" onchange="loadPreset(this.value)">
+                                <option value="default">默认模板</option>
+                                <option value="hetao">河套合作区</option>
+                                <option value="enterprise">企业咨询</option>
+                                <option value="academic">学术研究</option>
+                            </select>
+                        </div>
+
+                        <!-- 基本信息 -->
+                        <div class="config-group">
+                            <label for="projectName">项目名称</label>
+                            <input type="text" id="projectName" placeholder="演示文稿" value="演示文稿">
+                        </div>
+
+                        <div class="config-group">
+                            <label for="projectTitle">项目标题</label>
+                            <input type="text" id="projectTitle" placeholder="专项咨询研究报告" value="专项咨询研究报告">
+                        </div>
+
+                        <div class="config-group">
+                            <label for="organization">汇报单位</label>
+                            <input type="text" id="organization" placeholder="深圳国家高技术产业创新中心" value="深圳国家高技术产业创新中心">
+                        </div>
+
+                        <!-- 内容配置 -->
+                        <div class="config-group">
+                            <label for="targetPages">目标页数</label>
+                            <input type="number" id="targetPages" min="10" max="100" value="25">
+                        </div>
+
+                        <div class="config-group">
+                            <label for="contentDepth">内容深度</label>
+                            <select id="contentDepth">
+                                <option value="brief">简洁版</option>
+                                <option value="normal" selected>标准版</option>
+                                <option value="detailed">详细版</option>
+                            </select>
+                        </div>
+
+                        <!-- 主题关键词 -->
+                        <div class="config-group full-width">
+                            <label for="themeKeywords">主题关键词 (逗号分隔)</label>
+                            <input type="text" id="themeKeywords" placeholder="如: 河套合作区,深港合作,科技创新">
+                        </div>
+
+                        <!-- 页面类型 -->
+                        <div class="config-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="includeCover" checked>
+                                生成封面
+                            </label>
+                            <label>
+                                <input type="checkbox" id="includeAgenda" checked>
+                                生成目录
+                            </label>
+                            <label>
+                                <input type="checkbox" id="includeClosing" checked>
+                                生成封底
+                            </label>
+                        </div>
+
+                        <!-- 背景体现 -->
+                        <div class="config-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="includeBackground" checked>
+                                在内容中体现主题背景
+                            </label>
+                        </div>
+
+                        <!-- 配色方案 -->
+                        <div class="config-group full-width">
+                            <label for="colorScheme">配色方案</label>
+                            <select id="colorScheme">
+                                <option value="auto" selected>🤖 AI自动选择</option>
+                                <option value="ocean">🌊 海洋蓝 - 科技/金融/学术</option>
+                                <option value="forest">🌲 森林绿 - 环保/农业/生态</option>
+                                <option value="sunset">🌅 日落橙 - 创意/文化/消费</option>
+                                <option value="royal">👑 皇家紫 - 高端/奢侈/艺术</option>
+                                <option value="tech">⚡ 科技黑 - IT/互联网/创新</option>
+                                <option value="corporate">💼 企业灰 - 商务/咨询/管理</option>
+                                <option value="medical">❤️ 医疗红 - 医疗/健康/生命科学</option>
+                                <option value="energy">⚙️ 能源黄 - 能源/电力/工业</option>
+                            </select>
+                            <p class="config-hint">💡 选择"AI自动选择"会根据文档内容智能推荐最合适的配色方案</p>
+                        </div>
+
+                        <!-- 输出格式 -->
+                        <div class="config-group checkbox-group">
+                            <label>输出格式:</label>
+                            <label>
+                                <input type="checkbox" id="outputPdf" checked>
+                                PDF
+                            </label>
+                            <label>
+                                <input type="checkbox" id="outputPptx" checked>
+                                PPTX
+                            </label>
+                            <label>
+                                <input type="checkbox" id="outputHtml" checked>
+                                HTML
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="config-actions">
+                        <button class="btn btn-secondary" type="button" onclick="resetConfig()">重置</button>
+                        <button class="btn btn-primary" type="button" onclick="saveConfig()">保存配置</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 上传区域 -->
+            <section class="upload-section">
+                <div class="upload-box" id="uploadBox">
+                    <div class="upload-icon">📄</div>
+                    <h2>上传文档</h2>
+                    <p>支持格式: DOCX, DOC, MD, JSON, TXT</p>
+                    <p class="file-size-hint">最大文件: 50MB</p>
+                    <input type="file" id="fileInput" accept=".docx,.doc,.md,.json,.txt" hidden>
+                    <button class="btn btn-primary" type="button" onclick="document.getElementById('fileInput').click()">
+                        选择文件
+                    </button>
+                </div>
+                <div id="uploadStatus" class="upload-status" style="display: none;">
+                    <p id="uploadFileName"></p>
+                    <div class="upload-title-edit">
+                        <label for="uploadTitle">📝 演示文稿标题（可选）</label>
+                        <input type="text" id="uploadTitle" placeholder="不填则使用文件名" class="upload-title-input">
+                        <p class="upload-title-hint">💡 此标题将用于演示文稿的封面</p>
+                        <button class="btn btn-primary" type="button" onclick="uploadFileNow()" style="margin-top: 12px;">
+                            开始处理
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 处理进度 -->
+            <section class="progress-section" id="progressSection" style="display: none;">
+                <h2>处理进度</h2>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="progressPercent">0%</span>
+                        <span id="progressMessage">准备中...</span>
+                    </div>
+                </div>
+                <div class="progress-steps">
+                    <div class="step" id="step1">文档解析</div>
+                    <div class="step" id="step2">大纲生成</div>
+                    <div class="step" id="step3">内容创作</div>
+                    <div class="step" id="step4">格式转换</div>
+                </div>
+                <div class="task-info">
+                    <p>任务ID: <code id="taskId"></code></p>
+                </div>
+            </section>
+
+            <!-- 结果区域 -->
+            <section class="result-section" id="resultSection" style="display: none;">
+                <h2>✨ 生成完成！</h2>
+                <div class="result-files">
+                    <div class="file-item" id="pdfItem" style="display: none;">
+                        <div class="file-icon">📄</div>
+                        <div class="file-info">
+                            <h3>PDF演示文稿</h3>
+                            <p>高质量PDF格式</p>
+                        </div>
+                        <button class="btn btn-secondary" onclick="downloadFile('pdf')">
+                            下载 PDF
+                        </button>
+                    </div>
+                    <div class="file-item" id="pptxItem" style="display: none;">
+                        <div class="file-icon">📊</div>
+                        <div class="file-info">
+                            <h3>PowerPoint演示文稿</h3>
+                            <p>可编辑的PPTX格式</p>
+                        </div>
+                        <button class="btn btn-secondary" onclick="downloadFile('pptx')">
+                            下载 PPTX
+                        </button>
+                    </div>
+                    <div class="file-item" id="htmlItem" style="display: none;">
+                        <div class="file-icon">🌐</div>
+                        <div class="file-info">
+                            <h3>HTML预览</h3>
+                            <p>在浏览器中预览</p>
+                        </div>
+                        <button class="btn btn-secondary" onclick="previewHTML()">
+                            预览 HTML
+                        </button>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="resetForm()">
+                    处理新文档
+                </button>
+            </section>
+
+            <!-- 错误提示 -->
+            <section class="error-section" id="errorSection" style="display: none;">
+                <div class="error-box">
+                    <h2>❌ 处理失败</h2>
+                    <p id="errorMessage"></p>
+                    <button class="btn btn-primary" onclick="resetForm()">
+                        重新开始
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-tips">
+                    <p>💡 处理时间取决于文档大小和内容复杂度，通常需要5-15分钟</p>
+                </div>
+                <div class="footer-features">
+                    <span>🖥️ 本地网络服务</span>
+                    <span>•</span>
+                    <span>⚡ 高性能处理</span>
+                    <span>•</span>
+                    <span>🔒 数据本地存储</span>
+                </div>
+                <div class="footer-contact">
+                    <p>欢迎提出改进建议 | 联系: <a href="mailto:liusai64@gmail.com">liusai64@gmail.com</a></p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- HTML预览模态框 -->
+    <div id="previewModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closePreview()">✕</button>
+            <iframe id="previewFrame" src="" frameborder="0"></iframe>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
