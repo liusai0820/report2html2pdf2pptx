@@ -61,6 +61,13 @@ html, body {{
     background: var(--background);
 }}
 
+/* 全局列表样式重置 - 防止浏览器默认符号与自定义符号重复 */
+ul, ol {{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}}
+
 .slide-container {{
     width: var(--slide-width);
     height: var(--slide-height);
@@ -85,13 +92,15 @@ html, body {{
     font-family: var(--font-family);
 }}
 
-/* 内容区域 */
+/* 内容区域 - 防溢出设计 */
 .content-area {{
     flex: 1;
     padding: var(--padding-v) var(--padding-h);
     display: flex;
     flex-direction: column;
     font-family: var(--font-family);
+    overflow: hidden; /* 防溢出最后防线 */
+    max-height: calc(var(--slide-height) - 50px); /* 扣除页脚高度 */
 }}
 
 /* 标题区域 */
@@ -109,116 +118,586 @@ html, body {{
 """
 
     def _generate_cover_styles(self) -> str:
-        """生成封面样式"""
+        """根据主题分类生成封面样式"""
+        cat = self.theme.metadata.category
+        # 特殊处理 annual_review，因为它之前混在 consulting 里
+        if self.theme.metadata.id == 'annual_review':
+            return self._generate_cover_styles_annual()
+            
+        if cat == 'creative':
+            return self._generate_cover_styles_creative()
+        elif cat == 'academic':
+            return self._generate_cover_styles_academic()
+        elif cat == 'government':
+            return self._generate_cover_styles_government()
+        elif cat == 'company_intro':
+            return self._generate_cover_styles_tech()
+        else:
+            return self._generate_cover_styles_default()
+
+    def _generate_cover_styles_default(self) -> str:
+        """默认/咨询风格封面 (极简商务之巅 - 回归本质)"""
         return f"""
 /* ============================================
-   封面页样式
+   封面页样式 (Consulting - Ultimate Minimalist)
    ============================================ */
 
 .cover-slide {{
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    padding: 60px 80px;
+    padding: 80px 100px;
     position: relative;
+    background: #ffffff; /* 纯白背景，模拟纸张 */
+    color: #1a1a1a;
 }}
 
-.cover-top {{
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-}}
-
-.cover-middle {{
-    flex: 1;
-}}
-
-.cover-bottom {{
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    gap: var(--gap-small);
-}}
-
-.brand-line {{
-    width: 100px;
-    height: 8px;
+/* 只有一条极简的品牌色装饰线，位于左上角 */
+.cover-slide::before {{
+    content: "";
+    position: absolute;
+    top: 80px; left: 100px;
+    width: 80px; height: 8px;
     background: var(--primary);
-    margin-bottom: 40px;
-    flex-shrink: 0;
 }}
+
+/* 顶部区域：文档类型 */
+.cover-top {{
+    margin-top: 40px; /* 在装饰线下方 */
+    margin-bottom: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}}
+
+.brand-line {{ display: none; }}
 
 .doc-type {{
-    font-size: var(--size-body);
+    font-size: 18px;
     color: var(--text-secondary);
-    margin-bottom: 30px;
-    letter-spacing: 2px;
-    font-family: var(--font-family);
-    font-weight: var(--weight-normal);
+    font-weight: 500;
+    letter-spacing: 1px;
+    margin-bottom: 0;
 }}
 
+/* 隐藏其他花哨装饰 */
+.cover-top::after {{ display: none; }}
+
+/* 核心标题区 - 视觉重心 */
 .main-title {{
-    font-size: var(--size-cover-title);
-    line-height: var(--line-height-heading);
-    color: var(--text-primary);
-    margin-bottom: 20px;
-    font-weight: var(--weight-bold);
+    font-size: 64px; /* 巨大 */
+    line-height: 1.2;
+    color: #000000;
+    font-weight: 700; /* 粗体，有力 */
     font-family: var(--font-family-heading);
-    word-wrap: break-word;
-    overflow-wrap: break-word;
+    margin-bottom: 40px;
+    max-width: 900px;
+    letter-spacing: -1px;
 }}
 
 .sub-title {{
     font-size: 28px;
-    color: var(--text-secondary);
-    font-weight: var(--weight-normal);
-    font-family: var(--font-family);
+    color: #555555;
+    font-weight: 400;
+    line-height: 1.5;
+    max-width: 800px;
+}}
+
+.cover-middle {{ display: none; }}
+
+.cover-bottom {{
+    margin-top: auto;
+    width: 100%;
+    border-top: 1px solid #eeeeee; /* 极细的分割线 */
+    padding-top: 20px;
 }}
 
 .footer-row {{
     display: flex;
+    flex-direction: column;
+    gap: 8px;
+}}
+
+.footer-item {{
+    font-size: 14px;
+    color: #888888;
+    font-family: var(--font-family);
+}}
+"""
+
+    def _generate_cover_styles_annual(self) -> str:
+        """年终述职风格 (清爽亮色 + 年份大字)"""
+        # 动态获取当前年份
+        from datetime import datetime
+        current_year = datetime.now().strftime("%Y")
+        
+        return f"""
+/* ============================================
+   封面页样式 (Annual Review - Bright & Clean)
+   ============================================ */
+.cover-slide {{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 80px 100px;
+    position: relative;
+    /* 清爽的蓝白渐变背景 */
+    background: linear-gradient(120deg, #ffffff 0%, #f0f7ff 100%);
+    color: #1e293b;
+    overflow: hidden;
+}}
+
+/* 左侧装饰线 */
+.cover-slide::before {{
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 15px;
+    background: var(--primary);
+}}
+
+/* 动态年份水印 */
+.cover-slide::after {{
+    content: "{current_year}";
+    position: absolute;
+    right: 20px;
+    bottom: -60px;
+    font-size: 280px;
+    font-weight: 900;
+    color: var(--primary);
+    opacity: 0.06;
+    z-index: 0;
+    font-family: var(--font-family-heading);
+    letter-spacing: -10px;
+}}
+
+.cover-top {{
+    position: relative;
+    z-index: 2;
+    margin-bottom: 40px;
+}}
+
+.doc-type {{
+    display: inline-block;
+    font-size: 16px;
+    color: white;
+    background: var(--primary); /* 醒目的标签 */
+    padding: 6px 16px;
+    letter-spacing: 2px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}}
+
+.brand-line {{ display: none; }}
+
+.main-title {{
+    position: relative;
+    z-index: 2;
+    font-size: 72px;
+    line-height: 1.1;
+    font-weight: 800;
+    margin-bottom: 20px;
+    color: #0f172a;
+    letter-spacing: -1px;
+}}
+
+.sub-title {{
+    position: relative;
+    z-index: 2;
+    font-size: 32px;
+    color: #64748b;
+    font-weight: 300;
+}}
+
+.cover-bottom {{
+    position: relative;
+    z-index: 2;
+    margin-top: 80px;
+    display: flex;
+    gap: 40px;
     align-items: center;
 }}
 
 .footer-item {{
-    font-size: 18px;
+    font-size: 16px;
+    color: #475569;
+    font-weight: 500;
+    background: white;
+    padding: 10px 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 30px;
+}}
+"""
+
+    def _generate_cover_styles_creative(self) -> str:
+        """创意/营销风格封面 - 缤纷渐变版"""
+        return f"""
+/* ============================================
+   封面页样式 (Creative - Vibrant)
+   ============================================ */
+
+.cover-slide {{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 80px;
+    position: relative;
+    overflow: hidden;
+    /* 缤纷渐变背景 */
+    background: linear-gradient(135deg, #6C5CE7 0%, #A29BFE 50%, #FD79A8 100%);
+    color: white;
+}}
+
+/* 装饰背景：白色半透明圆 */
+.cover-slide::before {{
+    content: "";
+    position: absolute;
+    top: -100px; right: -100px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: 0;
+}}
+
+.cover-slide::after {{
+    content: "";
+    position: absolute;
+    bottom: -50px; left: -50px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: 0;
+}}
+
+.cover-top {{
+    position: relative;
+    z-index: 10;
+}}
+
+.cover-top .doc-type, 
+.cover-top .brand-line {{
+    display: none;
+}}
+
+.main-title {{
+    font-size: 80px;
+    line-height: 1;
+    color: white; /* 纯白 */
+    margin-bottom: 20px;
+    font-weight: 900;
+    text-transform: uppercase;
+    text-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}}
+
+.sub-title {{
+    font-size: 32px;
+    color: var(--primary); /* 反色：用深色字配浅色块 */
+    font-weight: bold;
+    background: white; /* 白底 */
+    display: inline-block;
+    padding: 8px 24px;
+    transform: rotate(-1deg);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    border-radius: 4px;
+}}
+
+.cover-bottom {{
+    position: relative;
+    z-index: 10;
+    margin-top: 60px;
+}}
+
+.footer-item {{
+    font-size: 16px;
+    color: rgba(255,255,255,0.8);
+    font-weight: 600;
+}}
+"""
+
+    def _generate_cover_styles_academic(self) -> str:
+        """学术/论文风格封面"""
+        return f"""
+/* ============================================
+   封面页样式 (Academic)
+   ============================================ */
+.cover-slide {{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px;
+    position: relative;
+    background: white;
+    text-align: center;
+}}
+
+.cover-slide::after {{
+    content: "";
+    position: absolute;
+    top: 20px; left: 20px; right: 20px; bottom: 20px;
+    border: 4px double var(--primary);
+    pointer-events: none;
+}}
+
+.cover-top {{ margin-bottom: 40px; }}
+
+.doc-type {{
+    font-size: 20px;
     color: var(--text-secondary);
-    font-family: var(--font-family);
-    line-height: 1.5;
+    font-weight: normal;
+    font-family: serif;
+    letter-spacing: 4px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+    display: inline-block;
+}}
+
+.main-title {{
+    font-size: 48px;
+    line-height: 1.4;
+    color: var(--primary-dark);
+    margin-bottom: 30px;
+    font-weight: 700;
+    font-family: serif;
+    max-width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+}}
+
+.sub-title {{
+    font-size: 24px;
+    color: var(--text-secondary);
+    font-weight: normal;
+    font-family: serif;
+}}
+
+.cover-bottom {{
+    margin-top: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}}
+
+.footer-item {{
+    font-size: 18px;
+    color: var(--text-primary);
+    font-family: serif;
+}}
+"""
+
+    def _generate_cover_styles_government(self) -> str:
+        """政府/公文风格"""
+        return f"""
+/* ============================================
+   封面页样式 (Government)
+   ============================================ */
+.cover-slide {{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 100px;
+    position: relative;
+    background: #fff;
+    text-align: center;
+}}
+
+.cover-slide::before {{
+    content: "";
+    position: absolute;
+    top: 80px; left: 0; right: 0;
+    height: 3px;
+    background: #DD2C00;
+    margin: 0 60px;
+}}
+
+.cover-slide::after {{
+    content: "";
+    position: absolute;
+    bottom: 60px; left: 0; right: 0;
+    height: 1px;
+    background: #DD2C00;
+    margin: 0 60px;
+    opacity: 0.5;
+}}
+
+.cover-top {{
+    margin-top: 60px;
+    width: 100%;
+    border-bottom: 1px solid #DD2C00;
+    padding-bottom: 40px;
+    margin-bottom: 60px;
+}}
+
+.brand-line {{ display: none; }}
+
+.doc-type {{
+    font-size: 36px;
+    color: #DD2C00;
+    font-family: serif;
+    font-weight: 900;
+    letter-spacing: 8px;
+}}
+
+.main-title {{
+    font-size: 52px;
+    line-height: 1.4;
+    color: #000;
+    font-family: sans-serif;
+    margin-bottom: 40px;
+}}
+
+.sub-title {{
+    font-size: 26px;
+    color: #333;
+    font-family: serif;
+}}
+
+.cover-bottom {{
+    margin-top: auto;
+    width: 100%;
+    text-align: right;
+    padding-right: 20px;
+}}
+
+.footer-item {{
+    font-size: 20px;
+    color: #000;
+    font-family: serif;
+    margin-bottom: 12px;
+}}
+"""
+
+    def _generate_cover_styles_tech(self) -> str:
+        """科技/公司介绍风格 - 浅色科技风"""
+        return f"""
+/* ============================================
+   封面页样式 (Tech/Company - Light Mode)
+   ============================================ */
+
+.cover-slide {{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 80px;
+    position: relative;
+    background: #f8fafc; /* 科技灰白 */
+    color: #0f172a; /* 深蓝字 */
+}}
+
+/* 浅色网格背景 */
+.cover-slide::before {{
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: 
+        linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px);
+    background-size: 30px 30px;
+}}
+
+.cover-top {{ margin-bottom: 20px; position: relative; z-index: 1; }}
+
+.doc-type {{
+    display: inline-block;
+    padding: 6px 12px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    font-size: 14px;
+    color: var(--primary);
+    letter-spacing: 1px;
+    width: fit-content;
+    font-family: var(--font-family-mono);
+}}
+
+.main-title {{
+    position: relative;
+    z-index: 1;
+    font-size: 64px;
+    line-height: 1.1;
+    margin-top: 20px;
+    margin-bottom: 30px;
+    font-weight: bold;
+    font-family: var(--font-family-heading);
+    /* 渐变但保持高可读性 */
+    background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}}
+
+.sub-title {{
+    position: relative;
+    z-index: 1;
+    font-size: 24px;
+    color: #64748b;
+    font-weight: 300;
+}}
+
+.cover-bottom {{
+    margin-top: 80px;
+    border-top: 2px solid #e2e8f0;
+    padding-top: 20px;
+    position: relative;
+    z-index: 1;
+}}
+
+.footer-item {{
+    font-size: 14px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }}
 """
 
     def _generate_section_styles(self) -> str:
-        """生成章节过场页样式"""
+        """根据主题分类生成章节页样式"""
+        cat = self.theme.metadata.category
+        # 特殊处理年终总结
+        if self.theme.metadata.id == 'annual_review':
+            return self._generate_section_styles_annual()
+        if cat == 'creative':
+            return self._generate_section_styles_creative()
+        elif cat == 'academic':
+            return self._generate_section_styles_academic()
+        elif cat == 'government':
+            return self._generate_section_styles_government()
+        elif cat == 'company_intro':
+            return self._generate_section_styles_tech()
+        else:
+            return self._generate_section_styles_default()
+
+    def _generate_section_styles_default(self) -> str:
+        """默认/咨询风格章节页 - 极简白色版，与封面风格一致"""
         return f"""
 /* ============================================
-   章节过场页样式
+   章节过场页样式 (Default - Minimalist)
    ============================================ */
 
 .section-slide {{
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    background: #ffffff;
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 80px;
-    color: #fff;
+    color: var(--text-primary);
     position: relative;
+    overflow: hidden;
+}}
+
+/* 左侧品牌色块装饰 */
+.section-slide::before {{
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    background: var(--primary);
 }}
 
 .section-bg-pattern {{
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    opacity: 0.05;
-    background-image: repeating-linear-gradient(
-        45deg,
-        transparent,
-        transparent 35px,
-        rgba(255,255,255,.1) 35px,
-        rgba(255,255,255,.1) 70px
-    );
+    display: none; /* 极简风格不需要背景图案 */
 }}
 
 .section-content {{
@@ -227,27 +706,30 @@ html, body {{
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    max-width: 800px;
 }}
 
 .section-number {{
-    font-size: 120px;
+    font-size: 100px;
     font-weight: var(--weight-bold);
-    color: rgba(255,255,255,0.15);
-    line-height: 1;
-    margin-bottom: 20px;
+    color: var(--primary-light);
+    opacity: 0.3;
+    line-height: 0.9;
+    margin-bottom: 10px;
     font-family: var(--font-family-heading);
 }}
 
 .section-line {{
-    width: 80px;
-    height: 6px;
-    background: var(--accent);
+    width: 60px;
+    height: 4px;
+    background: var(--primary);
     margin-bottom: 30px;
 }}
 
 .section-title {{
     font-size: var(--size-section-title);
     font-weight: var(--weight-bold);
+    color: var(--text-primary);
     margin-bottom: 20px;
     line-height: var(--line-height-heading);
     font-family: var(--font-family-heading);
@@ -255,11 +737,341 @@ html, body {{
 
 .section-desc {{
     font-size: var(--size-body);
-    color: rgba(255,255,255,0.7);
-    max-width: 800px;
+    color: var(--text-secondary);
     line-height: var(--line-height-body);
     font-family: var(--font-family);
 }}
+"""
+
+    def _generate_section_styles_annual(self) -> str:
+        """年终述职风格章节页 - 与封面协调的深蓝渐变"""
+        return f"""
+/* ============================================
+   章节过场页样式 (Annual Review)
+   ============================================ */
+
+.section-slide {{
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 80px;
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+}}
+
+.section-bg-pattern {{
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    opacity: 0.05;
+    background-image: radial-gradient(#fff 1px, transparent 1px);
+    background-size: 30px 30px;
+}}
+
+.section-content {{
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}}
+
+.section-number {{
+    font-size: 120px;
+    font-weight: var(--weight-bold);
+    color: rgba(255,255,255,0.2);
+    line-height: 0.8;
+    margin-bottom: 20px;
+    font-family: var(--font-family-heading);
+}}
+
+.section-line {{
+    width: 80px;
+    height: 4px;
+    background: var(--accent);
+    margin: 0 auto 30px auto;
+}}
+
+.section-title {{
+    font-size: var(--size-section-title);
+    font-weight: var(--weight-bold);
+    color: #ffffff;
+    margin-bottom: 20px;
+    line-height: var(--line-height-heading);
+    font-family: var(--font-family-heading);
+}}
+
+.section-desc {{
+    font-size: var(--size-body);
+    color: rgba(255,255,255,0.8);
+    line-height: var(--line-height-body);
+    font-family: var(--font-family);
+}}
+"""
+
+    def _generate_section_styles_creative(self) -> str:
+        """创意风格章节页 - 缤纷渐变版"""
+        return f"""
+/* ============================================
+   章节过场页样式 (Creative - Vibrant)
+   ============================================ */
+
+.section-slide {{
+    /* 统一使用缤纷渐变背景 */
+    background: linear-gradient(135deg, #6C5CE7 0%, #A29BFE 50%, #FD79A8 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px;
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+    color: white;
+}}
+
+/* 背景装饰：白色光晕圆 */
+.section-slide::before {{
+    content: "";
+    position: absolute;
+    top: -100px; left: -50px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: 0;
+}}
+
+.section-slide::after {{
+    content: "";
+    position: absolute;
+    bottom: -50px; right: -50px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: 0;
+}}
+
+/* 章节序号 */
+.section-number {{
+    font-size: 180px;
+    line-height: 1;
+    font-weight: 900;
+    color: rgba(255,255,255,0.15); /* 白色透明 */
+    font-family: var(--font-family-heading);
+    margin-bottom: -40px;
+    position: relative;
+    z-index: 0;
+}}
+
+.section-content {{
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 800px;
+}}
+
+/* 标题 - 纯白大字，带投影 */
+.section-title {{
+    font-size: 64px;
+    font-weight: 900;
+    color: #ffffff;
+    margin-bottom: 30px;
+    line-height: 1.1;
+    text-transform: uppercase;
+    text-shadow: 0 4px 20px rgba(0,0,0,0.2); /* 提升文字辨识度 */
+    background: none; /* 移除任何可能造成黑条的背景 */
+    display: block;
+}}
+
+.section-desc {{
+    font-size: 24px;
+    color: rgba(255,255,255,0.9);
+    font-weight: 500;
+    margin-top: 10px;
+    max-width: 600px;
+}}
+
+.section-line {{ display: none; }}
+"""
+
+    def _generate_section_styles_tech(self) -> str:
+        """科技风格章节页 - 网格与未来感"""
+        return f"""
+/* ============================================
+   章节过场页样式 (Tech)
+   ============================================ */
+
+.section-slide {{
+    background: #0f172a;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 100px;
+    position: relative;
+    overflow: hidden;
+    color: white;
+}}
+
+/* 科技网格背景 */
+.section-slide::before {{
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: 
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+}}
+
+.section-number {{
+    font-size: 80px;
+    font-family: var(--font-family-mono);
+    color: var(--primary-light);
+    border: 1px solid var(--primary-light);
+    padding: 10px 30px;
+    margin-right: 60px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 4px;
+}}
+
+.section-content {{
+    flex: 1;
+    position: relative;
+    z-index: 1;
+}}
+
+.section-title {{
+    font-size: 48px;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+}}
+
+.section-line {{
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent) 0%, transparent 100%);
+    margin-bottom: 20px;
+}}
+
+.section-desc {{
+    font-size: 18px;
+    color: #94a3b8;
+    font-family: var(--font-family-mono);
+}}
+"""
+
+    def _generate_section_styles_government(self) -> str:
+        """政府风格章节页 - 纯红极简"""
+        return f"""
+/* ============================================
+   章节过场页样式 (Government)
+   ============================================ */
+
+.section-slide {{
+    background: #DD2C00; /* 全红背景 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 100px;
+    color: white;
+    text-align: center;
+}}
+
+.section-border {{
+    position: absolute;
+    top: 20px; left: 20px; right: 20px; bottom: 20px;
+    border: 2px solid rgba(255,255,255,0.3);
+    pointer-events: none;
+}}
+
+.section-number {{
+    font-size: 60px;
+    font-family: "PingFang SC", serif;
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 30px;
+    border-bottom: 1px solid rgba(255,255,255,0.5);
+    padding-bottom: 10px;
+    display: inline-block;
+}}
+
+.section-title {{
+    font-size: 56px;
+    font-family: "SimHei", sans-serif;
+    margin-bottom: 30px;
+    font-weight: normal;
+    letter-spacing: 2px;
+}}
+
+.section-desc {{
+    font-size: 24px;
+    font-family: "KaiTi", serif;
+    opacity: 0.9;
+}}
+
+.section-line {{ display: none; }}
+"""
+
+    def _generate_section_styles_academic(self) -> str:
+        """学术风格章节页 - 极简白底黑字"""
+        return f"""
+/* ============================================
+   章节过场页样式 (Academic)
+   ============================================ */
+
+.section-slide {{
+    background: white;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 80px 120px;
+    color: var(--text-primary);
+    position: relative;
+}}
+
+/* 左侧色条装饰 */
+.section-slide::before {{
+    content: "";
+    position: absolute;
+    top: 0; left: 0; bottom: 0; width: 40px;
+    background: var(--primary);
+}}
+
+.section-number {{
+    font-size: 100px;
+    font-weight: bold;
+    color: var(--primary-light);
+    opacity: 0.2;
+    margin-right: 40px;
+    font-family: serif;
+}}
+
+.section-content {{
+    flex: 1;
+    border-left: 1px solid var(--border);
+    padding-left: 40px;
+}}
+
+.section-title {{
+    font-size: 42px;
+    margin-bottom: 15px;
+    font-family: serif;
+    color: var(--primary-dark);
+}}
+
+.section-desc {{
+    font-size: 20px;
+    color: var(--text-secondary);
+    font-style: italic;
+}}
+
+.section-line {{ display: none; }}
 """
 
     def _generate_content_styles(self) -> str:
@@ -269,23 +1081,29 @@ html, body {{
    正文页样式
    ============================================ */
 
-/* 布局 */
+/* 布局容器 - 防溢出 */
 .layout-box {{
     flex: 1;
     display: flex;
     gap: var(--gap-large);
+    overflow: hidden; /* 裁剪溢出内容 */
+    min-height: 0; /* 允许flex收缩 */
 }}
 
 .two-col > .col {{
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0; /* 允许收缩 */
+    overflow: hidden;
 }}
 
 .three-col > .col {{
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
 }}
 
 /* 子标题 */
@@ -329,21 +1147,23 @@ html, body {{
 /* 数据卡片 */
 .data-card {{
     background: var(--background-alt);
-    padding: 30px;
+    padding: 20px 25px;
     border-top: 4px solid var(--primary-light);
     border-radius: var(--border-radius);
+    flex-shrink: 0;
 }}
 
 .data-val {{
-    font-size: 56px;
+    font-size: 48px;
     color: var(--primary);
     font-weight: var(--weight-bold);
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     font-family: var(--font-family-heading);
+    line-height: 1;
 }}
 
 .data-lbl {{
-    font-size: var(--size-body);
+    font-size: var(--size-small);
     color: var(--text-secondary);
     font-family: var(--font-family);
 }}
@@ -352,9 +1172,10 @@ html, body {{
 .bottom-box {{
     margin-top: auto;
     background: var(--background-alt);
-    padding: 30px;
+    padding: 20px 25px;
     border-left: 8px solid var(--primary);
     border-radius: var(--border-radius);
+    flex-shrink: 0;
 }}
 
 .bottom-text {{
@@ -617,11 +1438,13 @@ html, body {{
 
 .chart-container {{
     width: 100%;
-    min-height: 400px;
+    max-height: 350px; /* 限制最大高度，防溢出 */
+    min-height: 200px;
     position: relative;
     background: #fff;
     border-radius: 8px;
     padding: 10px;
+    flex-shrink: 0;
 }}
 
 .chart-container > div {{

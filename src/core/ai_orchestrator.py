@@ -149,11 +149,15 @@ class AIOrchestrator:
         - 怎么呈现
         """
         # 准备配置
+        from datetime import datetime
+        current_date = datetime.now().strftime("%Y年%m月")  # 如 "2025年12月"
+        
         user_config = {
             "organization": context.organization,
             "project_name": context.project_name,
             "target_pages": context.target_pages,
-            "content_depth": context.content_depth
+            "content_depth": context.content_depth,
+            "date": current_date  # 动态日期
         }
         
         theme_config = {}

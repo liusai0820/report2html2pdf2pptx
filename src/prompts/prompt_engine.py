@@ -222,6 +222,11 @@ class PromptEngine:
 - 页面之间要有过渡
 - 整体要讲一个完整的故事
 
+### 5. 🚨 严禁事项 (重要！)
+- **严禁生成任何类似封面的引言页**：不要在大纲中包含"概述"、"摘要"、"导语"、"报告背景"等包含汇报人、汇报单位、日期的页面。封面信息（标题、汇报人、机构、日期）由系统自动生成，你生成的大纲应该直接从核心内容开始。
+- **严禁复述大标题**：第一个 SECTION 章节应该是具体的研究/业务主题（如"研究背景"、"市场分析"），而不是重复报告大标题。
+- **严禁出现"第一部分 引言"这种页面**：直接进入正题。
+
 ## 输入文档
 
 {content[:10000]}
@@ -283,9 +288,12 @@ CONTENT|核心问题：产品同质化严重，价格战不可持续|毛利率�
     
     def _generate_cover_prompt(self, title: str, content: str) -> str:
         """生成封面页提示词"""
+        from datetime import datetime
         org = self.user_config.get("organization", "汇报单位")
         doc_type = self.user_config.get("doc_type", "专项研究报告")
-        date = self.user_config.get("date", "2024年") # 获取动态日期
+        # 动态获取当前日期作为默认值
+        default_date = datetime.now().strftime("%Y年%m月")
+        date = self.user_config.get("date", default_date)
         
         return f"""
 # 封面页生成
@@ -456,17 +464,38 @@ CONTENT|核心问题：产品同质化严重，价格战不可持续|毛利率�
 - 标题：{title}
 - 内容要点：{content}
 
-## 核心任务：拒绝平庸，强制多样化，严格防溢出
-你需要像一位高级视觉设计师一样，选择最直观的版式。同时，必须严格控制字数，**绝对不能让内容溢出屏幕**。
+## ⚠️ 物理尺寸约束 (最重要！)
+**幻灯片尺寸固定为 1280×720 像素，内容区高度约 550px（扣除标题和边距）**。
+你必须像设计师一样，在有限空间内合理布局，**任何超出都是失败**。
 
-### 🚨 绝对强制规则 (违反将导致任务失败)
-1. **表格还原**：Markdown 表格**必须**还原为 HTML 表格 ([Complex Table])，严禁转列表。
-2. **拒绝重复**：不要连续两页使用相同布局。
-3. **数据可视化**：有数字必须优先用 [JS Chart] 或 [Key Metrics]。
-4. **字数铁律 (防溢出)**：
-   - **页面标题**：必须精简到 **20字以内**，确保不换行。
-   - **底部结论**：**严禁**写"结论："、"So What："等前缀！直接写那句结论。字数必须控制在 **35字以内** (确保1行，最多2行)。
-   - **正文内容**：如果文字太多，请自动精简摘要，不要照搬原文。
+## 🚨 核心规则：防溢出第一
+
+### 元素数量硬性限制
+| 元素类型 | 最大数量 | 说明 |
+|----------|----------|------|
+| 数据卡片 (.data-card) | **2个/列** | 左侧最多堆叠2个，不能3个 |
+| 列表项 (big-list li) | **3-4条** | 每个列表最多4条，通常3条最佳 |
+| 时间线节点 | **4个** | 水平排列，不要纵向 |
+| 图表高度 | **350px** | 不得超过，给底部留空 |
+
+### 字数铁律
+- **页面标题**：≤20字，确保单行
+- **子标题**：≤15字
+- **列表项**：每条 ≤40字（含标点）
+- **底部结论**：≤35字，直接写结论，无前缀
+
+### 布局策略
+1. **优先横向**：多个元素优先横向排列（two-col/three-col），而非纵向堆叠
+2. **左轻右重**：左侧放数据/要点（占比小），右侧放图表/详情（占比大）
+3. **内容精简**：宁可少一个卡片，也不要溢出
+4. **预留空间**：始终为 bottom-box 预留至少 80px 高度
+
+### 生成前自检
+在输出HTML前，请自问：
+- [ ] 左侧是否超过2个数据卡片？→ 如果是，删减为2个
+- [ ] 列表项是否超过4条？→ 如果是，合并或删减
+- [ ] 图表高度是否超过350px？→ 如果是，改为350px
+- [ ] 整体高度是否可能超出550px？→ 如果是，精简内容
 
 ## 当前主题配色 (ECharts专用)
 JS代码中使用：`var themeColors = {chart_color_str};`
@@ -474,6 +503,7 @@ JS代码中使用：`var themeColors = {chart_color_str};`
 ## 高级可视化菜单
 
 ### 1. [JS Chart] 动态图表 (ECharts)
+**注意**：图表高度固定350px，左侧列表最多3条！
 HTML 结构：
 ```html
 <div class="slide-container">
@@ -484,13 +514,15 @@ HTML 结构：
                 <div class="text-block">
                     <h3 class="sub-head">数据洞察</h3>
                     <ul class="big-list">
-                        <li>核心观点1...</li>
-                        <li>核心观点2...</li>
+                        <li>核心观点1（最多40字）</li>
+                        <li>核心观点2（最多40字）</li>
+                        <li>核心观点3（最多40字）</li>
+                        <!-- 最多3条！ -->
                     </ul>
                 </div>
             </div>
             <div class="col" style="flex: 1.5;">
-                <div class="chart-container" style="width: 100%; height: 400px;">
+                <div class="chart-container" style="width: 100%; height: 350px;">
                     <div id="chart_{page_num}" style="width: 100%; height: 100%;"></div>
                 </div>
             </div>
@@ -501,12 +533,11 @@ HTML 结构：
                 var myChart = echarts.init(chartDom);
                 var themeColors = {chart_color_str};
                 var option;
-                // 此处填入 ECharts option 配置 (参考之前的示例)
-                // ...
+                // ECharts option 配置
                 myChart.setOption(option);
             }})();
         </script>
-        <div class="bottom-box"><div class="bottom-text">数据表明... (不要写前缀，35字内)</div></div>
+        <div class="bottom-box"><div class="bottom-text">数据表明...（35字内，无前缀）</div></div>
     </main>
 </div>
 ```
@@ -609,6 +640,13 @@ HTML 结构：
 ```
 
 ### 6. [Key Metrics] 关键指标
+最适合：展示 3-5 个核心数据点。
+
+**重要规则**：
+- `metric-value` 只放数字或百分比（如 `250名`、`23%`）
+- `metric-label` 只放 4-6 字的短标签（如"青年干部样本"、"研发投入"）
+- 如果有长描述（超过 10 个字），必须**另起一个 `.text-block`**，绝不能塞进 `metric-label` 里（否则会导致文字逐字换行变成竖排）
+
 HTML 结构：
 ```html
 <div class="slide-container">
@@ -616,14 +654,24 @@ HTML 结构：
         <div class="title-box"><h1 class="page-title">{title}</h1></div>
         <div class="metric-stack">
             <div class="metric-item">
-                <div class="metric-value">¥500M</div>
-                <div class="metric-label">营收</div>
+                <div class="metric-value">250+</div>
+                <div class="metric-label">青年干部样本</div>
             </div>
-            <!-- ... -->
+            <div class="metric-item">
+                <div class="metric-value">157家</div>
+                <div class="metric-label">企业调研</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-value">100亿+</div>
+                <div class="metric-label">实战项目规模</div>
+            </div>
+            <!-- 最多放 4-5 个 -->
         </div>
+        <!-- 如果有详细说明，放在这里 -->
         <div class="text-block" style="margin-top: 30px;">
             <ul class="big-list">
-                <li>数据分析...</li>
+                <li>详细说明1：深国创中心青年干部硕士及以上占比超过80%...</li>
+                <li>详细说明2：...</li>
             </ul>
         </div>
     </main>

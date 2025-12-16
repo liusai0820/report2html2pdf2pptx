@@ -216,7 +216,8 @@ ACADEMIC_THEME = Theme(
         border="#BDC3C7",            # 边框
     ),
     typography=Typography(
-        font_family='"Source Han Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif',
+        font_family='"PingFang SC", "SimSun", "Songti SC", serif',  # 改为衬线/宋体
+        font_family_heading='"Big Caslon", "Book Antiqua", "PingFang SC", serif', # 标题也用衬线
         size_cover_title=48,         # 相对小的标题
         size_page_title=32,
         size_section_title=40,
@@ -250,14 +251,6 @@ ACADEMIC_THEME = Theme(
     border-left: 3px solid #3498DB;
     padding-left: 15px;
     margin: 20px 0;
-}
-/* 公式/代码块 */
-.formula-block {
-    background: #ECF0F1;
-    padding: 20px;
-    border-radius: 4px;
-    font-family: "Courier New", monospace;
-    text-align: center;
 }
 """
 )
@@ -307,17 +300,7 @@ CREATIVE_THEME = Theme(
         colors=["#6C5CE7", "#FD79A8", "#00B894", "#FDCB6E", "#74B9FF"],
     ),
     custom_css="""
-/* 创意风格特有样式 */
-.section-slide {
-    background: linear-gradient(135deg, #6C5CE7 0%, #A29BFE 50%, #FD79A8 100%);
-}
-.section-line {
-    background: linear-gradient(90deg, #FD79A8 0%, #FDCB6E 100%);
-}
-.brand-line {
-    background: linear-gradient(90deg, #6C5CE7 0%, #FD79A8 100%);
-    height: 6px;
-}
+/* 创意风格特有样式 (已移至 generator 统一管理) */
 /* 渐变数据卡片 */
 .data-card {
     background: linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 100%);
@@ -352,7 +335,7 @@ GOVERNMENT_THEME = Theme(
         id="government",
         name="政府公文风格",
         description="适用于政府报告、政策解读、党建汇报等场合，庄重严肃，符合公文规范",
-        category="consulting",
+        category="government",  # Fixed: changed from consulting to government
         tags=["政府", "公文", "党建", "政策", "官方"],
     ),
     colors=ColorPalette(
