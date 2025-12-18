@@ -82,7 +82,7 @@ export default function UploadZone({ onFileSelect, selectedFile, onUpload }) {
                             id="file-upload"
                             type="file"
                             className="hidden"
-                            accept=".txt,.md,.json,.docx,.doc"
+                            accept=".txt,.md,.json,.docx,.doc,.pdf"
                             onChange={handleFileInput}
                         />
 
@@ -98,7 +98,7 @@ export default function UploadZone({ onFileSelect, selectedFile, onUpload }) {
                                     {isUploading ? "正在上传..." : "点击或拖拽上传"}
                                 </p>
                                 <p className="text-[10px] text-slate-400">
-                                    支持 word, md, txt, json
+                                    支持 word, pdf, md, txt, json
                                 </p>
                             </div>
                         </div>

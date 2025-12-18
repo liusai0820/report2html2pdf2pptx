@@ -97,7 +97,8 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
             scenario=req.scenario,
             design_system=ds,
             target_pages=req.target_pages,
-            content_depth=req.content_depth
+            content_depth=req.content_depth,
+            custom_instructions=req.custom_instructions or ""  # 用户自定义指令
         )
         validator = SlideValidator(ds)
         

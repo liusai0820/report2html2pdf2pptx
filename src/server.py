@@ -57,6 +57,7 @@ class GenerateRequest(BaseModel):
     content_depth: str = "normal"
     skip_pdf: bool = False
     skip_pptx: bool = False
+    custom_instructions: Optional[str] = None  # 用户自定义 AI 指令
 
 class FileInfo(BaseModel):
     name: str

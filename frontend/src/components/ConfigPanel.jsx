@@ -1,7 +1,9 @@
-import React from 'react';
-import { User, Layers, FileText, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Layers, FileText, Check, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function ConfigPanel({ config, onChange }) {
+    const [showAdvanced, setShowAdvanced] = useState(true);  // 默认展开
+    
     const handleChange = (key, value) => {
         onChange({ ...config, [key]: value });
     };
@@ -86,6 +88,37 @@ export default function ConfigPanel({ config, onChange }) {
                     </div>
                     <span className="text-[11px] text-slate-600">生成 PPTX</span>
                 </label>
+            </div>
+
+            {/* Custom Instructions - 标签样式与其他配置项一致 */}
+            <div className="space-y-1">
+                <button 
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="w-full flex items-center justify-between text-[10px] font-semibold text-slate-500 uppercase tracking-wider"
+                >
+                    <span className="flex items-center gap-1">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        自定义 AI 指令
+                        {config.custom_instructions && <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full ml-1"></span>}
+                    </span>
+                    {showAdvanced ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+
+                {/* Custom Instructions - Collapsible */}
+                {showAdvanced && (
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                        <textarea
+                            value={config.custom_instructions || ''}
+                            onChange={(e) => handleChange('custom_instructions', e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-md px-2.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-50 transition-all placeholder:text-slate-400 resize-none"
+                            placeholder={`输入您的特殊要求，AI 会尽量遵循：\n• 大纲：第一章重点讲市场分析\n• 风格：使用更正式的语言\n• 数据：突出 2024 年的数据\n• 布局：多用图表，少用文字`}
+                            rows={4}
+                        />
+                        <p className="text-[9px] text-slate-400 leading-relaxed mt-1">
+                            提示：自定义指令会与设计系统协同工作，AI 会在保持专业排版的前提下尽量满足您的要求。
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -215,18 +215,79 @@ class DocumentParser:
         }
     
     @staticmethod
+    def parse_pdf(file_path: str) -> Dict:
+        """解析 PDF 格式的文档 - 提取文字型 PDF 的文本内容"""
+        try:
+            import pdfplumber
+        except ImportError:
+            raise ImportError("需要安装 pdfplumber: pip install pdfplumber")
+        
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"文件不存在: {file_path}")
+        
+        markdown_content = []
+        
+        with pdfplumber.open(file_path) as pdf:
+            console.print(f"[cyan]📄[/cyan] 正在解析 PDF ({len(pdf.pages)} 页)...")
+            
+            for i, page in enumerate(pdf.pages):
+                # 提取文本
+                text = page.extract_text()
+                if text:
+                    # 清理文本
+                    lines = text.strip().split('\n')
+                    for line in lines:
+                        line = line.strip()
+                        if line:
+                            markdown_content.append(line)
+                    markdown_content.append('')  # 页面分隔
+                
+                # 提取表格（如果有）
+                tables = page.extract_tables()
+                for table in tables:
+                    if table:
+                        markdown_content.append('\n### 表格内容\n')
+                        for j, row in enumerate(table):
+                            # 过滤空单元格
+                            row_text = ' | '.join([cell.strip() if cell else '' for cell in row])
+                            if row_text.replace('|', '').replace(' ', ''):  # 非空行
+                                markdown_content.append(row_text)
+                                if j == 0:
+                                    markdown_content.append(' | '.join(['---'] * len(row)))
+                        markdown_content.append('')
+        
+        full_markdown = '\n'.join(markdown_content)
+        
+        # 如果没有提取到文本，提示用户
+        if not full_markdown.strip():
+            console.print("[yellow]⚠ PDF 没有提取到文本，可能是扫描版 PDF。请使用文字型 PDF。[/yellow]")
+            raise ValueError("PDF 没有提取到文本内容，可能是扫描版 PDF。请使用文字型 PDF 或将其转换为文字版本。")
+        
+        # 提取文档标题
+        doc_title = os.path.splitext(os.path.basename(file_path))[0]
+        
+        return {
+            'full_content': full_markdown,
+            'pages': [],
+            'title': doc_title,
+            'style_guide': '现代企业风格'
+        }
+    
+    @staticmethod
     def load_document(file_path: str) -> Dict:
         """自动识别并加载文档"""
         ext = os.path.splitext(file_path)[1].lower()
         
         if ext == '.json':
             data = DocumentParser.parse_json(file_path)
-        elif ext in ['.md', '.markdown']:
+        elif ext in ['.md', '.markdown', '.txt']:
             data = DocumentParser.parse_markdown(file_path)
         elif ext in ['.docx', '.doc']:
             data = DocumentParser.parse_docx(file_path)
+        elif ext == '.pdf':
+            data = DocumentParser.parse_pdf(file_path)
         else:
-            raise ValueError(f"不支持的文件格式: {ext}。支持的格式: .json, .md, .docx")
+            raise ValueError(f"不支持的文件格式: {ext}。支持的格式: .json, .md, .txt, .docx, .pdf")
         
         if not DocumentParser.validate_document(data):
             raise ValueError("文档格式验证失败")

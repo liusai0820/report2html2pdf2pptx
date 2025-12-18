@@ -42,6 +42,7 @@ class GenerationContext:
     design_system: DesignSystem     # 设计系统
     target_pages: int = 25          # 目标页数
     content_depth: str = "normal"   # 内容深度
+    custom_instructions: str = ""   # 用户自定义指令
 
 
 # ============================================================================
@@ -206,6 +207,22 @@ class AIDesigner:
     
     def _build_outline_prompt(self, context: GenerationContext) -> str:
         """构建大纲生成 Prompt"""
+        
+        # 用户自定义指令（如果有的话）
+        custom_section = ""
+        if context.custom_instructions and context.custom_instructions.strip():
+            custom_section = f"""
+## 用户特别要求（请务必遵循）
+
+用户提供了以下特别要求，请在规划大纲时充分考虑：
+
+```
+{context.custom_instructions}
+```
+
+请在满足上述要求的前提下，保持专业的结构和逻辑。
+"""
+        
         return f"""
 # 大纲规划任务
 
@@ -224,7 +241,7 @@ class AIDesigner:
 - 场景类型：{context.scenario}
 - 目标页数：约 {context.target_pages} 页
 - 内容深度：{context.content_depth}
-
+{custom_section}
 ## 规划原则
 
 ### 1. 金字塔结构
@@ -493,6 +510,17 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 2. **禁止侧边装饰色块** - 不要卡片左侧彩色竖条
 3. **禁止 Emoji 和图标** - 不要任何 emoji
 4. **禁止内容触及底部** - 底部有页码保留区
+{f'''
+## 用户特别要求
+
+用户提供了以下风格/内容偏好，请在设计时参考：
+
+```
+{context.custom_instructions}
+```
+
+请在遵守上述设计规范的前提下，尽量满足用户的要求。
+''' if context.custom_instructions and context.custom_instructions.strip() else ''}
 
 ## 布局规范（严格遵守！）
 
