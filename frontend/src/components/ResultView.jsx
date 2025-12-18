@@ -2,9 +2,31 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Download, MonitorPlay, LayoutGrid, ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
 import { getOutputUrl } from '../api';
 
+// 强制下载文件（避免浏览器打开文件导致页面跳转）
+const forceDownload = async (url, filename) => {
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename || url.split('/').pop() || 'download';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+        console.error('Download failed:', error);
+        // 降级为直接打开（在新标签页）
+        window.open(url, '_blank');
+    }
+};
+
 export default function ResultView({ result, downloads, isProcessing }) {
     const [activeIndex, setActiveIndex] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const [downloadingPptx, setDownloadingPptx] = useState(false);
     
     const pages = result.pages || [];
     
@@ -13,6 +35,26 @@ export default function ResultView({ result, downloads, isProcessing }) {
 
     const activePage = pages[activeIndex];
     const activeUrl = activePage ? getOutputUrl(activePage.url) : '';
+
+    // 处理 PDF 下载
+    const handlePdfDownload = async () => {
+        if (!currentDownloads.pdf) return;
+        setDownloadingPdf(true);
+        const url = getOutputUrl(currentDownloads.pdf);
+        const filename = currentDownloads.pdf.split('/').pop();
+        await forceDownload(url, filename);
+        setDownloadingPdf(false);
+    };
+
+    // 处理 PPTX 下载
+    const handlePptxDownload = async () => {
+        if (!currentDownloads.pptx) return;
+        setDownloadingPptx(true);
+        const url = getOutputUrl(currentDownloads.pptx);
+        const filename = currentDownloads.pptx.split('/').pop();
+        await forceDownload(url, filename);
+        setDownloadingPptx(false);
+    };
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -53,10 +95,14 @@ export default function ResultView({ result, downloads, isProcessing }) {
                     <div className="flex items-center gap-3">
                         {/* PDF Download */}
                         {currentDownloads.pdf ? (
-                            <a href={getOutputUrl(currentDownloads.pdf)} download className="btn-secondary group">
-                                <Download className="w-4 h-4 text-slate-500 group-hover:text-slate-700" /> 
+                            <button onClick={handlePdfDownload} disabled={downloadingPdf} className="btn-secondary group">
+                                {downloadingPdf ? (
+                                    <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                                ) : (
+                                    <Download className="w-4 h-4 text-slate-500 group-hover:text-slate-700" />
+                                )}
                                 <span>PDF</span>
-                            </a>
+                            </button>
                         ) : (
                             <button disabled className="btn-secondary opacity-60 cursor-not-allowed">
                                 <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
@@ -66,10 +112,14 @@ export default function ResultView({ result, downloads, isProcessing }) {
 
                         {/* PPTX Download */}
                         {currentDownloads.pptx ? (
-                            <a href={getOutputUrl(currentDownloads.pptx)} download className="btn-primary">
-                                <Download className="w-4 h-4" /> 
+                            <button onClick={handlePptxDownload} disabled={downloadingPptx} className="btn-primary">
+                                {downloadingPptx ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Download className="w-4 h-4" />
+                                )}
                                 <span>PPTX</span>
-                            </a>
+                            </button>
                         ) : (
                             <button disabled className="btn-primary opacity-60 cursor-not-allowed">
                                 <Loader2 className="w-4 h-4 animate-spin" />
