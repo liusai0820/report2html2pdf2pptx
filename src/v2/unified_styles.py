@@ -24,30 +24,15 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
    字体嵌入 - 确保 PDF 中的字体可编辑
    ============================================ */
 
-/* Web 字体加载 - 思源黑体 (Noto Sans SC) */
+/* Web 字体作为后备 - 思源黑体 (Noto Sans SC) */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
 
-/* 定义可编辑的 Web 字体 */
-@font-face {{
-    font-family: 'Presentation Font';
-    src: local('Noto Sans SC'), 
-         local('Microsoft YaHei'), 
-         local('微软雅黑'),
-         url('https://fonts.gstatic.com/s/notosanssc/v36/k3kCo84MPvpLmixcA63oedfCh2BO5p-8.woff2') format('woff2');
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
-}}
-
-@font-face {{
-    font-family: 'Presentation Font';
-    src: local('Noto Sans SC Bold'), 
-         local('Microsoft YaHei Bold'),
-         url('https://fonts.gstatic.com/s/notosanssc/v36/k3kCo84MPvpLmixcA63oedfCh2BO5p-8.woff2') format('woff2');
-    font-weight: 700;
-    font-style: normal;
-    font-display: swap;
-}}
+/* 
+ * 字体策略说明：
+ * 1. 优先使用系统本地字体（苹方、微软雅黑）- 这些字体不会产生 Type3 问题
+ * 2. Web 字体（Noto Sans SC）作为后备
+ * 3. 系统默认 sans-serif 作为最终后备
+ */
 
 /* 全局变量 */
 :root {{
@@ -75,8 +60,8 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     --danger: #ef4444;
     --warning: #f59e0b;
     
-    /* 字体 - 使用嵌入字体，确保 PDF 可编辑 */
-    --font-family: 'Presentation Font', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    /* 字体 - 优先 Microsoft YaHei (PPTX 兼容性最好) */
+    --font-family: 'Microsoft YaHei', '微软雅黑', 'Source Han Sans SC', '思源黑体', 'Hiragino Sans GB', 'Heiti SC', sans-serif;
     
     /* 画布尺寸 */
     --slide-width: 1280px;

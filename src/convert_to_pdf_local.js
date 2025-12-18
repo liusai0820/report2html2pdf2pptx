@@ -69,18 +69,42 @@ async function convertToPDF(htmlPath, pdfPath) {
     const fileUrl = `file://${absoluteHtmlPath}`;
     await page.goto(fileUrl, { 
       waitUntil: 'networkidle0',
-      timeout: 30000
+      timeout: 60000  // 增加超时时间到 60 秒
     });
     
-    // 等待字体加载
+    // 等待 Web 字体加载完成（关键！防止 Type3 字体）
+    console.log('⏳ 等待字体加载...');
     try {
+      // 等待 fonts.ready API
       await page.evaluateHandle('document.fonts.ready');
+      
+      // 额外等待，确保 Google Fonts 中文字体加载
+      await page.waitForFunction(() => {
+        // 检查是否有任何字体正在加载
+        const fonts = document.fonts;
+        if (fonts.status === 'loading') return false;
+        
+        // 尝试检测中文字体是否可用
+        const testElement = document.createElement('span');
+        testElement.style.fontFamily = "'Noto Sans SC', 'Presentation Font', sans-serif";
+        testElement.style.visibility = 'hidden';
+        testElement.textContent = '测试字体';
+        document.body.appendChild(testElement);
+        const fontLoaded = testElement.offsetWidth > 0;
+        document.body.removeChild(testElement);
+        
+        return fontLoaded;
+      }, { timeout: 10000 }).catch(() => {
+        console.log('⚠️ 字体加载检测超时，继续处理...');
+      });
+      
     } catch (e) {
-      // 忽略字体加载错误
+      console.log('⚠️ 字体加载等待出错，继续处理:', e.message);
     }
     
-    // 等待渲染完成
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // 额外等待渲染完成（确保所有样式和字体应用）
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log('✓ 字体加载完成');
     
     // 确保输出目录存在
     const pdfDir = path.dirname(absolutePdfPath);
