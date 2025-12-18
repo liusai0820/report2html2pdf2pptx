@@ -121,10 +121,12 @@ class OutputRenderer:
         ) as progress:
             task = progress.add_task("[cyan]转换页面...", total=len(page_files))
             
-            for page_file in page_files:
+            # 并行转换 PDF
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            
+            def convert_single_page(page_file):
                 page_name = Path(page_file).stem
                 pdf_file = temp_dir / f"{page_name}.pdf"
-                pdf_files.append(str(pdf_file))
                 
                 try:
                     result = subprocess.run(
@@ -135,19 +137,44 @@ class OutputRenderer:
                     )
                     
                     if result.returncode != 0:
-                        failed_count += 1
-                        if failed_count <= 3:  # 只显示前3个错误详情
-                            console.print(f"[red]✗ {page_name} 转换失败[/red]")
-                            if result.stderr:
-                                console.print(f"[dim]  错误: {result.stderr[:200]}[/dim]")
+                        return (False, page_name, result.stderr)
+                    return (True, str(pdf_file), None)
+                    
                 except subprocess.TimeoutExpired:
-                    failed_count += 1
-                    console.print(f"[red]✗ {page_name} 转换超时[/red]")
+                    return (False, page_name, "Timeout")
                 except Exception as e:
-                    failed_count += 1
-                    console.print(f"[red]✗ {page_name} 转换异常: {e}[/red]")
+                    return (False, page_name, str(e))
+
+            # 根据 CPU 核心数决定并发数，但不超过 8
+            import multiprocessing
+            max_workers = min(multiprocessing.cpu_count(), 8)
+            
+            # 保持原始顺序
+            future_to_page = {}
+            ordered_pdf_files = [None] * len(page_files)
+            
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # 提交任务
+                for i, page_file in enumerate(page_files):
+                    future = executor.submit(convert_single_page, page_file)
+                    future_to_page[future] = i
                 
-                progress.update(task, advance=1)
+                # 处理结果
+                for future in as_completed(future_to_page):
+                    i = future_to_page[future]
+                    success, result, error = future.result()
+                    
+                    if success:
+                        ordered_pdf_files[i] = result
+                    else:
+                        failed_count += 1
+                        if failed_count <= 3:
+                            console.print(f"[red]✗ {result} 转换失败: {error}[/red]")
+                            
+                    progress.update(task, advance=1)
+            
+            # 过滤掉失败的（None）
+            pdf_files = [f for f in ordered_pdf_files if f]
         
         if failed_count > 0:
             console.print(f"[yellow]⚠ {failed_count}/{len(page_files)} 页转换失败[/yellow]")
@@ -171,9 +198,9 @@ class OutputRenderer:
         shutil.rmtree(temp_dir)
         
         size_mb = pdf_path.stat().st_size / 1024 / 1024
-        console.print(f"[green]✓[/green] PDF 已生成: {pdf_path} ({size_mb:.2f} MB)")
+        console.print(f"[green]✓[/green] PDF 已生成: {pdf_path.resolve()} ({size_mb:.2f} MB)")
         
-        return str(pdf_path)
+        return str(pdf_path.resolve())
     
     def generate_pptx(self, pdf_path: str) -> str:
         """生成 PPTX"""

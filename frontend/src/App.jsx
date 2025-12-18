@@ -1,0 +1,626 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, Loader2, AlertCircle, FileText, Layout, Settings2, FolderOpen, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import Hero from './components/Hero';
+import UploadZone from './components/UploadZone';
+import ScenarioSelector from './components/ScenarioSelector';
+import ConfigPanel from './components/ConfigPanel';
+import ResultView from './components/ResultView';
+import HistoryOutputSelector from './components/HistoryOutputSelector';
+import { fetchScenarios, uploadFile, generatePresentationStream } from './api';
+
+function App() {
+  const [scenarios, setScenarios] = useState([]);
+  const [selectedScenario, setSelectedScenario] = useState('consulting');
+  const [selectedFile, setSelectedFile] = useState(null);
+
+  const [config, setConfig] = useState({
+    organization: "",
+    target_pages: 20,
+    content_depth: "normal",
+    skip_pdf: false,
+    skip_pptx: false
+  });
+
+  // App State
+  const [customColor, setCustomColor] = useState(null);
+  
+  // Real-time Data
+  const [status, setStatus] = useState('idle'); // idle, generating, preview
+  const [errorMsg, setErrorMsg] = useState('');
+  const [progress, setProgress] = useState(0);
+  const [progressStage, setProgressStage] = useState('');
+  const [progressMessage, setProgressMessage] = useState('');
+  const [outlineData, setOutlineData] = useState([]);
+  const [previewData, setPreviewData] = useState(null);
+  const [downloads, setDownloads] = useState({ html: null, pdf: null, pptx: null });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const data = await fetchScenarios();
+      setScenarios(data);
+      // Ensure we select the first one with full data if needed
+      if(data.length > 0 && !selectedScenario) setSelectedScenario(data[0].id);
+    } catch (e) {
+      console.error(e);
+      setScenarios([
+        { "id": "consulting", "name": "咨询研究/Consulting", "color": "#003366" },
+        { "id": "annual_review", "name": "年终总结/Annual Review", "color": "#8B0000" },
+      ]);
+    }
+  };
+  
+  const activeScenarioData = scenarios.find(s => s.id === selectedScenario);
+
+  const handleUpload = async (file) => {
+    await uploadFile(file);
+  };
+
+  // 加载历史输出
+  const handleLoadHistory = (result, output) => {
+    console.log('Loading history output:', output.name);
+    setPreviewData(result);
+    setDownloads(result.downloads || { html: null, pdf: null, pptx: null });
+    setStatus('preview');
+    setProgress(100);
+    setProgressMessage(`已加载: ${output.display_name}`);
+  };
+
+  const handleGenerate = async () => {
+    if (!selectedFile) return;
+
+    // Reset State
+    setStatus('generating');
+    setErrorMsg('');
+    setProgress(0);
+    setProgressStage('context');
+    setOutlineData([]);
+    setPreviewData(null);
+    setDownloads({ html: null, pdf: null, pptx: null });
+
+    try {
+      await generatePresentationStream(
+        {
+          document_name: selectedFile.name,
+          scenario: selectedScenario,
+          theme_color: customColor, // Pass custom color if set
+          ...config
+        },
+        (event) => {
+          console.log('Event:', event);
+          setProgress(event.progress);
+          setProgressStage(event.stage);
+          setProgressMessage(event.message);
+
+          if (event.stage === 'outline' && event.result?.outline) {
+            setOutlineData(event.result.outline);
+          }
+          
+          if (event.stage === 'preview_ready') {
+            setPreviewData(event.result);
+            setDownloads(prev => ({ ...prev, html: event.result.html }));
+            setStatus('preview'); 
+          }
+
+          if (event.stage === 'pdf_ready') {
+            setDownloads(prev => ({ ...prev, pdf: event.result.pdf }));
+          }
+
+          if (event.stage === 'pptx_ready') {
+            setDownloads(prev => ({ ...prev, pptx: event.result.pptx }));
+          }
+           
+          if (event.stage === 'done') {
+             setDownloads(event.result.downloads);
+          }
+        }
+      );
+    } catch (e) {
+      console.error(e);
+      if (status !== 'preview') {
+          setStatus('idle'); 
+          setErrorMsg(e.message || "生成失败，请检查服务");
+      }
+    }
+  };
+
+  return (
+    <div className="flex h-screen w-full bg-slate-50 text-slate-900 font-sans overflow-hidden">
+      
+      {/* LEFT SIDEBAR */}
+      <div className="w-[380px] flex-shrink-0 bg-white border-r border-slate-200 h-full flex flex-col z-20 shadow-sm transition-all duration-300">
+        <div className="px-6 py-4 flex-1 overflow-y-auto custom-scrollbar">
+          <Hero />
+          
+          <div className="space-y-5">
+            <Section title="上传文档" step="1">
+              <UploadZone 
+                selectedFile={selectedFile}
+                onFileSelect={setSelectedFile}
+                onUpload={handleUpload}
+              />
+              {/* 历史输出选择器 - 调试模式 */}
+              <div className="mt-2">
+                <HistoryOutputSelector 
+                  onLoad={handleLoadHistory}
+                  isLoading={status === 'generating'}
+                />
+              </div>
+            </Section>
+
+            <Section title="选择场景" step="2">
+              <ScenarioSelector 
+                scenarios={scenarios}
+                selected={selectedScenario}
+                onSelect={setSelectedScenario}
+                customColor={customColor}
+                onColorChange={setCustomColor}
+              />
+            </Section>
+
+            <Section title="生成设置" step="3">
+              <ConfigPanel config={config} onChange={setConfig} />
+            </Section>
+          </div>
+        </div>
+
+        {/* Generate Button */}
+        <div className="px-5 py-3 border-t border-slate-100 bg-white/90 backdrop-blur-md z-10">
+          <button
+            onClick={handleGenerate}
+            disabled={!selectedFile || (status === 'generating' && !previewData)}
+            className={`
+              w-full py-3 px-5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all duration-300
+              ${!selectedFile || (status === 'generating' && !previewData)
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                : 'bg-slate-900 text-white hover:bg-slate-800 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 shadow-md'}
+            `}
+          >
+            {status === 'generating' && !previewData ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>AI 正在思考...</span>
+              </>
+            ) : status === 'preview' ? (
+                <>
+                 <Sparkles className="w-4 h-4" />
+                 <span>重新生成</span>
+                </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                <span>开始生成</span>
+              </>
+            )}
+          </button>
+          
+          {errorMsg && (
+             <div className="mt-3 flex items-start gap-2 text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-100">
+               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+               <span className="leading-tight">{errorMsg}</span>
+             </div>
+          )}
+        </div>
+      </div>
+
+      {/* RIGHT MAIN AREA */}
+      <div className="flex-1 h-full bg-slate-100 relative overflow-hidden">
+        <AnimatePresence mode="wait">
+          
+          {/* IDLE: Dynamic Theme Preview */}
+          {status === 'idle' && (
+            <motion.div 
+              key="idle"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="w-full h-full flex flex-col items-center justify-center p-12 bg-slate-50 relative overflow-hidden"
+            >
+               <div className="absolute inset-0 bg-dot-pattern opacity-[0.05]" />
+               
+               {activeScenarioData && (
+                  <div className="relative z-10 flex flex-col items-center gap-8 w-full max-w-4xl">
+                      <div className="text-center space-y-2">
+                          <h3 className="text-2xl font-bold text-slate-900 tracking-tight">预览您的演示风格</h3>
+                          <p className="text-slate-500">
+                              AI 将基于「{activeScenarioData.name.split('/')[0]}」场景为您定制内容
+                          </p>
+                      </div>
+
+                      {/* CSS-based Theme Preview Card */}
+                      <ThemePreviewCard 
+                          color={customColor || activeScenarioData.color || '#000'} 
+                          scenario={activeScenarioData}
+                      />
+                  </div>
+               )}
+            </motion.div>
+          )}
+
+          {/* GENERATING */}
+          {status === 'generating' && !previewData && (
+            <motion.div
+              key="generating"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, x: -50 }}
+              className="w-full h-full flex flex-col items-center justify-center p-8 relative"
+            >
+               <div className="w-full max-w-2xl space-y-12 text-center z-10">
+                  <div className="space-y-4">
+                      <div className="text-7xl font-bold text-slate-900 tracking-tighter tabular-nums">
+                        {Math.round(progress)}%
+                      </div>
+                      <div className="text-lg text-slate-500 font-medium animate-pulse flex items-center justify-center gap-2">
+                        {progressMessage}
+                      </div>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                     <motion.div 
+                       className="h-full bg-slate-900"
+                       initial={{ width: 0 }}
+                       animate={{ width: `${progress}%` }}
+                       transition={{ ease: "easeOut" }}
+                     />
+                  </div>
+
+                  {/* Outline Preview Grid (If Ready) */}
+                  {outlineData.length > 0 && (
+                     <motion.div 
+                       initial={{ opacity: 0, y: 20 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       className="mt-12 w-full text-left"
+                     >
+                        <div className="flex items-center justify-between mb-4 px-1">
+                            <span className="text-sm font-semibold text-slate-500 uppercase tracking-widest">
+                                生成大纲 ({outlineData.length}页)
+                            </span>
+                            <span className="text-xs text-slate-400 bg-white px-2 py-1 rounded-full border border-slate-100 shadow-sm">
+                                正在细化内容...
+                            </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-4 gap-4 max-h-[400px] overflow-y-auto custom-scrollbar p-1">
+                           {outlineData.map((page, i) => (
+                             <div 
+                                key={i} 
+                                className="aspect-video bg-white rounded-lg border border-slate-200 p-3 shadow-sm flex flex-col justify-between group hover:border-blue-400 transition-colors"
+                             >
+                                <div className="space-y-1.5 opacity-40">
+                                    <div className="h-2 w-2/3 bg-slate-200 rounded-sm" />
+                                    <div className="space-y-1">
+                                        <div className="h-1 w-full bg-slate-100 rounded-sm" />
+                                        <div className="h-1 w-full bg-slate-100 rounded-sm" />
+                                        <div className="h-1 w-5/6 bg-slate-100 rounded-sm" />
+                                    </div>
+                                </div>
+                                <div className="flex items-end justify-between gap-2">
+                                    <span className="font-medium text-[10px] leading-tight text-slate-700 line-clamp-2">
+                                        {page.title}
+                                    </span>
+                                    <span className="text-[10px] font-mono text-slate-300 shrink-0">
+                                        {i+1}
+                                    </span>
+                                </div>
+                             </div>
+                           ))}
+                        </div>
+                     </motion.div>
+                  )}
+               </div>
+            </motion.div>
+          )}
+
+          {/* PREVIEW */}
+          {status === 'preview' && previewData && (
+             <motion.div
+               key="preview"
+               initial={{ opacity: 0, scale: 0.98 }}
+               animate={{ opacity: 1, scale: 1 }}
+               className="w-full h-full"
+             >
+                <ResultView 
+                  result={previewData} 
+                  downloads={downloads}
+                  isProcessing={progress < 100}
+                />
+             </motion.div>
+          )}
+
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, step, children }) {
+  return (
+    <section>
+      <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center justify-center w-5 h-5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold font-mono border border-slate-200">{step}</div>
+        <h3 className="font-semibold text-sm text-slate-800">{title}</h3>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+// Custom Component to render style guide metadata nicely
+function StyleGuideInfo({ data }) {
+    if (!data) return null;
+    const { description, tags, colors } = data;
+
+    return (
+        <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl p-6 shadow-sm border border-slate-100 w-full flex flex-col md:flex-row gap-8 items-start"
+        >
+            <div className="flex-1 space-y-4">
+                <div>
+                   <h4 className="font-semibold text-slate-900 mb-2">风格简介</h4>
+                   <p className="text-sm text-slate-500 leading-relaxed">{description || "暂无描述"}</p>
+                </div>
+                
+                {tags && tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                        {tags.map((tag, i) => (
+                            <span key={i} className="px-2.5 py-1 bg-slate-50 text-slate-600 text-xs rounded-md border border-slate-100 font-medium">
+                                {tag}
+                            </span>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {colors && colors.length > 0 && (
+                <div className="min-w-[200px] space-y-3">
+                    <h4 className="font-semibold text-slate-900 text-sm">主题配色</h4>
+                    <div className="flex flex-wrap gap-3">
+                        {colors.map((c, i) => (
+                            <div key={i} className="flex flex-col items-center gap-1.5 group cursor-pointer relative">
+                                <div 
+                                    className="w-10 h-10 rounded-lg shadow-sm border border-slate-100 ring-2 ring-transparent group-hover:ring-slate-200 transition-all"
+                                    style={{ background: c.color }}
+                                />
+                                <span className="text-[10px] text-slate-400 font-mono uppercase">{c.label}</span>
+                                
+                                {/* Tooltip */}
+                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                    {c.color}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </motion.div>
+    );
+}
+
+// Dynamic Theme Preview loading actual HTML templates
+function ThemePreviewCard({ color, scenario }) {
+    const [htmlContent, setHtmlContent] = useState('');
+    const [metaData, setMetaData] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [page, setPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
+    
+    useEffect(() => {
+        const fetchTemplate = async () => {
+            setLoading(true);
+            try {
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8005/api';
+                const baseUrl = apiUrl.replace('/api', ''); 
+                
+                // Add timestamp to prevent caching of preview templates
+                const res = await fetch(`${baseUrl}/previews/${scenario.id}.html?t=${new Date().getTime()}`);
+                if(res.ok) {
+                    const text = await res.text();
+                    
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(text, 'text/html');
+                    const styles = doc.head.innerHTML;
+
+                    // --- Metadata Extraction ---
+                    let extracted = { description: '', tags: [], colors: [] };
+                    const header = doc.querySelector('.preview-header, .style-guide-container, header, .intro-section');
+                    
+                    if (header) {
+                        // Describe
+                        const pTags = header.querySelectorAll('p');
+                        pTags.forEach(p => {
+                            const t = p.textContent;
+                            if (t.includes('分类') || t.includes('标签')) {
+                                // Extract tags
+                                // Format: 分类: xx | 标签: a, b, c
+                                const tagPart = t.split('标签:')[1] || t.split('Tags:')[1];
+                                if(tagPart) {
+                                    extracted.tags = tagPart.split(/,|，/).map(s => s.trim()).filter(Boolean);
+                                }
+                            } else {
+                                // Assume description (if long enough)
+                                if (t.length > 10) extracted.description = t;
+                            }
+                        });
+
+                        // Colors
+                        const swatches = header.querySelectorAll('.color-swatch');
+                        swatches.forEach(s => {
+                            extracted.colors.push({
+                                label: s.innerText.trim(),
+                                color: s.style.backgroundColor || s.style.background
+                            });
+                        });
+                    }
+                    
+                    // Fallback for description if not found in header
+                    if (!extracted.description && scenario.description) {
+                        extracted.description = scenario.description;
+                    }
+
+                    setMetaData(extracted);
+                    
+                    // --- Slide Extraction ---
+                    const slides = doc.querySelectorAll('.slide-container');
+                    const slidesHTML = Array.from(slides).map(s => s.outerHTML).join('\n');
+                    
+                    if (slides.length > 0) {
+                        setTotalPages(slides.length);
+                        setPage(0);
+                        
+                        // Inject script for auto-scaling
+                        const autoScaleScript = `
+                            <script>
+                                function resize() {
+                                    const width = window.innerWidth;
+                                    const scale = width / 1280;
+                                    document.body.style.transform = 'scale(' + scale + ')';
+                                    document.body.style.transformOrigin = 'top left';
+                                    document.body.style.height = (720 * scale) + 'px';
+                                }
+                                window.addEventListener('resize', resize);
+                                window.addEventListener('DOMContentLoaded', resize);
+                                setTimeout(resize, 0);
+                            </script>
+                        `;
+
+                        const cleanHtml = `
+                            <!DOCTYPE html>
+                            <html>
+                            <head>${styles}</head>
+                            <body>
+                                ${slidesHTML}
+                                ${autoScaleScript}
+                            </body>
+                            </html>
+                        `;
+                        setHtmlContent(cleanHtml);
+                    } else {
+                         setHtmlContent(text);
+                         setTotalPages(1);
+                    }
+                } else {
+                    console.error("Preview template not found for:", scenario.id);
+                    setHtmlContent(''); 
+                }
+            } catch(e) {
+                console.error("Failed to fetch preview:", e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchTemplate();
+    }, [scenario.id]);
+
+    const srcDoc = React.useMemo(() => {
+        if(!htmlContent) return null;
+        
+        const injectedStyle = `
+            <style>
+                :root {
+                    --primary: ${color} !important;
+                    --primary-color: ${color} !important;
+                    --theme-color: ${color} !important;
+                    --brand: ${color} !important;
+                    --accent: ${color} !important;
+                }
+                body { 
+                    overflow: hidden; 
+                    margin: 0;
+                    padding: 0;
+                    width: 1280px;
+                    height: 720px;
+                    position: relative;
+                }
+                
+                /* Reset slide positioning to ensure they stack perfectly at 0,0 */
+                .slide-container { 
+                    display: none !important; 
+                    position: absolute !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    margin: 0 !important;
+                    transform: none !important; /* Remove any internal transforms */
+                }
+                
+                .slide-container:nth-of-type(${page + 1}) { display: flex !important; }
+            </style>
+        `;
+        return htmlContent.replace('</head>', `${injectedStyle}</head>`);
+    }, [htmlContent, color, page]);
+
+    const handlePrev = (e) => {
+        e.stopPropagation();
+        setPage(p => Math.max(0, p - 1));
+    };
+
+    const handleNext = (e) => {
+        e.stopPropagation();
+        setPage(p => Math.min(totalPages - 1, p + 1));
+    };
+
+    return (
+        <div className="w-full flex flex-col gap-6">
+            <StyleGuideInfo data={metaData} />
+
+            {/* Preview Card */}
+            <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                key={scenario.id}
+                className="w-full aspect-video bg-white rounded-xl shadow-2xl overflow-hidden relative border border-slate-200 flex items-center justify-center group"
+            >
+                {loading ? (
+                    <div className="flex flex-col items-center gap-3 text-slate-400">
+                        <Loader2 className="w-8 h-8 animate-spin" />
+                        <span className="text-sm">正在加载真实模版...</span>
+                    </div>
+                ) : srcDoc ? (
+                     <div className="w-full h-full relative">
+                         <div className="absolute inset-0 z-20 flex items-center justify-between px-4 pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                                onClick={handlePrev}
+                                disabled={page === 0}
+                                className="p-2 rounded-full bg-slate-900/10 hover:bg-slate-900/80 hover:text-white backdrop-blur-sm text-slate-700 transition-all disabled:opacity-0 pointer-events-auto"
+                            >
+                                <ChevronLeft className="w-6 h-6" />
+                            </button>
+                            
+                            <button 
+                                onClick={handleNext}
+                                disabled={page === totalPages - 1}
+                                className="p-2 rounded-full bg-slate-900/10 hover:bg-slate-900/80 hover:text-white backdrop-blur-sm text-slate-700 transition-all disabled:opacity-0 pointer-events-auto"
+                            >
+                                <ChevronRight className="w-6 h-6" />
+                            </button>
+                         </div>
+
+                         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-white text-[10px] font-mono opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            {page + 1} / {totalPages}
+                         </div>
+
+                         <iframe 
+                            srcDoc={srcDoc}
+                            className="w-full h-full border-0 pointer-events-none"
+                            title="Theme Output Preview"
+                         />
+                     </div>
+                ) : (
+                    <div className="flex flex-col items-center gap-2 text-slate-400 p-8 text-center bg-slate-50 w-full h-full justify-center">
+                        <Layout className="w-10 h-10 mb-2 opacity-50" />
+                        <p>暂无该场景的实时预览</p>
+                    </div>
+                )}
+            </motion.div>
+        </div>
+    );
+}
+
+export default App;

@@ -127,6 +127,15 @@ async def health_check():
 async def get_scenarios():
     return SCENARIOS
 
+class OutputInfo(BaseModel):
+    """已生成的输出信息"""
+    name: str  # 目录名
+    display_name: str  # 显示名称
+    timestamp: str  # 生成时间
+    pages_count: int  # 页面数量
+    has_pdf: bool  # 是否有 PDF
+    has_pptx: bool  # 是否有 PPTX
+
 @app.get("/api/files", response_model=List[FileInfo])
 async def list_files():
     input_dir = Path("input")
@@ -145,6 +154,132 @@ async def list_files():
                 size, unit = size_bytes / (1024 * 1024), "MB"
             files.append(FileInfo(name=f.name, size=round(size, 1), unit=unit))
     return sorted(files, key=lambda x: x.name)
+
+
+@app.get("/api/outputs", response_model=List[OutputInfo])
+async def list_outputs():
+    """列出 output 目录下已生成的演示文稿"""
+    output_dir = Path("output")
+    if not output_dir.exists():
+        return []
+    
+    outputs = []
+    for d in output_dir.iterdir():
+        if not d.is_dir():
+            continue
+        # 排除特殊目录
+        if d.name.startswith('.') or d.name == "theme_previews":
+            continue
+        
+        pages_dir = d / "pages"
+        if not pages_dir.exists():
+            continue
+        
+        # 统计页面数
+        pages_count = len(list(pages_dir.glob("page-*.html")))
+        if pages_count == 0:
+            continue
+        
+        # 检查是否有 PDF 和 PPTX
+        has_pdf = any(d.glob("*.pdf"))
+        has_pptx = any(d.glob("*.pptx"))
+        
+        # 解析时间戳（从目录名中提取）
+        # 格式：xxx_YYYYMMDD_HHMMSS 或 xxx_YYYYMMDD_HHMMSS_v2
+        name_parts = d.name.rsplit('_', 2)
+        timestamp_str = ""
+        display_name = d.name
+        
+        if len(name_parts) >= 2:
+            # 尝试解析时间戳
+            try:
+                if name_parts[-1] == "v2":
+                    # xxx_YYYYMMDD_HHMMSS_v2 格式
+                    if len(name_parts) >= 3:
+                        date_part = name_parts[-3] if len(name_parts) >= 4 else ""
+                        time_part = name_parts[-2]
+                        display_name = '_'.join(name_parts[:-3]) if len(name_parts) >= 4 else name_parts[0]
+                        if len(date_part) == 8 and len(time_part) == 6:
+                            timestamp_str = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:]} {time_part[:2]}:{time_part[2:4]}:{time_part[4:]}"
+                else:
+                    # xxx_YYYYMMDD_HHMMSS 格式
+                    date_part = name_parts[-2]
+                    time_part = name_parts[-1]
+                    display_name = '_'.join(name_parts[:-2])
+                    if len(date_part) == 8 and len(time_part) == 6:
+                        timestamp_str = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:]} {time_part[:2]}:{time_part[2:4]}:{time_part[4:]}"
+            except (IndexError, ValueError):
+                pass
+        
+        outputs.append(OutputInfo(
+            name=d.name,
+            display_name=display_name or d.name,
+            timestamp=timestamp_str,
+            pages_count=pages_count,
+            has_pdf=has_pdf,
+            has_pptx=has_pptx
+        ))
+    
+    # 按修改时间倒序排列
+    return sorted(outputs, key=lambda x: x.timestamp, reverse=True)
+
+
+@app.get("/api/outputs/{output_name}/load")
+async def load_output(output_name: str):
+    """加载指定的历史输出"""
+    output_dir = Path("output") / output_name
+    if not output_dir.exists():
+        raise HTTPException(status_code=404, detail="输出目录不存在")
+    
+    pages_dir = output_dir / "pages"
+    if not pages_dir.exists():
+        raise HTTPException(status_code=404, detail="页面目录不存在")
+    
+    # 收集所有页面
+    page_files = sorted(pages_dir.glob("page-*.html"))
+    pages_data = []
+    
+    for i, page_file in enumerate(page_files):
+        # 从 HTML 中提取标题（简单解析）
+        title = f"Page {i + 1}"
+        try:
+            with open(page_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+                # 尝试匹配 title 标签或 h1 标签
+                import re
+                title_match = re.search(r'<title>([^<]+)</title>', content)
+                if title_match:
+                    title = title_match.group(1)
+                else:
+                    h1_match = re.search(r'<h1[^>]*>([^<]+)</h1>', content)
+                    if h1_match:
+                        title = h1_match.group(1)
+        except Exception:
+            pass
+        
+        pages_data.append({
+            "index": i + 1,
+            "title": title,
+            "type": "CONTENT",
+            "url": f"/output/{output_name}/pages/{page_file.name}"
+        })
+    
+    # 查找 PDF 和 PPTX
+    pdf_files = list(output_dir.glob("*.pdf"))
+    pptx_files = list(output_dir.glob("*.pptx"))
+    html_files = list(output_dir.glob("presentation.html"))
+    
+    result = {
+        "html": str(html_files[0]) if html_files else None,
+        "pages": pages_data,
+        "downloads": {
+            "html": f"/output/{output_name}/presentation.html" if html_files else None,
+            "pdf": f"/output/{output_name}/{pdf_files[0].name}" if pdf_files else None,
+            "pptx": f"/output/{output_name}/{pptx_files[0].name}" if pptx_files else None
+        }
+    }
+    
+    return result
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
@@ -409,6 +544,25 @@ async def generate_presentation_sync(req: GenerateRequest):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+# ========== V2 API Integration ==========
+
+from v2_adapter import generate_v2_stream
+
+@app.post("/api/generate-v2")
+async def generate_v2(req: GenerateRequest):
+    """
+    V2 端到端 AI 原生生成入口
+    """
+    return StreamingResponse(
+        generate_v2_stream(req),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
 
 # ========== 运行入口 ==========
 

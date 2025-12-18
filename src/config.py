@@ -13,6 +13,20 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "anthropic/claude-3.5-haiku")
 
+# Adobe PDF Services 配置 (用于 PDF → PPTX 转换)
+# 注意: adobe_pdf_to_pptx.py 使用 PDF_SERVICES_CLIENT_ID 和 PDF_SERVICES_CLIENT_SECRET
+# 我们在这里做一个兼容层，将 ADOBE_CLIENT_ID 映射过去
+_adobe_client_id = os.getenv("ADOBE_CLIENT_ID") or os.getenv("PDF_SERVICES_CLIENT_ID", "")
+_adobe_client_secret = os.getenv("ADOBE_CLIENT_SECRET") or os.getenv("PDF_SERVICES_CLIENT_SECRET", "")
+
+# 确保 Adobe SDK 能读取到凭证 (设置到环境变量)
+if _adobe_client_id:
+    os.environ["PDF_SERVICES_CLIENT_ID"] = _adobe_client_id
+if _adobe_client_secret:
+    os.environ["PDF_SERVICES_CLIENT_SECRET"] = _adobe_client_secret
+
+ADOBE_AVAILABLE = bool(_adobe_client_id and _adobe_client_secret)
+
 # 从 .env 读取可用模型列表
 def get_available_models():
     """从 .env 文件中读取所有可用的模型"""

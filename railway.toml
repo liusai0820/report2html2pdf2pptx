@@ -1,0 +1,17 @@
+# Railway 部署配置
+# https://docs.railway.app/reference/config-as-code
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30
+
+# 环境变量 (敏感信息请在 Railway Dashboard 中设置)
+# OPENROUTER_API_KEY=xxx
+# ADOBE_CLIENT_ID=xxx
+# ADOBE_CLIENT_SECRET=xxx
