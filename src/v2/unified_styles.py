@@ -20,6 +20,35 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
    确保每一页的样式严格一致
    ============================================ */
 
+/* ============================================
+   字体嵌入 - 确保 PDF 中的字体可编辑
+   ============================================ */
+
+/* Web 字体加载 - 思源黑体 (Noto Sans SC) */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+
+/* 定义可编辑的 Web 字体 */
+@font-face {{
+    font-family: 'Presentation Font';
+    src: local('Noto Sans SC'), 
+         local('Microsoft YaHei'), 
+         local('微软雅黑'),
+         url('https://fonts.gstatic.com/s/notosanssc/v36/k3kCo84MPvpLmixcA63oedfCh2BO5p-8.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}}
+
+@font-face {{
+    font-family: 'Presentation Font';
+    src: local('Noto Sans SC Bold'), 
+         local('Microsoft YaHei Bold'),
+         url('https://fonts.gstatic.com/s/notosanssc/v36/k3kCo84MPvpLmixcA63oedfCh2BO5p-8.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}}
+
 /* 全局变量 */
 :root {{
     /* 品牌色 */
@@ -46,8 +75,8 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     --danger: #ef4444;
     --warning: #f59e0b;
     
-    /* 字体 */
-    --font-family: 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    /* 字体 - 使用嵌入字体，确保 PDF 可编辑 */
+    --font-family: 'Presentation Font', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
     
     /* 画布尺寸 */
     --slide-width: 1280px;
@@ -87,21 +116,27 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
 .slide-header {{
     flex-shrink: 0;
     margin-bottom: 32px;
+    width: 100%;
 }}
 
 .slide-title {{
     font-size: 32px;
     font-weight: 700;
     color: var(--text-primary);
-    line-height: 1.3;
+    line-height: 1.35;
     margin: 0;
+    letter-spacing: 0.02em;
+    word-break: keep-all;       /* 防止中文掉行 */
+    overflow-wrap: break-word;  /* 长英文单词可换行 */
+    max-width: 100%;            /* 确保标题使用全部可用宽度 */
 }}
 
 .slide-subtitle {{
     font-size: 16px;
     color: var(--text-secondary);
     margin-top: 8px;
-    line-height: 1.4;
+    line-height: 1.5;
+    word-break: keep-all;
 }}
 
 /* ============================================
@@ -192,6 +227,7 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 12px;
+    word-break: keep-all;
 }}
 
 .card-content {{
@@ -219,6 +255,7 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     font-size: 14px;
     color: var(--text-secondary);
     margin-top: 8px;
+    word-break: keep-all;
 }}
 
 .data-trend {{
@@ -251,6 +288,7 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     padding-left: 24px;
     position: relative;
     border-bottom: 1px solid var(--border-color);
+    word-break: keep-all;
 }}
 
 .list li:last-child {{
@@ -333,8 +371,10 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     font-size: 48px;
     font-weight: 700;
     color: var(--text-primary);
-    line-height: 1.3;
-    max-width: 900px;
+    line-height: 1.35;
+    max-width: 1000px;
+    word-break: keep-all;
+    letter-spacing: 0.02em;
 }}
 
 .cover-subtitle {{
@@ -383,6 +423,8 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     font-size: 36px;
     font-weight: 700;
     color: var(--text-inverse);
+    word-break: keep-all;
+    letter-spacing: 0.03em;
 }}
 
 /* ============================================
@@ -418,6 +460,7 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
 .agenda-title {{
     font-size: 20px;
     color: var(--text-primary);
+    word-break: keep-all;
 }}
 
 /* ============================================
