@@ -76,23 +76,40 @@ async function convertToPDF(htmlPath, pdfPath) {
       timeout: 60000  // 增加超时时间到 60 秒
     });
     
-    // 等待系统字体加载完成（使用本地字体，无需等待网络）
-    console.log('⏳ 等待系统字体渲染...');
+    // 等待字体加载完成（关键！防止 Type3 字体）
+    console.log('⏳ 等待字体加载...');
     try {
-      // 等待 DOM 完全渲染
+      // 等待 fonts.ready API
       await page.evaluateHandle('document.fonts.ready');
       
-      // 额外等待确保系统字体被正确应用
-      // 由于使用本地字体 (PingFang SC)，这个等待主要是让渲染引擎完成布局
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 额外等待，确保 Google Fonts 中文字体加载
+      await page.waitForFunction(() => {
+        // 检查是否有任何字体正在加载
+        const fonts = document.fonts;
+        if (fonts.status === 'loading') return false;
+        
+        // 尝试检测中文字体是否可用
+        const testElement = document.createElement('span');
+        testElement.style.fontFamily = "'Presentation Font', 'Noto Sans SC', sans-serif";
+        testElement.style.visibility = 'hidden';
+        testElement.style.position = 'absolute';
+        testElement.textContent = '测试字体加载';
+        document.body.appendChild(testElement);
+        const fontLoaded = testElement.offsetWidth > 0;
+        document.body.removeChild(testElement);
+        
+        return fontLoaded;
+      }, { timeout: 15000 }).catch(() => {
+        console.log('⚠️ 字体加载检测超时，继续处理...');
+      });
       
     } catch (e) {
       console.log('⚠️ 字体加载等待出错，继续处理:', e.message);
     }
     
-    // 额外等待渲染完成（确保所有样式应用）
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log('✓ 字体渲染完成');
+    // 额外等待渲染完成（确保所有样式和网络字体应用）
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    console.log('✓ 字体加载完成');
     
     // 确保输出目录存在
     const pdfDir = path.dirname(absolutePdfPath);

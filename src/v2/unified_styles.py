@@ -21,20 +21,16 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
    ============================================ */
 
 /* ============================================
-   字体嵌入 - 确保 PDF 中的字体可编辑
-   关键：必须使用系统本地字体，否则会产生 Type3 字体
+   字体嵌入 - 确保 PDF 中的字体可编辑，避免 Type3 字体
+   同时保证浏览器预览正常显示
+   
+   字体策略说明：
+   1. 优先使用系统中文字体（PingFang SC、Microsoft YaHei）- 中文标点正确
+   2. Noto Sans SC 作为最后的网络字体后备
    ============================================ */
 
-/* 
- * 字体策略说明（按优先级）：
- * 1. PingFang SC（苹方）- macOS 自带，100% 可用，PDF 兼容性最佳
- * 2. Hiragino Sans GB - macOS 自带
- * 3. Heiti SC（黑体-简）- macOS 自带
- * 4. Microsoft YaHei - Windows 自带
- * 5. sans-serif - 最终后备
- * 
- * 注意：不使用 Google Fonts 网络字体，因为 Puppeteer 渲染时可能无法完全加载
- */
+/* Web字体 - 思源黑体（当系统字体都不可用时的后备） */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
 
 /* 全局变量 */
 :root {{
@@ -62,8 +58,16 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     --danger: #ef4444;
     --warning: #f59e0b;
     
-    /* 字体 - macOS 优先：PingFang SC（苹方）*/
-    --font-family: "PingFang SC", "Hiragino Sans GB", "Heiti SC", "STHeiti", "Microsoft YaHei", SimHei, sans-serif;
+    /* 字体 - 中文系统字体优先，确保中文标点正确 */
+    --font-family: 
+        'PingFang SC',             /* macOS 苹方 - 中文标点正确 */
+        'Microsoft YaHei',         /* Windows 微软雅黑 */
+        'Hiragino Sans GB',        /* macOS 冬青黑体 */
+        'Heiti SC',                /* macOS 黑体 */
+        'WenQuanYi Micro Hei',     /* Linux 文泉驿 */
+        'Noto Sans SC',            /* Google Fonts 后备 */
+        -apple-system,
+        sans-serif;
     
     /* 画布尺寸 */
     --slide-width: 1280px;
@@ -80,6 +84,19 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     padding: 0;
     /* 全局字间距 - 补偿 Adobe PPTX 转换时的紧缩 */
     letter-spacing: 0.05em;
+}}
+
+/* 强制全局字体覆盖 - 中文系统字体优先 */
+body, body * {{
+    font-family: 
+        'PingFang SC',
+        'Microsoft YaHei',
+        'Hiragino Sans GB', 
+        'Heiti SC',
+        'WenQuanYi Micro Hei',
+        'Noto Sans SC',
+        -apple-system,
+        sans-serif !important;
 }}
 
 /* ============================================

@@ -214,11 +214,12 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
                 pdf_path = await asyncio.to_thread(v1_renderer.generate_pdf, context.document_name)
                 yield send_event("pdf_ready", "PDF 准备就绪", 98, result={"pdf": pdf_path})
                 
-                # 2. 生成 PPTX (依赖 PDF)
-                yield send_event("pptx", "正在转换 PPTX...", 99)
-                pptx_path = await asyncio.to_thread(v1_renderer.generate_pptx, pdf_path)
-                if pptx_path:
-                    yield send_event("pptx_ready", "PPTX 准备就绪", 99, result={"pptx": pptx_path})
+                # 2. 生成 PPTX (依赖 PDF, 且需要用户勾选)
+                if not req.skip_pptx and pdf_path:
+                    yield send_event("pptx", "正在转换 PPTX...", 99)
+                    pptx_path = await asyncio.to_thread(v1_renderer.generate_pptx, pdf_path)
+                    if pptx_path:
+                        yield send_event("pptx_ready", "PPTX 准备就绪", 99, result={"pptx": pptx_path})
                     
             except Exception as e:
                 print(f"PDF/PPTX generation failed: {e}")

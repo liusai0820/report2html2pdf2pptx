@@ -691,4 +691,12 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
         html = re.sub(r'<header[^>]*>.*?</header>', '', html, flags=re.DOTALL | re.IGNORECASE)
         
+        # 转换 Markdown 加粗语法 **text** 为 HTML <b> 标签
+        # 这解决了 Flash 模型可能输出 Markdown 格式的问题
+        html = re.sub(r'\*\*([^*]+)\*\*', r'<b>\1</b>', html)
+        
+        # 也处理 Markdown 斜体 *text* 转换为 <em>（可选，但保持一致性）
+        # 注意：这个模式要小心，只替换单独的 *text*，不要影响 CSS 选择器等
+        # html = re.sub(r'(?<![*])\*([^*]+)\*(?![*])', r'<em>\1</em>', html)
+        
         return html.strip()
