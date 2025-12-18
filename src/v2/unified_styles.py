@@ -76,6 +76,8 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    /* 全局字间距 - 补偿 Adobe PPTX 转换时的紧缩 */
+    letter-spacing: 0.05em;
 }}
 
 /* ============================================
@@ -110,10 +112,10 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     color: var(--text-primary);
     line-height: 1.35;
     margin: 0;
-    letter-spacing: 0.02em;
-    word-break: keep-all;       /* 防止中文掉行 */
-    overflow-wrap: break-word;  /* 长英文单词可换行 */
-    max-width: 100%;            /* 确保标题使用全部可用宽度 */
+    letter-spacing: 0.1em;        /* 大标题需要更大字间距 */
+    word-break: keep-all;         /* 防止中文掉行 */
+    overflow-wrap: break-word;    /* 长英文单词可换行 */
+    max-width: 100%;              /* 确保标题使用全部可用宽度 */
 }}
 
 .slide-subtitle {{
@@ -121,6 +123,7 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     color: var(--text-secondary);
     margin-top: 8px;
     line-height: 1.5;
+    letter-spacing: 0.08em;       /* 增加字间距 */
     word-break: keep-all;
 }}
 
@@ -212,6 +215,7 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 12px;
+    letter-spacing: 0.08em;
     word-break: keep-all;
 }}
 
@@ -219,6 +223,7 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     font-size: 15px;
     color: var(--text-secondary);
     line-height: 1.6;
+    letter-spacing: 0.06em;
 }}
 
 /* 数据卡片 */
@@ -240,6 +245,7 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     font-size: 14px;
     color: var(--text-secondary);
     margin-top: 8px;
+    letter-spacing: 0.08em;
     word-break: keep-all;
 }}
 
@@ -273,6 +279,7 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     padding-left: 24px;
     position: relative;
     border-bottom: 1px solid var(--border-color);
+    letter-spacing: 0.06em;
     word-break: keep-all;
 }}
 
@@ -359,13 +366,14 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     line-height: 1.35;
     max-width: 1000px;
     word-break: keep-all;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.12em;    /* 大标题需要更宽松的字间距 */
 }}
 
 .cover-subtitle {{
     font-size: 20px;
     color: var(--text-secondary);
     margin-top: 16px;
+    letter-spacing: 0.1em;
 }}
 
 .cover-meta {{
@@ -409,7 +417,7 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     font-weight: 700;
     color: var(--text-inverse);
     word-break: keep-all;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.12em;    /* 章节标题 */
 }}
 
 /* ============================================
