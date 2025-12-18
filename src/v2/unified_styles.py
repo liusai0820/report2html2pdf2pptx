@@ -22,16 +22,18 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
 
 /* ============================================
    字体嵌入 - 确保 PDF 中的字体可编辑
+   关键：必须使用系统本地字体，否则会产生 Type3 字体
    ============================================ */
 
-/* Web 字体作为后备 - 思源黑体 (Noto Sans SC) */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
-
 /* 
- * 字体策略说明：
- * 1. 优先使用系统本地字体（苹方、微软雅黑）- 这些字体不会产生 Type3 问题
- * 2. Web 字体（Noto Sans SC）作为后备
- * 3. 系统默认 sans-serif 作为最终后备
+ * 字体策略说明（按优先级）：
+ * 1. PingFang SC（苹方）- macOS 自带，100% 可用，PDF 兼容性最佳
+ * 2. Hiragino Sans GB - macOS 自带
+ * 3. Heiti SC（黑体-简）- macOS 自带
+ * 4. Microsoft YaHei - Windows 自带
+ * 5. sans-serif - 最终后备
+ * 
+ * 注意：不使用 Google Fonts 网络字体，因为 Puppeteer 渲染时可能无法完全加载
  */
 
 /* 全局变量 */
@@ -60,8 +62,8 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     --danger: #ef4444;
     --warning: #f59e0b;
     
-    /* 字体 - 优先 Microsoft YaHei (PPTX 兼容性最好) */
-    --font-family: 'Microsoft YaHei', '微软雅黑', 'Source Han Sans SC', '思源黑体', 'Hiragino Sans GB', 'Heiti SC', sans-serif;
+    /* 字体 - macOS 优先：PingFang SC（苹方）*/
+    --font-family: "PingFang SC", "Hiragino Sans GB", "Heiti SC", "STHeiti", "Microsoft YaHei", SimHei, sans-serif;
     
     /* 画布尺寸 */
     --slide-width: 1280px;

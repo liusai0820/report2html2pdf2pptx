@@ -60,6 +60,108 @@ export default function ResultView({ result, downloads, isProcessing }) {
         setDownloadingPptx(false);
     };
 
+    // 键盘导航支持（分栏视图和演示播放模式都支持）
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            const totalPages = result?.pages?.length || 0;
+            if (totalPages === 0) return;
+            
+            // 网格视图下不处理键盘事件
+            if (viewMode === 'grid' && !isFullscreen) return;
+            
+            switch (e.key) {
+                case 'ArrowRight':
+                case 'ArrowDown':
+                case ' ':  // Space
+                    e.preventDefault();
+                    setActiveIndex(prev => Math.min(totalPages - 1, prev + 1));
+                    break;
+                case 'ArrowLeft':
+                case 'ArrowUp':
+                    e.preventDefault();
+                    setActiveIndex(prev => Math.max(0, prev - 1));
+                    break;
+                case 'Escape':
+                    if (isFullscreen) {
+                        e.preventDefault();
+                        setIsFullscreen(false);
+                    }
+                    break;
+                case 'Home':
+                    e.preventDefault();
+                    setActiveIndex(0);
+                    break;
+                case 'End':
+                    e.preventDefault();
+                    setActiveIndex(totalPages - 1);
+                    break;
+                case 'Enter':
+                    // Enter 只在全屏模式下翻页，分栏模式下可用于其他操作
+                    if (isFullscreen) {
+                        e.preventDefault();
+                        setActiveIndex(prev => Math.min(totalPages - 1, prev + 1));
+                    }
+                    break;
+                default:
+                    break;
+            }
+        };
+        
+        // 全屏模式下的点击翻页（左半屏上一页，右半屏下一页）
+        const handleClick = (e) => {
+            if (!isFullscreen) return; // 分栏模式下在 Preview 区域单独处理
+            
+            const totalPages = result?.pages?.length || 0;
+            if (totalPages === 0) return;
+            
+            // 忽略按钮点击
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+            
+            const x = e.clientX;
+            const screenWidth = window.innerWidth;
+            
+            if (x < screenWidth / 3) {
+                setActiveIndex(prev => Math.max(0, prev - 1));
+            } else if (x > screenWidth * 2 / 3) {
+                setActiveIndex(prev => Math.min(totalPages - 1, prev + 1));
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        if (isFullscreen) {
+            window.addEventListener('click', handleClick);
+        }
+        
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('click', handleClick);
+        };
+    }, [isFullscreen, viewMode, result?.pages?.length]);
+    
+    // 分栏视图预览区点击翻页
+    const handlePreviewClick = (e) => {
+        if (isFullscreen) return; // 全屏模式由全局事件处理
+        
+        const totalPages = result?.pages?.length || 0;
+        if (totalPages === 0) return;
+        
+        // 忽略按钮点击
+        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+        
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const width = rect.width;
+        
+        if (x < width / 3) {
+            // 左侧 1/3：上一页
+            setActiveIndex(prev => Math.max(0, prev - 1));
+        } else if (x > width * 2 / 3) {
+            // 右侧 1/3：下一页
+            setActiveIndex(prev => Math.min(totalPages - 1, prev + 1));
+        }
+        // 中间 1/3：不做操作（可用于未来的其他交互）
+    };
+
     if (!result) return null;
 
     // 解析页面
@@ -229,12 +331,22 @@ export default function ResultView({ result, downloads, isProcessing }) {
                     )}
 
                     {/* Preview Canvas */}
-                    <div className={`flex-1 bg-slate-100/50 flex items-center justify-center relative overflow-hidden ${isFullscreen ? 'bg-black' : 'p-8'}`}>
+                    <div 
+                        className={`flex-1 bg-slate-100/50 flex items-center justify-center relative overflow-hidden ${isFullscreen ? 'bg-black' : 'p-8'} ${!isFullscreen ? 'cursor-pointer' : ''}`}
+                        onClick={!isFullscreen ? handlePreviewClick : undefined}
+                    >
                         
                         {/* Auto-scaling Container */}
-                        <div className="w-full h-full flex items-center justify-center relative">
+                        <div className="w-full h-full flex items-center justify-center relative pointer-events-none">
                             <AutoScaledIframe url={activeUrl} />
                         </div>
+
+                        {/* Page indicator for split view */}
+                        {!isFullscreen && (
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm">
+                                <span>{activeIndex + 1} / {pages.length}</span>
+                            </div>
+                        )}
 
                         {/* Navigation Controls (Visible on Hover in Fullscreen) */}
                         {(isFullscreen) && (
