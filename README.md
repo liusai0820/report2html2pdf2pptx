@@ -6,12 +6,17 @@
 
 ## ✨ 核心特性
 
-- **🤖 智能编排引擎**: 基于大语言模型（OpenRouter/Claude）自动分析文档结构，生成大纲与幻灯片内容。
-- **🎨 动态主题系统**: 内置多种专业主题（咨询、年终总结、科技、创意等），支持动态配色与布局适配。
-- **📊 智能数据可视化**: 能够识别文档中的数据并自动生成 ECharts 交互式图表。
-- **🖥️ 实时预览**: 提供所见即所得的幻灯片预览，支持键盘导航和缩略图跳转。
-- **� 多格式导出**: 一键生成高质量 HTML5 演示文稿、PDF 文档及 PPTX 源文件。
-- **📱 响应式设计**: 完美适配各种屏幕尺寸的演示需求。
+- **🤖 智能编排引擎 (V2)**: 基于最新的大语言模型，自动执行内容提取、逻辑规划、大纲生成与幻灯片排版。
+- **📝 自定义 AI 指令**: 允许用户输入特定要求（如："第一章重点讲市场分析"、"使用更正式的语言"），让 AI 灵活适配不同需求。
+- **🖼️ 全向预览体验**:
+  - **分屏视图**: 左侧内容微调，右侧实时幻灯片预览，支持点击定位。
+  - **幻灯片浏览 (Grid View)**: 类似 PowerPoint 的网格视图，快速纵览项目全貌。
+  - **全屏沉浸模式**: 支持键盘（方向键、空格、Enter）及鼠标点击导航，完美模拟实际演说环境。
+- **🎨 动态设计系统**: 基于场景（如：咨询汇报、政务公文、学术研究）的自动风格适配，内置高品质颜色索引与排版规范。
+- **🛠️ 高质量导出**:
+  - **PDF 文档**: 优化字体嵌入策略，彻底解决中文字体 Type3 错误，确保显示清晰、标点（如双引号）符合中文规范。
+  - **PPTX 源文件**: 支持直接导出可编辑的微软 PowerPoint 格式（通过 Adobe 引擎转换）。
+- **📄 增强型文档解析**: 支持文字型 PDF、DOCX、Markdown、TXT 等格式的深度解析，自动提取文字与表格。
 
 ## 🏗️ 技术架构
 
@@ -19,65 +24,51 @@
 
 ### Frontend (前端)
 
-- **Framework**: React 18 + Vite
-- **Styling**: Tailwind CSS + CSS Modules
-- **State Management**: React Hooks
-- **Icons**: Lucide React
+- **UI 框架**: React 18 + Vite
+- **交互动画**: Framer Motion
+- **图标系统**: Lucide React
+- **样式方案**: Vanilla CSS (CSS Modules) + Tailwind CSS (Partial)
 
 ### Backend (后端)
 
-- **Framework**: FastAPI (Python 3.10+)
-- **AI Processing**: 自研 Prompt Engine + Context Orchestrator
-- **PDF Generation**: Pyppeteer (基于 Chrome Headless)
-- **Document Parsing**: python-docx, PyPDF2
-- **Storage**: 本地文件系统 / Cloudflare R2 (Planned)
+- **基础框架**: FastAPI (Python 3.10+)
+- **AI 编排**: 自研 Prompt Engine + Context Orchestrator
+- **PDF 渲染**: Puppeteer (Node.js) + Pyppeteer (Python)
+- **文档解析**: pdfplumber (PDF), python-docx (Word)
+- **PPTX 转换**: Adobe PDF Services API / Cloud Convert
 
 ## 🚀 快速开始
 
 ### 环境要求
 
-- Node.js 16+
+- Node.js 18+
 - Python 3.10+
 - Chrome/Chromium (用于 PDF 生成)
 
-### 1. 后端设置
+### 1. 全自动启动 (推荐)
 
 ```bash
-# 1. 创建并激活虚拟环境
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+./start_all.sh
+```
 
-# 2. 安装依赖
+### 2. 手动启动
+
+#### 后端设置
+
+```bash
+# 激活环境并安装依赖
 pip install -r requirements.txt
-
-# 3. 配置环境变量
-cp config/.env.example config/.env
-# 编辑 config/.env 填入 OPENROUTER_API_KEY 等配置
-
-# 4. 启动后端服务器 (运行在 8000 端口)
+# 配置环境变量 (config/.env)
 python src/server.py
 ```
 
-### 2. 前端设置
+#### 前端设置
 
 ```bash
 cd frontend
-
-# 1. 安装依赖
 npm install
-
-# 2. 启动开发服务器 (运行在 5173 端口)
 npm run dev
 ```
-
-### 3. 使用说明
-
-1. 打开浏览器访问 `http://localhost:5173`
-2. 上传您的文档（支持 PDF, DOCX, MD, TXT）
-3. 选择演示场景（如：咨询汇报、年终总结）
-4. 选择视觉主题
-5. 点击"立即生成"，观察 AI 实时思考与生成过程
-6. 生成完成后，可在线预览或下载 PDF/PPTX
 
 ## 📂 项目结构
 
@@ -85,17 +76,16 @@ npm run dev
 .
 ├── frontend/                 # React 前端应用
 │   ├── src/
-│   │   ├── components/       # UI 组件 (ResultView, Hero, etc.)
+│   │   ├── components/       # UI 组件 (ResultView, ConfigPanel, etc.)
 │   │   └── App.jsx          # 主应用逻辑
 │
 ├── src/                      # Python 后端核心
+│   ├── v2/                   # V2 引擎核心 (设计师逻辑、设计系统、样式)
 │   ├── server.py             # FastAPI 服务入口
-│   ├── core/                 # AI 编排核心 (Orchestrator, Parser)
-│   ├── prompts/              # Prompt 工程引擎
-│   ├── themes/               # CSS 生成器与主题注册表
-│   └── utils/                # 工具函数
+│   ├── document_parser.py    # 多格式分拣解析器
+│   └── v2_adapter.py         # 前后端流式通信适配器
 │
-├── config/                   # 配置文件
+├── docs/                     # 截图与文档
 ├── input/                    # 用户上传临时目录
 └── output/                   # 生成结果产物
 ```
