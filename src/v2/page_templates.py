@@ -67,9 +67,8 @@ SYSTEM_PROMPT_V3 = """
 def get_cover_template(title: str, org: str, date: str) -> str:
     return f'''<div class="slide slide-cover">
     <h1 class="cover-title">{title}</h1>
-    <p class="cover-subtitle">汇报材料</p>
     <div class="cover-meta">
-        <span>{org}</span>
+        <span>汇报单位：{org}</span>
         <span>{date}</span>
     </div>
 </div>'''

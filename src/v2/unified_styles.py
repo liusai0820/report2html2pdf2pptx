@@ -7,30 +7,112 @@
 3. ECharts 图表支持 - 提供标准的图表代码模板
 """
 
+# 字体族预设 - 使用 Web 字体确保 PDF 可编辑
+# 关键：使用国内镜像 CDN，确保网络访问稳定
+# fonts.loli.net 是 Google Fonts 的国内镜像
+FONT_FAMILIES = {
+    "modern": {
+        # 现代风格 - 黑体系（思源黑体）
+        "primary": "'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif",
+        "display_name": "现代简约（黑体）",
+        # 使用国内镜像 - fonts.loli.net
+        "import_url": "https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap",
+        # woff2 使用 gstatic.loli.net 镜像
+        "woff2_url": "https://gstatic.loli.net/s/notosanssc/v26/k3kXo84MPvpLmixcA63oeALhLOCT-xWNm8Hqd37g1OkDRZe7lR4sg1IzSy-MNbE9VH8V.0.woff2"
+    },
+    "classic": {
+        # 典雅风格 - 楷体系
+        # 使用霞鹜文楷 (LXGW WenKai) 或 Ma Shan Zheng
+        "primary": "'LXGW WenKai', 'Ma Shan Zheng', 'STKaiti', 'KaiTi', serif",
+        "display_name": "典雅庄重（楷体）",
+        # 使用国内镜像
+        "import_url": "https://fonts.loli.net/css2?family=Ma+Shan+Zheng&family=LXGW+WenKai:wght@300;400;700&display=swap",
+        # woff2 使用 gstatic.loli.net 镜像
+        "woff2_url": "https://gstatic.loli.net/s/mashanzheng/v10/NaPecZTIAOuHOAAy39FUqIcU0PJoDQ.woff2"
+    }
+}
 
-def generate_unified_css(primary_color: str = "#003366") -> str:
-    """生成统一的 CSS 样式"""
+
+def generate_unified_css(primary_color: str = "#003366", font_style: str = "modern") -> str:
+    """生成统一的 CSS 样式
+    
+    Args:
+        primary_color: 主题色
+        font_style: 字体风格，'modern' (黑体) 或 'classic' (楷体)
+    """
     
     # 根据主色计算其他颜色
     accent_color = _lighten_color(primary_color, 0.3)
+    
+    # 获取字体配置
+    font_config = FONT_FAMILIES.get(font_style, FONT_FAMILIES["modern"])
+    font_family = font_config["primary"]
+    font_import_url = font_config["import_url"]
+    
+    # 根据字体风格生成不同的 @font-face
+    if font_style == "classic":
+        # 楷体风格 - 使用霞鹜文楷和 Ma Shan Zheng（国内镜像）
+        font_face_css = """
+/* @font-face 声明 - 楷体 (使用国内镜像确保访问) */
+@font-face {
+    font-family: 'LXGW WenKai';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url(https://gstatic.loli.net/s/lxgwwenkai/v3/1cXxaULGY-g1qwHiY2yBe_-7VBs2JG_T.woff2) format('woff2');
+    unicode-range: U+4E00-9FFF, U+3400-4DBF, U+20000-2A6DF, U+2A700-2B73F, U+2B740-2B81F, U+2B820-2CEAF, U+2CEB0-2EBEF, U+30000-3134F, U+31350-323AF, U+F900-FAFF, U+FE30-FE4F;
+}
+@font-face {
+    font-family: 'Ma Shan Zheng';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url(https://gstatic.loli.net/s/mashanzheng/v10/NaPecZTIAOuHOAAy39FUqIcU0PJoDQ.woff2) format('woff2');
+    unicode-range: U+4E00-9FFF, U+3400-4DBF;
+}
+"""
+    else:
+        # 黑体风格 - 使用思源黑体（国内镜像）
+        font_face_css = """
+/* @font-face 声明 - 黑体 (使用国内镜像确保访问) */
+@font-face {
+    font-family: 'Noto Sans SC';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url(https://gstatic.loli.net/s/notosanssc/v26/k3kXo84MPvpLmixcA63oeALhLOCT-xWNm8Hqd37g1OkDRZe7lR4sg1IzSy-MNbE9VH8V.0.woff2) format('woff2');
+    unicode-range: U+4E00-9FFF, U+3400-4DBF, U+20000-2A6DF, U+2A700-2B73F, U+2B740-2B81F, U+2B820-2CEAF, U+2CEB0-2EBEF, U+30000-3134F, U+31350-323AF, U+F900-FAFF, U+FE30-FE4F;
+}
+@font-face {
+    font-family: 'Noto Sans SC';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url(https://gstatic.loli.net/s/notosanssc/v26/k3kXo84MPvpLmixcA63oeALhLOCT-xWNm8Hqd37g1OkDRZe7lR4sg1IzSy-MNbE9VH8V.0.woff2) format('woff2');
+    unicode-range: U+4E00-9FFF, U+3400-4DBF;
+}
+"""
     
     return f"""
 /* ============================================
    统一样式系统 - V2 版本
    确保每一页的样式严格一致
+   字体风格: {font_config['display_name']}
    ============================================ */
 
 /* ============================================
    字体嵌入 - 确保 PDF 中的字体可编辑，避免 Type3 字体
-   同时保证浏览器预览正常显示
    
-   字体策略说明：
-   1. 优先使用系统中文字体（PingFang SC、Microsoft YaHei）- 中文标点正确
-   2. Noto Sans SC 作为最后的网络字体后备
+   核心策略：
+   1. 使用 @font-face 显式声明 Web 字体
+   2. 使用国内镜像 (fonts.loli.net / gstatic.loli.net) 确保访问稳定
+   3. 这样 Puppeteer 会将字体嵌入 PDF
    ============================================ */
 
-/* Web字体 - 思源黑体（当系统字体都不可用时的后备） */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+/* 字体导入（国内镜像） */
+@import url('{font_import_url}');
+
+{font_face_css}
 
 /* 全局变量 */
 :root {{
@@ -58,16 +140,8 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     --danger: #ef4444;
     --warning: #f59e0b;
     
-    /* 字体 - 中文系统字体优先，确保中文标点正确 */
-    --font-family: 
-        'PingFang SC',             /* macOS 苹方 - 中文标点正确 */
-        'Microsoft YaHei',         /* Windows 微软雅黑 */
-        'Hiragino Sans GB',        /* macOS 冬青黑体 */
-        'Heiti SC',                /* macOS 黑体 */
-        'WenQuanYi Micro Hei',     /* Linux 文泉驿 */
-        'Noto Sans SC',            /* Google Fonts 后备 */
-        -apple-system,
-        sans-serif;
+    /* 字体 - 根据风格动态设置 */
+    --font-family: {font_family};
     
     /* 画布尺寸 */
     --slide-width: 1280px;
@@ -86,17 +160,9 @@ def generate_unified_css(primary_color: str = "#003366") -> str:
     letter-spacing: 0.05em;
 }}
 
-/* 强制全局字体覆盖 - 中文系统字体优先 */
-body, body * {{
-    font-family: 
-        'PingFang SC',
-        'Microsoft YaHei',
-        'Hiragino Sans GB', 
-        'Heiti SC',
-        'WenQuanYi Micro Hei',
-        'Noto Sans SC',
-        -apple-system,
-        sans-serif !important;
+/* 强制全局字体覆盖 - 确保所有元素使用 Web 字体 */
+html, body, body * {{
+    font-family: {font_family} !important;
 }}
 
 /* ============================================

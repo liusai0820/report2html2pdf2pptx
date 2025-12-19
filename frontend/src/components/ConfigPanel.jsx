@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { User, Layers, FileText, Check, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { User, Layers, FileText, Check, Sparkles, ChevronDown, ChevronUp, Type } from 'lucide-react';
 
 export default function ConfigPanel({ config, onChange }) {
     const [showAdvanced, setShowAdvanced] = useState(true);  // 默认展开
-    
+
     const handleChange = (key, value) => {
         onChange({ ...config, [key]: value });
     };
@@ -26,7 +26,6 @@ export default function ConfigPanel({ config, onChange }) {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-                {/* Target Pages */}
                 <div className="space-y-1">
                     <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1 group relative">
                         <Layers className="w-2.5 h-2.5" />
@@ -44,17 +43,18 @@ export default function ConfigPanel({ config, onChange }) {
                         <option value={20}>20 页</option>
                         <option value={25}>25 页</option>
                         <option value={35}>35 页</option>
+                        <option value={50}>50 页 (深度报告)</option>
+                        <option value={80}>80 页 (研究报告)</option>
                     </select>
                 </div>
 
-                {/* Content Depth */}
                 <div className="space-y-1">
                     <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1 group relative">
                         <FileText className="w-2.5 h-2.5" />
                         深度
                         <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block w-32 p-1.5 bg-slate-800 text-white text-[9px] rounded shadow-lg z-50 normal-case font-normal leading-relaxed">
-                            <b>简洁</b>: 核心结论<br/>
-                            <b>标准</b>: 论据充分<br/>
+                            <b>简洁</b>: 核心结论<br />
+                            <b>标准</b>: 论据充分<br />
                             <b>深入</b>: 全面细节
                         </div>
                     </label>
@@ -70,20 +70,38 @@ export default function ConfigPanel({ config, onChange }) {
                 </div>
             </div>
 
+            {/* 字体选择 */}
+            <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1 group relative">
+                    <Type className="w-2.5 h-2.5" />
+                    字体风格
+                    <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block w-40 p-1.5 bg-slate-800 text-white text-[9px] rounded shadow-lg z-50 normal-case font-normal leading-relaxed">
+                        <b>现代简约</b>: 黑体系，适合商务汇报<br />
+                        <b>典雅庄重</b>: 楷体系，适合政务公文
+                    </div>
+                </label>
+                <select
+                    value={config.font_style || 'modern'}
+                    onChange={(e) => handleChange('font_style', e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-md px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-slate-400"
+                >
+                    <option value="modern">现代简约（黑体）</option>
+                    <option value="classic">典雅庄重（楷体）</option>
+                </select>
+            </div>
+
             {/* Flags - inline */}
             <div className="flex gap-4">
                 <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                    <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${
-                        !config.skip_pdf ? 'bg-slate-900 border-slate-900' : 'border-slate-300 bg-white'
-                    }`} onClick={() => handleChange('skip_pdf', !config.skip_pdf)}>
+                    <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${!config.skip_pdf ? 'bg-slate-900 border-slate-900' : 'border-slate-300 bg-white'
+                        }`} onClick={() => handleChange('skip_pdf', !config.skip_pdf)}>
                         {!config.skip_pdf && <Check className="w-2.5 h-2.5 text-white" />}
                     </div>
                     <span className="text-[11px] text-slate-600">生成 PDF</span>
                 </label>
                 <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                    <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${
-                        !config.skip_pptx ? 'bg-slate-900 border-slate-900' : 'border-slate-300 bg-white'
-                    }`} onClick={() => handleChange('skip_pptx', !config.skip_pptx)}>
+                    <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${!config.skip_pptx ? 'bg-slate-900 border-slate-900' : 'border-slate-300 bg-white'
+                        }`} onClick={() => handleChange('skip_pptx', !config.skip_pptx)}>
                         {!config.skip_pptx && <Check className="w-2.5 h-2.5 text-white" />}
                     </div>
                     <span className="text-[11px] text-slate-600">生成 PPTX</span>
@@ -92,7 +110,7 @@ export default function ConfigPanel({ config, onChange }) {
 
             {/* Custom Instructions - 标签样式与其他配置项一致 */}
             <div className="space-y-1">
-                <button 
+                <button
                     onClick={() => setShowAdvanced(!showAdvanced)}
                     className="w-full flex items-center justify-between text-[10px] font-semibold text-slate-500 uppercase tracking-wider"
                 >

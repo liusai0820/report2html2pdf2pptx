@@ -52,10 +52,29 @@ class GenerationContext:
 DESIGNER_SYSTEM_PROMPT = """
 # 你是一位世界级的演示文稿视觉设计师
 
-你融合了：
-- **麦肯锡**的结构化思维和金字塔原理
-- **Apple Keynote** 的极简美学和视觉层次
-- **政府公文**的严谨规范
+## ⚠️ 画布约束（最高优先级！必须严格遵守！）
+
+**画布尺寸**：1280 × 720 像素（固定，不可改变）
+
+**布局分区**：
+```
+┌─────────────────────────────────────────────┐
+│                 顶部边距 50px                 │
+├─────────────────────────────────────────────┤
+│  左边距    [标题区] 高度约 80px      右边距   │
+│   60px    ─────────────────────────   60px  │
+│           [内容区] 最大高度 480px            │
+│           ⚠️ 内容不要填满，留有余地          │
+│           ─────────────────────────          │
+│           [底部保留区 80px] ← 禁止放内容！    │
+└─────────────────────────────────────────────┘
+```
+
+**硬性规则**：
+1. ✘ **严禁内容进入底部 80px 区域**（预留给页码）
+2. ✘ **严禁内容超出 1280px 宽度**
+3. ✘ **严禁图表溢出容器**（图表必须设置 max-width）
+4. ✔ 所有容器必须添加 `overflow: hidden`
 
 ## 🎯 核心使命
 
@@ -66,51 +85,31 @@ DESIGNER_SYSTEM_PROMPT = """
 
 ## 🎨 设计原则
 
-### 1. 内容精炼 (Less is More)
-- **拒绝长篇大论**：严禁使用超过 3 行的长段落
-- **要点式写作**：使用短句、关键词，列表项控制在 2 行以内
-- **高信噪比**：去除废话，保留核心数据和观点
-- **标题即结论**：标题要完整表达整页的核心思想
+### 内容精炼 (Less is More)
+- 严禁使用超过 3 行的长段落
+- 使用短句、关键词，列表项控制在 2 行以内
+- 标题要完整表达整页的核心思想
 
-### 2. 视觉优先
-- **能用图不用表，能用表不用字**
+### 视觉优先
+- 能用图不用表，能用表不用字
 - 使用“大数字”作为视觉锚点
 - 重要概念使用卡片封装
 
-### 3. 视觉层次
-- 标题 32-36px，加粗
-- 子标题/卡片标题 20-24px，加粗
-- 正文 16-18px
-- 小字/注释 14px
-
-### 4. 布局自由
+### 布局自由
 你可以自由使用：
 - 左右两栏布局
 - 三卡片网格
 - 列表 + 说明
 - 表格对比
 
-## 🚫 禁止事项（重要！）
+## 🚫 禁止事项
 
-### 禁止侧边装饰
-- ✘ 卡片左侧的彩色竖条 (border-left 装饰)
-- ✘ 页面边缘的装饰色块
-- ✘ 每个卡片不同颜色的左边框
-
-### 禁止 Emoji 和图标
-- ✘ 不要使用任何 Emoji（如 💡 🚀 ✅ ❌ ⭐）
-- ✘ 不要使用 Unicode 特殊符号图标
-- ✘ 不要使用 icon font
-- 这会导致 PPTX 转换出现乱码
-
-### 禁止触碰底部 (Bottom Safe Zone)
-- ✘ **严禁内容进入底部 80px 区域**
-- 底部 80px 是预留给页码和版权信息的
-- 画布最大可用高度仅为 640px (720px - 80px)
-
-### 禁止底部结论框
-- ✘ 不要在页面底部添加 "So What" 结论框
-- 核心观点应该放在标题和副标题中
+- ✘ 卡片左侧彩色竖条装饰
+- ✘ 任何 Emoji 和 Unicode 图标（会导致 PPTX 乱码）
+- ✘ 底部结论框 / "So What" 总结
+- ✘ Footer 页脚（不要添加 "STRATEGIC RESEARCH REPORT"、页码、"CONFIDENTIAL" 等）
+- ✘ 内容进入底部 80px 区域（已在画布约束中强调）
+- ✘ 内容超出 1280px 宽度（已在画布约束中强调）
 
 ## ✅ 允许使用
 
@@ -124,13 +123,14 @@ DESIGNER_SYSTEM_PROMPT = """
 当内容包含数据趋势、对比时，可以生成 ECharts 图表：
 
 ```html
-<div style="width: 100%; height: 300px;" id="chart_唯一ID"></div>
+<div style="width: 100%; max-width: 800px; height: 280px;" id="chart_唯一ID"></div>
 <script>
 (function() {
     var chart = echarts.init(document.getElementById('chart_唯一ID'));
     chart.setOption({
         animation: false,
         color: ['主题色'],
+        grid: { top: 30, bottom: 30, left: 50, right: 20, containLabel: true },
         xAxis: { type: 'category', data: ['数据标签'] },
         yAxis: { type: 'value' },
         series: [{ data: [数据值], type: 'bar' 或 'line' }]
@@ -139,16 +139,15 @@ DESIGNER_SYSTEM_PROMPT = """
 </script>
 ```
 
-## 📐 画布约束
-
-- **尺寸**：1280 × 720 像素
-- **边距**：四周 60px
-- **避免溢出**：但不要为了避免溢出而内容空洞
+**图表注意事项**：
+- 图表容器必须设置 `max-width`，防止溢出
+- 使用 `grid: { containLabel: true }` 确保标签在图表内
+- 图表高度不超过 280px
 
 ## ✅ 输出要求
 
 1. 使用内联样式 (style 属性)
-2. 字体使用 'Noto Sans SC', sans-serif
+2. 字体使用 var(--font-family) 或指定的字体族
 3. 直接输出 HTML，不要任何解释
 """
 
@@ -212,36 +211,62 @@ class AIDesigner:
         custom_section = ""
         if context.custom_instructions and context.custom_instructions.strip():
             custom_section = f"""
-## 用户特别要求（请务必遵循）
+## ⚠️ 用户特别要求（最高优先级！）
 
-用户提供了以下特别要求，请在规划大纲时充分考虑：
+用户提供了以下特别要求，**你必须严格遵循**：
 
 ```
 {context.custom_instructions}
 ```
 
-请在满足上述要求的前提下，保持专业的结构和逻辑。
+**提示**：如果用户要求深入、全面、更多内容等，你可以根据需要突破目标页数限制。内容质量和用户满意度优先。
 """
+        
+        # 根据内容深度决定页数指导
+        depth_guidance = {
+            "brief": "精简版，只保留核心观点",
+            "normal": "标准版，平衡内容和篇幅",
+            "detailed": "深入版，充分展开论述，可适当增加页数"
+        }
+        depth_hint = depth_guidance.get(context.content_depth, depth_guidance["normal"])
         
         return f"""
 # 大纲规划任务
 
-你是一位顶级咨询公司的项目总监。请根据以下文档内容，规划一份专业的演示文稿大纲。
+你是一位 **Cathy Wood 级别的顶级分析师** 和 **麦肯锡级别的战略顾问**。
+请根据以下文档内容，规划一份 **专业、深入、有洞察力** 的演示文稿大纲。
 
 ## 输入信息
 
 ### 文档内容
 ```
-{context.document_content[:12000]}
+{context.document_content[:50000]}
 ```
 
 ### 项目信息
 - 文档名称：{context.document_name}
 - 汇报单位：{context.organization}
 - 场景类型：{context.scenario}
-- 目标页数：约 {context.target_pages} 页
+- 目标页数：约 {context.target_pages} 页（{depth_hint}）
 - 内容深度：{context.content_depth}
 {custom_section}
+
+## 🎯 核心目标
+
+你的任务是生成一份 **收费级别** 的专业报告大纲：
+- **像券商研究报告** 那样细致全面
+- **像麦肯锡战略报告** 那样有框架有洞察
+- **每一页都要有信息量**，绝不注水
+
+## ⚠️ 页数硬性要求（必须遵守！）
+
+**你必须生成 {context.target_pages} 页左右的大纲！**
+
+- 最少不能低于 {int(context.target_pages * 0.9)} 页
+- 如果原始内容不够，你必须扩充内容来达到页数要求
+- 不要自作主张减少页数，用户已经明确选择了 {context.target_pages} 页
+- 每个章节可以有多个 CONTENT 页，确保总页数达标
+
 ## 规划原则
 
 ### 1. 金字塔结构
@@ -249,11 +274,11 @@ class AIDesigner:
 - 每个章节有明确的核心观点
 - 从宏观到微观，层层递进
 
-### 2. 颗粒度控制
+### 2. 内容深度
 - 每页只讲一个核心观点
-- 复杂内容要拆分成多页
+- 复杂内容要拆分成多页（宁多勿少）
 - 数据密集的内容单独成页
-- 不要为了凑页数而注水
+- **如果内容丰富，不要压缩，该用多少页就用多少页**
 
 ### 3. 故事节奏
 - 开篇要抓人（背景/痛点/机遇）
@@ -266,6 +291,13 @@ class AIDesigner:
 - 例如：
   - ❌ "市场规模分析"（主题式，太空洞）
   - ✅ "市场规模 5 年翻倍，年复合增长率达 23%"（结论式，有信息量）
+
+### 5. 内容扩充
+如果原始文档内容不够丰富，你 **可以并且应该** 基于你的专业知识进行扩充：
+- 补充行业背景知识
+- 添加相关数据和案例
+- 提供深度分析和洞察
+- 给出战略建议和行动计划
 
 ## 输出格式
 
@@ -301,21 +333,24 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         design_tokens = context.design_system.get_tokens()
         colors = design_tokens.colors.to_dict()
         
+        # 获取字体配置 - 根据 font_style 动态选择
+        font_family = design_tokens.typography.font_family_base
+        
         # 根据页面类型选择不同的 Prompt 策略
         if page_info.type == "COVER":
-            return self._build_cover_prompt(context, page_info, design_prompt, colors)
+            return self._build_cover_prompt(context, page_info, design_prompt, colors, font_family)
         elif page_info.type == "AGENDA":
-            return self._build_agenda_prompt(context, page_info, design_prompt, colors)
+            return self._build_agenda_prompt(context, page_info, design_prompt, colors, font_family)
         elif page_info.type == "SECTION":
-            return self._build_section_prompt(context, page_info, design_prompt, colors)
+            return self._build_section_prompt(context, page_info, design_prompt, colors, font_family)
         elif page_info.type == "CLOSING":
-            return self._build_closing_prompt(context, page_info, design_prompt, colors)
+            return self._build_closing_prompt(context, page_info, design_prompt, colors, font_family)
         else:
-            return self._build_content_prompt(context, page_info, design_prompt, colors)
+            return self._build_content_prompt(context, page_info, design_prompt, colors, font_family)
     
     def _build_cover_prompt(
         self, context: GenerationContext, page_info: PageInfo, 
-        design_prompt: str, colors: Dict[str, str]
+        design_prompt: str, colors: Dict[str, str], font_family: str
     ) -> str:
         """封面页 Prompt - 内联样式"""
         from datetime import datetime
@@ -326,7 +361,6 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 
 ## 封面信息
 - 主标题：{page_info.title}
-- 副标题：汇报材料
 - 汇报单位：{context.organization}
 - 日期：{current_date}
 
@@ -335,14 +369,13 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 - 纯白背景
 - **使用主题色 {colors['primary']} 进行装饰**（如顶部/底部装饰条，或标题强调）
 - 主标题居中，48px，深色文字
-- 副标题 20px，可以使用主题色
 - 底部左右分布：单位和日期
 
 ## 输出
 
 直接输出 HTML，不要任何解释：
 
-<div style="width: 1280px; height: 720px; background: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px; box-sizing: border-box; font-family: 'Noto Sans SC', sans-serif; position: relative; overflow: hidden;">
+<div style="width: 1280px; height: 720px; background: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px; box-sizing: border-box; font-family: {font_family}; position: relative; overflow: hidden;">
     <!-- 顶部装饰条 -->
     <div style="position: absolute; top: 0; left: 0; right: 0; height: 16px; background: {colors['primary']};"></div>
     
@@ -351,10 +384,8 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
     <!-- 装饰线 -->
     <div style="width: 80px; height: 6px; background: {colors['primary']}; margin: 32px 0;"></div>
     
-    <p style="font-size: 20px; color: {colors['text_secondary']}; margin: 0;">汇报材料</p>
-    
     <div style="position: absolute; bottom: 60px; left: 60px; right: 60px; display: flex; justify-content: space-between; font-size: 14px; color: {colors['text_secondary']};">
-        <span>{context.organization}</span>
+        <span>汇报单位：{context.organization}</span>
         <span>{current_date}</span>
     </div>
 </div>
@@ -362,7 +393,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 
     def _build_agenda_prompt(
         self, context: GenerationContext, page_info: PageInfo,
-        design_prompt: str, colors: Dict[str, str]
+        design_prompt: str, colors: Dict[str, str], font_family: str
     ) -> str:
         """目录页 Prompt - 内联样式"""
         return f"""
@@ -383,7 +414,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 
 直接输出 HTML，不要任何解释：
 
-<div style="width: 1280px; height: 720px; background: #ffffff; padding: 60px; box-sizing: border-box; font-family: 'Noto Sans SC', sans-serif;">
+<div style="width: 1280px; height: 720px; background: #ffffff; padding: 60px; box-sizing: border-box; font-family: {font_family};">
     <h1 style="font-size: 32px; font-weight: 700; color: {colors['text_primary']}; margin: 0 0 40px 0;">目录</h1>
     <div style="display: flex; flex-direction: column; gap: 20px;">
         <!-- 每个章节一行 -->
@@ -398,7 +429,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 
     def _build_section_prompt(
         self, context: GenerationContext, page_info: PageInfo,
-        design_prompt: str, colors: Dict[str, str]
+        design_prompt: str, colors: Dict[str, str], font_family: str
     ) -> str:
         """章节页 Prompt - 内联样式"""
         section_num = page_info.section_num if page_info.section_num > 0 else 1
@@ -421,7 +452,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 
 直接输出 HTML，不要任何解释：
 
-<div style="width: 1280px; height: 720px; background: {colors['primary']}; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: 'Noto Sans SC', sans-serif;">
+<div style="width: 1280px; height: 720px; background: {colors['primary']}; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: {font_family};">
     <div style="font-size: 72px; font-weight: 300; color: rgba(255,255,255,0.3); margin-bottom: 16px;">0{section_num}</div>
     <div style="width: 40px; height: 2px; background: rgba(255,255,255,0.5); margin-bottom: 24px;"></div>
     <h1 style="font-size: 36px; font-weight: 700; color: #ffffff; margin: 0;">{page_info.title}</h1>
@@ -430,7 +461,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 
     def _build_closing_prompt(
         self, context: GenerationContext, page_info: PageInfo,
-        design_prompt: str, colors: Dict[str, str]
+        design_prompt: str, colors: Dict[str, str], font_family: str
     ) -> str:
         """封底页 Prompt - 内联样式"""
         return f"""
@@ -447,7 +478,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 
 直接输出 HTML，不要任何解释：
 
-<div style="width: 1280px; height: 720px; background: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: 'Noto Sans SC', sans-serif; position: relative;">
+<div style="width: 1280px; height: 720px; background: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: {font_family}; position: relative;">
     <!-- 顶部装饰 -->
     <div style="position: absolute; top: 0; left: 0; right: 0; height: 8px; background: {colors['primary']}; opacity: 0.6;"></div>
 
@@ -464,7 +495,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 
     def _build_content_prompt(
         self, context: GenerationContext, page_info: PageInfo,
-        design_prompt: str, colors: Dict[str, str]
+        design_prompt: str, colors: Dict[str, str], font_family: str
     ) -> str:
         """正文页 Prompt - 内容丰富 + 内联样式"""
         
@@ -562,14 +593,14 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 如果内容包含数据趋势，可以生成 ECharts（高度不超过 250px）：
 
 ```html
-<div style="width: 100%; height: 250px;" id="chart_page{page_info.page_num}"></div>
+<div style="width: 100%; max-width: calc(100% - 120px); height: 250px;" id="chart_page{page_info.page_num}"></div>
 <script>
 (function() {{
     var chart = echarts.init(document.getElementById('chart_page{page_info.page_num}'));
     chart.setOption({{
         animation: false,
         color: ['{colors["primary"]}', '{colors["accent"]}'],
-        grid: {{ top: 30, bottom: 25, left: 45, right: 15 }},
+        grid: {{ top: 30, bottom: 25, left: 45, right: 15, containLabel: true }},
         xAxis: {{ type: 'category', data: ['标签'] }},
         yAxis: {{ type: 'value' }},
         series: [{{ data: [数值], type: 'bar' }}]
@@ -582,15 +613,15 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 
 直接输出完整 HTML：
 
-<div style="width: 1280px; height: 720px; background: #ffffff; padding: 50px 60px 80px; box-sizing: border-box; font-family: 'Noto Sans SC', sans-serif; display: flex; flex-direction: column;">
+<div style="width: 1280px; height: 720px; background: #ffffff; padding: 50px 60px 80px; box-sizing: border-box; font-family: {font_family}; display: flex; flex-direction: column; overflow: hidden;">
     <!-- 标题区 -->
-    <div style="margin-bottom: 24px; flex-shrink: 0;">
+    <div style="margin-bottom: 24px; flex-shrink: 0; max-width: 100%;">
         <h1 style="font-size: 32px; font-weight: 700; color: {colors['text_primary']}; margin: 0; line-height: 1.3;">标题（核心观点）</h1>
         <p style="font-size: 16px; color: {colors['text_secondary']}; margin: 8px 0 0 0;">副标题/引导语</p>
     </div>
     
     <!-- 内容区 - 注意不要超出，底部有 80px 保留区 -->
-    <div style="flex: 1; display: flex; gap: 32px; overflow: hidden;">
+    <div style="flex: 1; display: flex; gap: 32px; overflow: hidden; max-width: 100%;">
         <!-- 你的创意内容 -->
     </div>
 </div>
@@ -638,6 +669,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
                         {"role": "user", "content": prompt}
                     ],
                     temperature=self.temperature,
+                    max_tokens=16000,  # 增加输出长度限制，支持 80+ 页大纲
                 ),
                 timeout=self.timeout
             )

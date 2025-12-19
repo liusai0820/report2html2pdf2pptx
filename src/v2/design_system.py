@@ -117,9 +117,29 @@ class ColorPalette:
 class Typography:
     """字体排版 - AI 必须遵守的字体规范"""
     
-    # 字体族
-    font_family_base: str = "'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif"
-    font_family_heading: str = "'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif"
+    # 字体风格: 'modern' (黑体) 或 'classic' (楷体)
+    font_style: str = "modern"
+    
+    # 字体族预设 - 使用 Web 字体确保 PDF 可编辑
+    FONT_PRESETS = {
+        "modern": {
+            # 现代风格 - 黑体系 (使用 Noto Sans SC Web 字体)
+            "base": "'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif",
+            "heading": "'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif",
+            "display_name": "现代简约（黑体）"
+        },
+        "classic": {
+            # 典雅风格 - 楷体系 (使用 LXGW WenKai 和 Ma Shan Zheng Web 字体)
+            # 这两个是 Google Fonts 官方支持的中文楷体，可以正确嵌入 PDF
+            "base": "'LXGW WenKai', 'Ma Shan Zheng', 'STKaiti', 'KaiTi', serif",
+            "heading": "'LXGW WenKai', 'Ma Shan Zheng', 'STKaiti', 'KaiTi', serif",
+            "display_name": "典雅庄重（楷体）"
+        }
+    }
+    
+    # 字体族 - 由 font_style 动态决定
+    font_family_base: str = ""
+    font_family_heading: str = ""
     font_family_mono: str = "'JetBrains Mono', 'Fira Code', monospace"
     
     # 字号范围（px）- AI 可以在范围内选择
@@ -150,9 +170,18 @@ class Typography:
     letter_spacing_normal: str = "0"
     letter_spacing_wide: str = "0.05em"
     
+    def __post_init__(self):
+        """初始化后根据 font_style 设置字体族"""
+        preset = self.FONT_PRESETS.get(self.font_style, self.FONT_PRESETS["modern"])
+        if not self.font_family_base:
+            self.font_family_base = preset["base"]
+        if not self.font_family_heading:
+            self.font_family_heading = preset["heading"]
+    
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
+            "font_style": self.font_style,
             "font_family_base": self.font_family_base,
             "font_family_heading": self.font_family_heading,
             "font_family_mono": self.font_family_mono,
@@ -415,17 +444,20 @@ class DesignSystem:
         self,
         scenario: ScenarioType = ScenarioType.CONSULTING,
         custom_colors: Optional[Dict[str, str]] = None,
+        font_style: str = "modern",  # 'modern' (黑体) 或 'classic' (楷体)
     ):
         self.scenario = scenario
-        self.tokens = self._create_tokens(scenario, custom_colors)
+        self.font_style = font_style
+        self.tokens = self._create_tokens(scenario, custom_colors, font_style)
     
     def _create_tokens(
         self,
         scenario: ScenarioType,
-        custom_colors: Optional[Dict[str, str]] = None
+        custom_colors: Optional[Dict[str, str]] = None,
+        font_style: str = "modern"
     ) -> DesignTokens:
         """创建设计 Token"""
-        
+         
         # 获取场景预设
         preset = self.SCENARIO_PRESETS.get(scenario, self.SCENARIO_PRESETS[ScenarioType.CONSULTING])
         
@@ -443,7 +475,10 @@ class DesignSystem:
                 if hasattr(colors, key):
                     setattr(colors, key, value)
         
-        return DesignTokens(colors=colors)
+        # 创建字体排版配置
+        typography = Typography(font_style=font_style)
+        
+        return DesignTokens(colors=colors, typography=typography)
     
     def get_tokens(self) -> DesignTokens:
         """获取设计 Token"""
@@ -460,7 +495,12 @@ class DesignSystem:
                 setattr(self.tokens.colors, key, value)
     
     @classmethod
-    def from_scenario(cls, scenario_str: str, custom_primary: Optional[str] = None) -> 'DesignSystem':
+    def from_scenario(
+        cls, 
+        scenario_str: str, 
+        custom_primary: Optional[str] = None,
+        font_style: str = "modern"
+    ) -> 'DesignSystem':
         """从场景字符串创建"""
         try:
             scenario = ScenarioType(scenario_str)
@@ -476,7 +516,7 @@ class DesignSystem:
                 "primary_dark": cls._darken_color(custom_primary, 0.2),
             }
         
-        return cls(scenario=scenario, custom_colors=custom_colors)
+        return cls(scenario=scenario, custom_colors=custom_colors, font_style=font_style)
     
     @staticmethod
     def _lighten_color(hex_color: str, amount: float) -> str:

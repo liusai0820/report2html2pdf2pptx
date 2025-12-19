@@ -33,7 +33,7 @@ class PresentationEngine:
         self,
         api_key: str,
         base_url: str,
-        model: str = "google/gemini-2.0-flash-exp:free", # 默认模型
+        model: str = "google/gemini-3-flash-preview", # 默认模型
         output_dir: str = "output",
         max_concurrent: int = 5
     ):
@@ -57,6 +57,7 @@ class PresentationEngine:
         document_name: str,
         scenario: str = "consulting",
         theme_color: Optional[str] = None,
+        font_style: str = "modern",  # 'modern' (黑体) 或 'classic' (楷体)
         organization: str = "汇报单位",
         target_pages: int = 25,
         content_depth: str = "normal",
@@ -65,7 +66,7 @@ class PresentationEngine:
         """执行完整的生成流程"""
         
         # 1. 初始化设计系统和上下文
-        ds = DesignSystem.from_scenario(scenario, custom_primary=theme_color)
+        ds = DesignSystem.from_scenario(scenario, custom_primary=theme_color, font_style=font_style)
         
         context = GenerationContext(
             document_content=document_content,
@@ -181,7 +182,7 @@ class PresentationEngine:
             complete.append({
                 "type": "COVER", 
                 "title": context.document_name, 
-                "content": "汇报材料"
+                "content": ""
             })
         
         # 2. 添加目录
@@ -225,7 +226,8 @@ class PresentationEngine:
     def _wrap_page_html(self, content_html: str, ds: DesignSystem) -> str:
         """为单页 HTML 添加 head 和 body，注入统一 CSS"""
         tokens = ds.get_tokens()
-        unified_css = generate_unified_css(tokens.colors.primary)
+        font_style = tokens.typography.font_style if hasattr(tokens.typography, 'font_style') else 'modern'
+        unified_css = generate_unified_css(tokens.colors.primary, font_style=font_style)
         
         return f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -258,7 +260,8 @@ class PresentationEngine:
     def _merge_all_pages(self, pages_html: List[str], ds: DesignSystem) -> str:
         """合并所有页面，注入统一 CSS"""
         tokens = ds.get_tokens()
-        unified_css = generate_unified_css(tokens.colors.primary)
+        font_style = tokens.typography.font_style if hasattr(tokens.typography, 'font_style') else 'modern'
+        unified_css = generate_unified_css(tokens.colors.primary, font_style=font_style)
         
         # 每个页面包裹在一个容器中，用于 print/pdf
         wrapped_pages = []

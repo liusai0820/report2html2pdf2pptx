@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, MonitorPlay, LayoutGrid, PanelLeft, ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
+import { Download, MonitorPlay, LayoutGrid, PanelLeft, ChevronLeft, ChevronRight, X, Loader2, ZoomIn, ZoomOut } from 'lucide-react';
 import { getOutputUrl } from '../api';
 
 // 强制下载文件（避免浏览器打开文件导致页面跳转）
@@ -28,7 +28,8 @@ export default function ResultView({ result, downloads, isProcessing }) {
     const [viewMode, setViewMode] = useState('split'); // 'split' | 'grid'
     const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [downloadingPptx, setDownloadingPptx] = useState(false);
-    
+    const [gridColumns, setGridColumns] = useState(4); // 网格列数控制 (1-6)
+
     // 如果正在处理中，模拟进度
     const [progress, setProgress] = useState(0);
     useEffect(() => {
@@ -65,10 +66,10 @@ export default function ResultView({ result, downloads, isProcessing }) {
         const handleKeyDown = (e) => {
             const totalPages = result?.pages?.length || 0;
             if (totalPages === 0) return;
-            
+
             // 网格视图下不处理键盘事件
             if (viewMode === 'grid' && !isFullscreen) return;
-            
+
             switch (e.key) {
                 case 'ArrowRight':
                 case 'ArrowDown':
@@ -106,20 +107,20 @@ export default function ResultView({ result, downloads, isProcessing }) {
                     break;
             }
         };
-        
+
         // 全屏模式下的点击翻页（左半屏上一页，右半屏下一页）
         const handleClick = (e) => {
             if (!isFullscreen) return; // 分栏模式下在 Preview 区域单独处理
-            
+
             const totalPages = result?.pages?.length || 0;
             if (totalPages === 0) return;
-            
+
             // 忽略按钮点击
             if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-            
+
             const x = e.clientX;
             const screenWidth = window.innerWidth;
-            
+
             if (x < screenWidth / 3) {
                 setActiveIndex(prev => Math.max(0, prev - 1));
             } else if (x > screenWidth * 2 / 3) {
@@ -131,27 +132,27 @@ export default function ResultView({ result, downloads, isProcessing }) {
         if (isFullscreen) {
             window.addEventListener('click', handleClick);
         }
-        
+
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('click', handleClick);
         };
     }, [isFullscreen, viewMode, result?.pages?.length]);
-    
+
     // 分栏视图预览区点击翻页
     const handlePreviewClick = (e) => {
         if (isFullscreen) return; // 全屏模式由全局事件处理
-        
+
         const totalPages = result?.pages?.length || 0;
         if (totalPages === 0) return;
-        
+
         // 忽略按钮点击
         if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-        
+
         const rect = e.currentTarget.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const width = rect.width;
-        
+
         if (x < width / 3) {
             // 左侧 1/3：上一页
             setActiveIndex(prev => Math.max(0, prev - 1));
@@ -166,7 +167,7 @@ export default function ResultView({ result, downloads, isProcessing }) {
 
     // 解析页面
     const pages = result.pages || [];
-    
+
     // 如果没有 pages 数据，可能是在等待生成或数据结构不匹配
     if (pages.length === 0 && result.html) {
         // Fallback: 只显示主 HTML
@@ -182,7 +183,7 @@ export default function ResultView({ result, downloads, isProcessing }) {
 
     return (
         <div className={`flex flex-col h-full bg-slate-100 ${isFullscreen ? 'fixed inset-0 z-50' : 'relative w-full h-full'}`}>
-            
+
             {/* Toolbar */}
             {/* Toolbar */}
             {!isFullscreen && (
@@ -190,7 +191,7 @@ export default function ResultView({ result, downloads, isProcessing }) {
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100">
-                               <LayoutGrid className="w-5 h-5" />
+                                <LayoutGrid className="w-5 h-5" />
                             </div>
                             <div>
                                 <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2 max-w-[300px] truncate" title={result.document_name || "演示文稿预览"}>
@@ -203,16 +204,16 @@ export default function ResultView({ result, downloads, isProcessing }) {
 
                         {/* View Switcher */}
                         <div className="h-6 w-px bg-slate-200" />
-                        
+
                         <div className="flex bg-slate-100/80 p-1 rounded-lg border border-slate-200/60">
-                            <button 
+                            <button
                                 onClick={() => setViewMode('split')}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${viewMode === 'split' ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
                             >
                                 <PanelLeft className="w-3.5 h-3.5" />
                                 <span>分栏视图</span>
                             </button>
-                            <button 
+                            <button
                                 onClick={() => setViewMode('grid')}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${viewMode === 'grid' ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
                             >
@@ -221,7 +222,7 @@ export default function ResultView({ result, downloads, isProcessing }) {
                             </button>
                         </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                         {/* PDF Download */}
                         {downloads?.pdf ? (
@@ -256,11 +257,11 @@ export default function ResultView({ result, downloads, isProcessing }) {
                                 <span>准备中</span>
                             </button>
                         )}
-                        
+
                         <div className="h-6 w-px bg-slate-200 mx-2" />
-                        
-                        <button 
-                            onClick={() => setIsFullscreen(true)} 
+
+                        <button
+                            onClick={() => setIsFullscreen(true)}
                             className="h-9 pr-4 pl-3 flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition-all shadow-sm hover:shadow hover:-translate-y-0.5"
                         >
                             <MonitorPlay className="w-4 h-4" />
@@ -273,41 +274,81 @@ export default function ResultView({ result, downloads, isProcessing }) {
             {/* Main Content Area */}
             {viewMode === 'grid' && !isFullscreen ? (
                 /* Grid View Overview */
-                <div className="flex-1 overflow-y-auto bg-slate-100 p-8 custom-scrollbar">
-                    <div className="max-w-[1600px] mx-auto">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {pages.map((page, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => {
-                                        setActiveIndex(idx);
-                                        setViewMode('split');
-                                    }}
-                                    className="group flex flex-col gap-2 outline-none animate-in fade-in zoom-in-95 duration-300"
-                                    style={{ animationDelay: `${idx * 30}ms`, animationFillMode: 'backwards' }}
-                                >
-                                    <div className="w-full aspect-video bg-white rounded-lg border border-slate-200 shadow-sm group-hover:shadow-xl group-hover:border-indigo-300 group-hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-                                        {/* 真实内容缩略图 - 使用缩小的 iframe */}
-                                        <div className="absolute inset-0 pointer-events-none w-full h-full bg-slate-50">
-                                            <AutoScaledIframe url={getOutputUrl(page.url)} isThumbnail={true} />
+                <div className="flex-1 flex flex-col overflow-hidden bg-slate-100">
+                    {/* Grid Zoom Controls */}
+                    <div className="flex-shrink-0 px-8 py-3 bg-white/80 backdrop-blur-sm border-b border-slate-200 flex items-center justify-between">
+                        <span className="text-xs text-slate-500">每行显示 {gridColumns} 列</span>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setGridColumns(Math.min(6, gridColumns + 1))}
+                                disabled={gridColumns >= 6}
+                                className="p-1.5 rounded-md hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                title="缩小"
+                            >
+                                <ZoomOut className="w-4 h-4 text-slate-600" />
+                            </button>
+                            <input
+                                type="range"
+                                min="1"
+                                max="6"
+                                value={gridColumns}
+                                onChange={(e) => setGridColumns(parseInt(e.target.value))}
+                                className="w-32 h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-indigo-600"
+                                style={{ direction: 'rtl' }} // 反转滑块方向：左边大，右边小
+                            />
+                            <button
+                                onClick={() => setGridColumns(Math.max(1, gridColumns - 1))}
+                                disabled={gridColumns <= 1}
+                                className="p-1.5 rounded-md hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                title="放大"
+                            >
+                                <ZoomIn className="w-4 h-4 text-slate-600" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Grid Content */}
+                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                        <div className="max-w-[2000px] mx-auto">
+                            <div
+                                className="grid gap-6 transition-all duration-300"
+                                style={{
+                                    gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`
+                                }}
+                            >
+                                {pages.map((page, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => {
+                                            setActiveIndex(idx);
+                                            setViewMode('split');
+                                        }}
+                                        className="group flex flex-col gap-2 outline-none animate-in fade-in zoom-in-95 duration-300"
+                                        style={{ animationDelay: `${idx * 20}ms`, animationFillMode: 'backwards' }}
+                                    >
+                                        <div className="w-full aspect-video bg-white rounded-lg border border-slate-200 shadow-sm group-hover:shadow-xl group-hover:border-indigo-300 group-hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+                                            {/* 真实内容缩略图 - 使用缩小的 iframe */}
+                                            <div className="absolute inset-0 pointer-events-none w-full h-full bg-slate-50">
+                                                <AutoScaledIframe url={getOutputUrl(page.url)} isThumbnail={true} />
+                                            </div>
+                                            {/* Overlay to prevent iframe interaction & add hover effect */}
+                                            <div className="absolute inset-0 bg-transparent group-hover:bg-indigo-500/5 transition-colors" />
                                         </div>
-                                        {/* Overlay to prevent iframe interaction & add hover effect */}
-                                        <div className="absolute inset-0 bg-transparent group-hover:bg-indigo-500/5 transition-colors" />
-                                    </div>
-                                    <div className="flex justify-between items-center px-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                                        <span className="text-xs font-medium text-slate-500">Page {idx + 1}</span>
-                                        <div className="h-px flex-1 bg-slate-200 mx-3 group-hover:bg-slate-300" />
-                                        <span className="text-[10px] text-slate-400 uppercase tracking-wider">{page.type || 'SLIDE'}</span>
-                                    </div>
-                                </button>
-                            ))}
+                                        <div className="flex justify-between items-center px-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                                            <span className="text-xs font-medium text-slate-500">Page {idx + 1}</span>
+                                            <div className="h-px flex-1 bg-slate-200 mx-3 group-hover:bg-slate-300" />
+                                            <span className="text-[10px] text-slate-400 uppercase tracking-wider">{page.type || 'SLIDE'}</span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
             ) : (
                 /* Split View (Original) */
                 <div className="flex-1 flex overflow-hidden">
-                    
+
                     {/* Thumbnails Sidebar */}
                     {!isFullscreen && (
                         <div className="w-64 bg-slate-50 border-r border-slate-200 flex flex-col overflow-y-auto p-4 gap-3 custom-scrollbar flex-shrink-0">
@@ -331,11 +372,11 @@ export default function ResultView({ result, downloads, isProcessing }) {
                     )}
 
                     {/* Preview Canvas */}
-                    <div 
+                    <div
                         className={`flex-1 bg-slate-100/50 flex items-center justify-center relative overflow-hidden ${isFullscreen ? 'bg-black' : 'p-8'} ${!isFullscreen ? 'cursor-pointer' : ''}`}
                         onClick={!isFullscreen ? handlePreviewClick : undefined}
                     >
-                        
+
                         {/* Auto-scaling Container */}
                         <div className="w-full h-full flex items-center justify-center relative pointer-events-none">
                             <AutoScaledIframe url={activeUrl} />
@@ -350,27 +391,27 @@ export default function ResultView({ result, downloads, isProcessing }) {
 
                         {/* Navigation Controls (Visible on Hover in Fullscreen) */}
                         {(isFullscreen) && (
-                             <>
+                            <>
                                 <div className="absolute top-4 right-4 z-50">
                                     <button onClick={() => setIsFullscreen(false)} className="p-2 bg-black/50 text-white rounded hover:bg-black/70 backdrop-blur">
                                         <X className="w-6 h-6" />
                                     </button>
                                 </div>
-                                
-                                <button 
+
+                                <button
                                     onClick={() => setActiveIndex(Math.max(0, activeIndex - 1))}
                                     className={`absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-all ${activeIndex === 0 ? 'hidden' : ''}`}
                                 >
                                     <ChevronLeft className="w-12 h-12" />
                                 </button>
-                                
-                                <button 
+
+                                <button
                                     onClick={() => setActiveIndex(Math.min(pages.length - 1, activeIndex + 1))}
                                     className={`absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-all ${activeIndex === pages.length - 1 ? 'hidden' : ''}`}
                                 >
                                     <ChevronRight className="w-12 h-12" />
                                 </button>
-                             </>
+                            </>
                         )}
                     </div>
                 </div>
@@ -398,7 +439,7 @@ function AutoScaledIframe({ url, isThumbnail = false }) {
             if (!containerRef.current) return;
             const { width, height } = containerRef.current.getBoundingClientRect();
             if (width === 0 || height === 0) return;
-            
+
             // Target: 1280x720
             const scaleX = width / 1280;
             const scaleY = height / 720;
@@ -410,7 +451,7 @@ function AutoScaledIframe({ url, isThumbnail = false }) {
 
         const observer = new ResizeObserver(updateScale);
         if (containerRef.current) observer.observe(containerRef.current);
-        
+
         // Initial calc
         updateScale();
         // Retry shortly after mount to ensure layout is stable
@@ -428,9 +469,9 @@ function AutoScaledIframe({ url, isThumbnail = false }) {
     return (
         <div ref={containerRef} className="w-full h-full flex items-center justify-center overflow-hidden">
             {/* 裁剪容器：精确尺寸 */}
-            <div 
-                style={{ 
-                    width: `${scaledWidth}px`, 
+            <div
+                style={{
+                    width: `${scaledWidth}px`,
                     height: `${scaledHeight}px`,
                     overflow: 'hidden',
                     borderRadius: isThumbnail ? '0' : '8px',
@@ -439,10 +480,10 @@ function AutoScaledIframe({ url, isThumbnail = false }) {
                 }}
             >
                 {/* 内部缩放容器 */}
-                <div 
-                    style={{ 
-                        width: '1280px', 
-                        height: '720px', 
+                <div
+                    style={{
+                        width: '1280px',
+                        height: '720px',
                         transform: `scale(${scale})`,
                         transformOrigin: 'top left'
                     }}

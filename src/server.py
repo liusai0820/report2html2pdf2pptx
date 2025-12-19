@@ -52,6 +52,7 @@ class GenerateRequest(BaseModel):
     document_name: str
     scenario: str = "consulting"
     theme_color: Optional[str] = None  # 添加缺失的主题色字段
+    font_style: Optional[str] = "modern"  # 'modern' (黑体) 或 'classic' (楷体)
     organization: Optional[str] = "深圳国家高技术产业创新中心"
     target_pages: int = 25
     content_depth: str = "normal"

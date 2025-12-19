@@ -89,7 +89,7 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
         from v2.validator import SlideValidator
         from v2.ai_designer import PageInfo
         
-        ds = DesignSystem.from_scenario(req.scenario, custom_primary=req.theme_color)
+        ds = DesignSystem.from_scenario(req.scenario, custom_primary=req.theme_color, font_style=req.font_style or "modern")
         context = GenerationContext(
             document_content=content,
             document_name=req.document_name,

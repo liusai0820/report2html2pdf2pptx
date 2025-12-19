@@ -30,9 +30,10 @@ RUN apt-get update && apt-get install -y \
     libxfixes3 \
     libxrandr2 \
     xdg-utils \
-    # 中文字体
+    # 中文字体 (包含黑体和楷体)
     fonts-noto-cjk \
     fonts-noto-cjk-extra \
+    fonts-arphic-ukai \
     # Node.js
     curl \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
