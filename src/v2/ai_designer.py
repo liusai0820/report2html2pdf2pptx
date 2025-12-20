@@ -43,6 +43,7 @@ class GenerationContext:
     target_pages: int = 25          # 目标页数
     content_depth: str = "normal"   # 内容深度
     custom_instructions: str = ""   # 用户自定义指令
+    bg_image_source: str = "none"   # 背景图来源: 'none', 'unsplash', 'ai'
 
 
 # ============================================================================
@@ -200,9 +201,58 @@ class AIDesigner:
         
         这是核心方法：让 AI 自由设计每一页
         """
-        prompt = self._build_page_prompt(context, page_info)
+        # 只在封面页和结尾页使用背景图（章节页保持纯色以节省 API 消耗）
+        bg_image_url = None
+        if context.bg_image_source != "none" and page_info.type in ["COVER", "CLOSING"]:
+            try:
+                bg_image_url = await self._get_background_image(context, page_info)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Background image generation failed: {e}")
+                bg_image_url = None  # 失败时继续使用纯色背景
+        
+        prompt = self._build_page_prompt(context, page_info, bg_image_url)
+        
+        # 检查是否是直接返回的 HTML（避免 base64 图片导致 token 溢出）
+        if prompt.startswith("__DIRECT_HTML__"):
+            # 直接返回 HTML 模板，不需要调用 AI
+            html = prompt.replace("__DIRECT_HTML__", "").strip()
+            return self._clean_html(html)
+        
+        # 正常流程：调用 AI 生成 HTML
         html = await self._call_ai(prompt)
         return self._clean_html(html)
+    
+    async def _get_background_image(self, context: GenerationContext, page_info: PageInfo) -> Optional[str]:
+        """获取页面背景图 - 仅用于封面和结尾页"""
+        try:
+            from v2.image_generator import ImageGenerator
+            
+            generator = ImageGenerator()
+            source = "unsplash" if context.bg_image_source == "unsplash" else "ai"
+            
+            if page_info.type == "COVER":
+                result = await generator.generate_cover_image(
+                    title=page_info.title,
+                    scenario=context.scenario,
+                    source=source
+                )
+            elif page_info.type == "CLOSING":
+                result = await generator.generate_closing_image(
+                    organization=context.organization,
+                    scenario=context.scenario,
+                    source=source
+                )
+            else:
+                result = None
+            
+            if result:
+                return result.url
+            return None
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to get background image: {e}")
+            return None
     
     def _build_outline_prompt(self, context: GenerationContext) -> str:
         """构建大纲生成 Prompt"""
@@ -325,7 +375,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 请开始规划大纲（直接输出，不要解释）：
 """
     
-    def _build_page_prompt(self, context: GenerationContext, page_info: PageInfo) -> str:
+    def _build_page_prompt(self, context: GenerationContext, page_info: PageInfo, bg_image_url: str = None) -> str:
         """构建页面生成 Prompt - 这是最核心的部分"""
         
         # 获取设计系统描述
@@ -338,25 +388,54 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         
         # 根据页面类型选择不同的 Prompt 策略
         if page_info.type == "COVER":
-            return self._build_cover_prompt(context, page_info, design_prompt, colors, font_family)
+            return self._build_cover_prompt(context, page_info, design_prompt, colors, font_family, bg_image_url)
         elif page_info.type == "AGENDA":
             return self._build_agenda_prompt(context, page_info, design_prompt, colors, font_family)
         elif page_info.type == "SECTION":
+            # 章节页使用纯色背景（不使用背景图以节省 API 消耗）
             return self._build_section_prompt(context, page_info, design_prompt, colors, font_family)
         elif page_info.type == "CLOSING":
-            return self._build_closing_prompt(context, page_info, design_prompt, colors, font_family)
+            return self._build_closing_prompt(context, page_info, design_prompt, colors, font_family, bg_image_url)
         else:
             return self._build_content_prompt(context, page_info, design_prompt, colors, font_family)
     
     def _build_cover_prompt(
         self, context: GenerationContext, page_info: PageInfo, 
-        design_prompt: str, colors: Dict[str, str], font_family: str
+        design_prompt: str, colors: Dict[str, str], font_family: str,
+        bg_image_url: str = None
     ) -> str:
-        """封面页 Prompt - 内联样式"""
+        """封面页 Prompt - 内联样式，支持背景图"""
         from datetime import datetime
         current_date = datetime.now().strftime("%Y年%m月")
         
-        return f"""
+        # 判断是否使用背景图
+        if bg_image_url:
+            # 有背景图时：直接返回完整的 HTML 模板（不需要 AI 生成，避免 base64 导致 token 溢出）
+            # 注意：这里返回的是最终 HTML，不是 prompt！
+            # 用特殊标记让调用方知道这是直接返回的 HTML
+            return f"""__DIRECT_HTML__
+<div style="width: 1280px; height: 720px; background: url('{bg_image_url}') center/cover no-repeat; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px; box-sizing: border-box; font-family: {font_family}; position: relative; overflow: hidden;">
+    <!-- 暗色蒙版 - 让文字更可读 -->
+    <div style="position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.4) 100%);"></div>
+    
+    <!-- 内容层 -->
+    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1;">
+        <h1 style="font-size: 52px; font-weight: 700; color: #ffffff; text-align: center; margin: 0; max-width: 1000px; line-height: 1.3; text-shadow: 0 2px 20px rgba(0,0,0,0.3);">{page_info.title}</h1>
+        
+        <!-- 装饰线 -->
+        <div style="width: 100px; height: 4px; background: rgba(255,255,255,0.8); margin: 36px 0; border-radius: 2px;"></div>
+    </div>
+    
+    <!-- 底部信息 -->
+    <div style="position: absolute; bottom: 50px; left: 60px; right: 60px; display: flex; justify-content: space-between; font-size: 15px; color: rgba(255,255,255,0.9); z-index: 1;">
+        <span>汇报单位：{context.organization}</span>
+        <span>{current_date}</span>
+    </div>
+</div>
+"""
+        else:
+            # 无背景图：使用纯色背景 + 主题色装饰
+            return f"""
 # 封面页设计
 
 ## 封面信息
@@ -431,7 +510,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         self, context: GenerationContext, page_info: PageInfo,
         design_prompt: str, colors: Dict[str, str], font_family: str
     ) -> str:
-        """章节页 Prompt - 内联样式"""
+        """章节页 Prompt - 纯色背景（不使用背景图以节省 API 消耗）"""
         section_num = page_info.section_num if page_info.section_num > 0 else 1
         
         return f"""
@@ -461,10 +540,29 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 
     def _build_closing_prompt(
         self, context: GenerationContext, page_info: PageInfo,
-        design_prompt: str, colors: Dict[str, str], font_family: str
+        design_prompt: str, colors: Dict[str, str], font_family: str,
+        bg_image_url: str = None
     ) -> str:
-        """封底页 Prompt - 内联样式"""
-        return f"""
+        """封底页 Prompt - 内联样式，支持背景图"""
+        
+        if bg_image_url:
+            # 有背景图：直接返回完整的 HTML 模板（不需要 AI 生成，避免 base64 导致 token 溢出）
+            return f"""__DIRECT_HTML__
+<div style="width: 1280px; height: 720px; background: url('{bg_image_url}') center/cover no-repeat; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: {font_family}; position: relative;">
+    <!-- 蒙版 -->
+    <div style="position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.4) 100%);"></div>
+    
+    <!-- 内容 -->
+    <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center;">
+        <div style="font-size: 72px; font-weight: 700; color: #ffffff; margin-bottom: 32px; letter-spacing: 8px; text-shadow: 0 2px 20px rgba(0,0,0,0.3);">谢谢</div>
+        <div style="width: 80px; height: 4px; background: rgba(255,255,255,0.7); margin-bottom: 32px; border-radius: 2px;"></div>
+        <div style="font-size: 20px; color: rgba(255,255,255,0.9);">{context.organization}</div>
+    </div>
+</div>
+"""
+        else:
+            # 无背景图：纯白背景 + 主题色装饰
+            return f"""
 # 封底页设计
 
 ## 设计要求

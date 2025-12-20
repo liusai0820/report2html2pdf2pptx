@@ -98,7 +98,8 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
             design_system=ds,
             target_pages=req.target_pages,
             content_depth=req.content_depth,
-            custom_instructions=req.custom_instructions or ""  # 用户自定义指令
+            custom_instructions=req.custom_instructions or "",  # 用户自定义指令
+            bg_image_source=getattr(req, 'bg_image_source', 'none')  # 背景图来源
         )
         validator = SlideValidator(ds)
         

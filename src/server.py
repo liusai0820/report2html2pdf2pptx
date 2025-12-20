@@ -59,6 +59,7 @@ class GenerateRequest(BaseModel):
     skip_pdf: bool = False
     skip_pptx: bool = False
     custom_instructions: Optional[str] = None  # 用户自定义 AI 指令
+    bg_image_source: Optional[str] = "none"  # 背景图来源: 'none', 'unsplash', 'ai'
 
 class FileInfo(BaseModel):
     name: str

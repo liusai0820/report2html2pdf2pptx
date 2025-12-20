@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Layers, FileText, Check, Sparkles, ChevronDown, ChevronUp, Type } from 'lucide-react';
+import { User, Layers, FileText, Check, Sparkles, ChevronDown, ChevronUp, Type, Image } from 'lucide-react';
 
 export default function ConfigPanel({ config, onChange }) {
     const [showAdvanced, setShowAdvanced] = useState(true);  // 默认展开
@@ -87,6 +87,29 @@ export default function ConfigPanel({ config, onChange }) {
                 >
                     <option value="modern">现代简约（黑体）</option>
                     <option value="classic">典雅庄重（楷体）</option>
+                </select>
+            </div>
+
+            {/* 背景图来源 */}
+            <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1 group relative">
+                    <Image className="w-2.5 h-2.5" />
+                    背景图（封面/章节）
+                    <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block w-48 p-1.5 bg-slate-800 text-white text-[9px] rounded shadow-lg z-50 normal-case font-normal leading-relaxed">
+                        为封面、章节切换页、结尾页添加精美背景图<br />
+                        <b>无</b>: 使用纯色背景<br />
+                        <b>Unsplash</b>: 高质量免费图库<br />
+                        <b>AI 生成</b>: Nano Banana Pro
+                    </div>
+                </label>
+                <select
+                    value={config.bg_image_source || 'none'}
+                    onChange={(e) => handleChange('bg_image_source', e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-md px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-slate-400"
+                >
+                    <option value="none">无背景图（纯色）</option>
+                    <option value="unsplash">Unsplash 图库</option>
+                    <option value="ai">AI 生成（Nano Banana Pro）</option>
                 </select>
             </div>
 
