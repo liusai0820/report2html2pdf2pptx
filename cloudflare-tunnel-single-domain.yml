@@ -1,0 +1,54 @@
+# Cloudflare Tunnel 配置 - 单域名版本
+# 适用于使用单一域名 ppt.gwy.life 的部署方案
+#
+# 将此文件复制到 ~/.cloudflared/config.yml
+# 并根据你的 Tunnel 名称修改相应部分
+#
+# 使用方法:
+#   1. cloudflared tunnel create ppt-tunnel
+#   2. 复制此文件到 ~/.cloudflared/config.yml
+#   3. cloudflared tunnel route dns ppt-tunnel ppt.gwy.life
+#   4. cloudflared tunnel run ppt-tunnel
+
+# Tunnel ID（替换为你的 Tunnel ID）
+tunnel: YOUR_TUNNEL_ID
+credentials-file: /root/.cloudflared/YOUR_TUNNEL_ID.json
+
+# 日志级别
+loglevel: info
+
+# 入站规则
+# 注意：规则按顺序匹配，第一个匹配的规则将被应用
+ingress:
+  # API 请求路由到后端 (端口 8005)
+  - hostname: ppt.gwy.life
+    path: /api/*
+    service: http://localhost:8005
+    originRequest:
+      connectTimeout: 120s
+      noTLSVerify: false
+      # 重要：禁用 HTTP/2 以避免 SSE 问题
+      http2Origin: false
+
+  # 静态输出文件路由到后端 (端口 8005)
+  - hostname: ppt.gwy.life
+    path: /output/*
+    service: http://localhost:8005
+    originRequest:
+      connectTimeout: 30s
+
+  # 预览模板路由到后端 (端口 8005)
+  - hostname: ppt.gwy.life
+    path: /previews/*
+    service: http://localhost:8005
+    originRequest:
+      connectTimeout: 30s
+
+  # 其他所有请求路由到前端 (端口 5173)
+  - hostname: ppt.gwy.life
+    service: http://localhost:5173
+    originRequest:
+      connectTimeout: 30s
+
+  # 默认 404
+  - service: http_status:404

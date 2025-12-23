@@ -1,18 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Loader2, AlertCircle, FileText, Layout, Settings2, FolderOpen, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle, Layout, ChevronLeft, ChevronRight, LogOut, User, ChevronDown } from 'lucide-react';
 import Hero from './components/Hero';
 import UploadZone from './components/UploadZone';
 import ScenarioSelector from './components/ScenarioSelector';
 import ConfigPanel from './components/ConfigPanel';
 import ResultView from './components/ResultView';
 import HistoryOutputSelector from './components/HistoryOutputSelector';
+import UserHistoryPanel from './components/UserHistoryPanel';
+import AuthPage from './components/AuthPage';
+import { useAuth } from './contexts/AuthContext';
 import { fetchScenarios, uploadFile, generatePresentationStream } from './api';
 
 function App() {
+  const { user, profile, loading: authLoading, logout, isAuthenticated, canGenerate, quotaRemaining, trackGeneration, refreshProfile } = useAuth();
+  
+  // 如果正在检查认证状态，显示加载
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+          <span className="text-slate-500">加载中...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // 如果未登录，显示登录页
+  if (!isAuthenticated) {
+    return <AuthPage />;
+  }
+
+  // 已登录，显示主应用
+  return <MainApp user={user} profile={profile} onLogout={logout} canGenerate={canGenerate} quotaRemaining={quotaRemaining} trackGeneration={trackGeneration} />;
+}
+
+function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGeneration }) {
   const [scenarios, setScenarios] = useState([]);
   const [selectedScenario, setSelectedScenario] = useState('consulting');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const [config, setConfig] = useState({
     organization: "",
@@ -74,6 +102,12 @@ function App() {
 
   const handleGenerate = async () => {
     if (!selectedFile) return;
+    
+    // Check quota
+    if (!canGenerate) {
+      setErrorMsg('您的免费额度已用完，请联系管理员升级账户');
+      return;
+    }
 
     // Reset State
     setStatus('generating');
@@ -118,6 +152,15 @@ function App() {
 
           if (event.stage === 'done') {
             setDownloads(event.result.downloads);
+            // Track successful generation with output path
+            // 优先使用 output_dir（纯目录名），否则回退到 html 路径
+            const outputPath = event.result.output_dir || event.result.downloads?.html;
+            trackGeneration({
+              scenario: selectedScenario,
+              document_name: selectedFile.name,
+              output_path: outputPath,
+              pages: event.result.pages_count || 0
+            });
           }
         }
       );
@@ -139,22 +182,74 @@ function App() {
           }`}
       >
         <div className="px-6 py-4 flex-1 overflow-y-auto custom-scrollbar">
+          {/* User Info Bar */}
+          <div className="relative mb-4 pb-3 border-b border-slate-100">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="text-xs font-medium text-slate-700 truncate max-w-[160px]">
+                    {user?.email || '用户'}
+                  </span>
+                  {profile ? (
+                    <span className={`text-[10px] ${canGenerate ? 'text-emerald-500' : 'text-red-500'}`}>
+                      剩余 {quotaRemaining}/{profile.generation_quota} 次
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400">加载中...</span>
+                  )}
+                </div>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {/* User Dropdown Menu */}
+            {showUserMenu && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden">
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    onLogout();
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>退出登录</span>
+                </button>
+              </div>
+            )}
+          </div>
+
           <Hero />
 
           <div className="space-y-5">
+            {/* 用户历史记录 */}
+            <UserHistoryPanel
+              userId={user?.id}
+              onLoad={handleLoadHistory}
+              isLoading={status === 'generating'}
+            />
+
             <Section title="上传文档" step="1">
               <UploadZone
                 selectedFile={selectedFile}
                 onFileSelect={setSelectedFile}
                 onUpload={handleUpload}
               />
-              {/* 历史输出选择器 - 调试模式 */}
-              <div className="mt-2">
-                <HistoryOutputSelector
-                  onLoad={handleLoadHistory}
-                  isLoading={status === 'generating'}
-                />
-              </div>
+              {/* 历史输出选择器 - 仅开发模式显示 */}
+              {import.meta.env.DEV && (
+                <div className="mt-2">
+                  <HistoryOutputSelector
+                    onLoad={handleLoadHistory}
+                    isLoading={status === 'generating'}
+                  />
+                </div>
+              )}
             </Section>
 
             <Section title="选择场景" step="2">
@@ -175,12 +270,18 @@ function App() {
 
         {/* Generate Button */}
         <div className="px-5 py-3 border-t border-slate-100 bg-white/90 backdrop-blur-md z-10">
+          {!canGenerate && (
+            <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-xs text-amber-700 font-medium">🔒 免费额度已用完</p>
+              <p className="text-[10px] text-amber-600 mt-1">请联系管理员升级账户以继续使用</p>
+            </div>
+          )}
           <button
             onClick={handleGenerate}
-            disabled={!selectedFile || (status === 'generating' && !previewData)}
+            disabled={!selectedFile || !canGenerate || (status === 'generating' && !previewData)}
             className={`
               w-full py-3 px-5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all duration-300
-              ${!selectedFile || (status === 'generating' && !previewData)
+              ${!selectedFile || !canGenerate || (status === 'generating' && !previewData)
                 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                 : 'bg-slate-900 text-white hover:bg-slate-800 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 shadow-md'}
             `}
@@ -195,6 +296,8 @@ function App() {
                 <Sparkles className="w-4 h-4" />
                 <span>重新生成</span>
               </>
+            ) : !canGenerate ? (
+              <span>额度已用完</span>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />

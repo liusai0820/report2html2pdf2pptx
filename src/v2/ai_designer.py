@@ -111,6 +111,8 @@ DESIGNER_SYSTEM_PROMPT = """
 - ✘ Footer 页脚（不要添加 "STRATEGIC RESEARCH REPORT"、页码、"CONFIDENTIAL" 等）
 - ✘ 内容进入底部 80px 区域（已在画布约束中强调）
 - ✘ 内容超出 1280px 宽度（已在画布约束中强调）
+- ✘ **禁止使用以下字体**：'PingFang SC', 'Microsoft YaHei', 'Heiti SC', 'SimHei', 'SimSun'（这些字体在服务器上不可用！）
+- ✘ **禁止自定义 font-family**：必须使用 prompt 中提供的字体族，不要自己编造
 
 ## ✅ 允许使用
 
@@ -178,14 +180,21 @@ class AIDesigner:
     async def generate_outline(
         self,
         context: GenerationContext,
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """
         生成大纲
         
         让 AI 根据文档内容自主规划：
+        - 文档的最佳标题（干净、专业）
         - 分几个章节
         - 每章几页
         - 每页的核心观点
+        
+        返回:
+            {
+                "title": "AI 提取的干净标题",
+                "pages": [{"type": "SECTION", "title": "...", "content": "..."}, ...]
+            }
         """
         prompt = self._build_outline_prompt(context)
         response = await self._call_ai(prompt)
@@ -351,11 +360,19 @@ class AIDesigner:
 
 ## 输出格式
 
-每行一条，格式：`类型|标题|内容要点`
+**第一行必须是封面标题**，格式：`TITLE|干净的演示文稿标题`
+
+然后每行一条页面，格式：`类型|标题|内容要点`
 
 类型说明：
 - `SECTION`：章节封面页（如"第一部分 市场分析"）
 - `CONTENT`：正文内容页
+
+**封面标题规则**（非常重要！）：
+- 不要使用原始文件名（可能有日期、下划线、扩展名等杂项）
+- 提取文档的核心主题，生成一个专业、干净的标题
+- 例如："正文_自动驾驶的终局之战.md" → "自动驾驶的终局之战"
+- 例如："2025年AI落地报告_v2.pdf" → "AI落地现状与趋势研究"
 
 **严禁**：
 - 禁止生成 COVER、AGENDA、CLOSING 类型（系统自动添加）
@@ -365,6 +382,7 @@ class AIDesigner:
 ## 示例
 
 ```
+TITLE|全球自动驾驶产业格局与未来趋势
 SECTION|第一部分 产业现状|
 CONTENT|战新产业占比突破 40%，产业结构持续优化|2023年数据：战新产业产值达500亿，占比从35%提升至42%；传统产业比重下降
 CONTENT|头部企业集中度高，前三名占据 65% 份额|A公司280亿(32%)、B公司180亿(21%)、C公司100亿(12%)；中小企业生存空间受挤压
@@ -372,7 +390,7 @@ SECTION|第二部分 核心问题|
 CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.1%，低于全市平均3.5%；龙头企业研发投入占比逐年下降
 ```
 
-请开始规划大纲（直接输出，不要解释）：
+请开始规划（第一行必须是 TITLE，直接输出，不要解释）：
 """
     
     def _build_page_prompt(self, context: GenerationContext, page_info: PageInfo, bg_image_url: str = None) -> str:
@@ -797,9 +815,10 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
                 return await self._call_ai(prompt, retry_count + 1)
             raise
 
-    def _parse_outline(self, text: str) -> List[Dict[str, Any]]:
-        """解析大纲"""
+    def _parse_outline(self, text: str) -> Dict[str, Any]:
+        """解析大纲，返回标题和页面列表"""
         pages = []
+        title = None  # AI 生成的干净标题
         auto_types = {'COVER', 'AGENDA', 'CLOSING'}
         
         for line in text.strip().split('\n'):
@@ -810,6 +829,11 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
             parts = line.split('|')
             if len(parts) >= 2:
                 page_type = parts[0].strip().upper()
+                
+                # 解析 TITLE 行
+                if page_type == 'TITLE':
+                    title = parts[1].strip()
+                    continue
                 
                 # 过滤系统自动生成的类型
                 if page_type in auto_types:
@@ -824,7 +848,10 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
                     'content': parts[2].strip() if len(parts) > 2 else ''
                 })
         
-        return pages
+        return {
+            "title": title,  # 可能为 None，调用方需要处理
+            "pages": pages
+        }
 
     def _clean_html(self, html: str) -> str:
         """清理 HTML"""
@@ -856,5 +883,42 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         # 也处理 Markdown 斜体 *text* 转换为 <em>（可选，但保持一致性）
         # 注意：这个模式要小心，只替换单独的 *text*，不要影响 CSS 选择器等
         # html = re.sub(r'(?<![*])\*([^*]+)\*(?![*])', r'<em>\1</em>', html)
+        
+        # ============================================
+        # 字体清理：移除或替换不可用的字体声明
+        # 这些字体在 Docker 服务器上不存在，会导致 Type3 字体问题
+        # ============================================
+        unavailable_font_patterns = [
+            r"'PingFang SC'",
+            r'"PingFang SC"',
+            r"'Microsoft YaHei'",
+            r'"Microsoft YaHei"',
+            r"'Heiti SC'",
+            r'"Heiti SC"',
+            r"'SimHei'",
+            r'"SimHei"',
+            r"'SimSun'",
+            r'"SimSun"',
+            r"'Hiragino Sans GB'",
+            r'"Hiragino Sans GB"',
+        ]
+        
+        for pattern in unavailable_font_patterns:
+            # 移除这些字体（保留字体列表中的其他字体）
+            html = re.sub(rf"{pattern},?\s*", "", html)
+            html = re.sub(rf",\s*{pattern}", "", html)
+        
+        # 如果 font-family 变成只剩 sans-serif 或 serif，添加可用的中文字体
+        # 匹配类似 font-family: sans-serif 或 font-family: serif
+        html = re.sub(
+            r"font-family:\s*sans-serif",
+            "font-family: 'Noto Sans CJK SC', sans-serif",
+            html
+        )
+        html = re.sub(
+            r"font-family:\s*serif",
+            "font-family: 'AR PL UKai CN', 'Noto Serif CJK SC', serif",
+            html
+        )
         
         return html.strip()

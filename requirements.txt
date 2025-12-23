@@ -10,9 +10,10 @@ jieba>=0.42.1
 # PDF 处理
 PyPDF2>=3.0.0
 pyppeteer>=1.0.2
+pdfplumber>=0.10.0
 
-# Adobe PDF Services
-adobe-pdfservices-sdk>=4.0.0
+# Adobe PDF Services (用于 PPTX 转换)
+pdfservices-sdk>=4.0.0
 
 # Web API (可选)
 fastapi>=0.104.0

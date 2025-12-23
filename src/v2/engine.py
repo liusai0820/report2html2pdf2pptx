@@ -83,8 +83,12 @@ class PresentationEngine:
         # 2. 生成大纲
         if on_progress: on_progress("outline", "AI 正在规划大纲...", 10)
         
-        outline_pages = await self.designer.generate_outline(context)
-        outline_pages = self._complete_outline(outline_pages, context)
+        outline_result = await self.designer.generate_outline(context)
+        # 提取 AI 生成的标题和页面列表
+        ai_title = outline_result.get("title")  # AI 生成的干净标题
+        outline_pages = outline_result.get("pages", [])
+        
+        outline_pages = self._complete_outline(outline_pages, context, ai_title)
         total_pages = len(outline_pages)
         
         if on_progress: 
@@ -168,7 +172,7 @@ class PresentationEngine:
             "pages": pages_result
         }
     
-    def _complete_outline(self, outline: List[Dict], context: GenerationContext) -> List[Dict]:
+    def _complete_outline(self, outline: List[Dict], context: GenerationContext, ai_title: str = None) -> List[Dict]:
         """补全大纲（添加封面、目录、封底）"""
         complete = []
         
@@ -177,11 +181,12 @@ class PresentationEngine:
         has_agenda = any(p['type'] == 'AGENDA' for p in outline)
         has_closing = any(p['type'] == 'CLOSING' for p in outline)
         
-        # 1. 添加封面
+        # 1. 添加封面 - 优先使用 AI 生成的干净标题，否则回退到清理后的文件名
         if not has_cover:
+            cover_title = ai_title if ai_title else self._clean_document_title(context.document_name)
             complete.append({
                 "type": "COVER", 
-                "title": context.document_name, 
+                "title": cover_title, 
                 "content": ""
             })
         
@@ -222,6 +227,45 @@ class PresentationEngine:
             })
             
         return complete
+    
+    def _clean_document_title(self, raw_name: str) -> str:
+        """
+        清理文档名称，生成适合作为封面标题的干净标题
+        
+        示例：
+        - "正文_自动驾驶的终局之战.md" -> "自动驾驶的终局之战" 
+        - "2025-01-15_市场分析报告_v2.pdf" -> "市场分析报告"
+        - "AI落地研究_20251222.docx" -> "AI落地研究"
+        """
+        import re
+        
+        title = raw_name
+        
+        # 1. 移除文件扩展名  
+        title = re.sub(r'\.(md|pdf|docx|doc|txt|pptx|ppt|xlsx|xls)$', '', title, flags=re.IGNORECASE)
+        
+        # 2. 移除日期格式 (各种格式)
+        # 20251222, 2025-12-22, 2025_12_22, 2025.12.22
+        title = re.sub(r'[_\-\.]?20\d{6}[_\-\.]?', '', title)
+        title = re.sub(r'[_\-\.]?20\d{2}[_\-\.]\d{2}[_\-\.]\d{2}[_\-\.]?', '', title)
+        title = re.sub(r'[_\-\.]?20\d{2}年\d{1,2}月\d{1,2}日?[_\-\.]?', '', title)
+        
+        # 3. 移除版本号 (_v1, _v2, -final, _最终版 等)
+        title = re.sub(r'[_\-]?v\d+[_\-]?', '', title, flags=re.IGNORECASE)
+        title = re.sub(r'[_\-]?(final|最终版|修订版|定稿)[_\-]?', '', title, flags=re.IGNORECASE)
+        
+        # 4. 移除常见前缀 (正文_, 附件_, 文档_ 等)
+        title = re.sub(r'^(正文|附件|文档|报告|材料|slides)[_\-]', '', title, flags=re.IGNORECASE)
+        
+        # 5. 将下划线和连字符替换为空格，然后清理多余空格
+        title = re.sub(r'[_\-]+', ' ', title)
+        title = re.sub(r'\s+', ' ', title).strip()
+        
+        # 6. 如果清理后为空，返回"演示文稿"
+        if not title:
+            title = "演示文稿"
+        
+        return title
 
     def _wrap_page_html(self, content_html: str, ds: DesignSystem) -> str:
         """为单页 HTML 添加 head 和 body，注入统一 CSS"""

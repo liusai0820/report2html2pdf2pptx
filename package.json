@@ -5,7 +5,6 @@
   "main": "run.py",
   "scripts": {
     "start": "python run.py",
-    "install": "npm install",
     "clean": "rm -rf output/* generated-slides/"
   },
   "keywords": [

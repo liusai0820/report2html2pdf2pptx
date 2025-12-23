@@ -81,8 +81,8 @@ class PDFToPPTXConverter:
         if proxy_config:
             logger.info(f"✓ 代理已配置: {proxy_config['host']}:{proxy_config['port']}")
             return ClientConfig(
-                connect_timeout=30000,
-                read_timeout=60000,
+                connect_timeout=60000,    # 60 秒连接超时
+                read_timeout=300000,      # 5 分钟读取超时（大文件需要更长时间）
                 proxy_server_config=ProxyServerConfig(
                     host=proxy_config['host'],
                     scheme=proxy_config['scheme'],
@@ -92,8 +92,8 @@ class PDFToPPTXConverter:
         else:
             # 无代理配置
             return ClientConfig(
-                connect_timeout=30000,
-                read_timeout=60000
+                connect_timeout=60000,    # 60 秒连接超时
+                read_timeout=300000       # 5 分钟读取超时
             )
     
     @staticmethod

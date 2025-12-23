@@ -125,7 +125,9 @@ export const getOutputUrl = (path) => {
     // 提取 output/ 之后的路径
     const match = path.match(/output\/(.+)/);
     if (match) {
-        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+        // 使用基础 URL（不带 /api）
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8005/api';
+        const baseUrl = apiUrl.replace('/api', '');
         return `${baseUrl}/output/${match[1]}`;
     }
     return path;

@@ -1,0 +1,46 @@
+# Cloudflare Tunnel 配置示例
+# 将此文件复制到 ~/.cloudflared/config.yml
+# 并根据你的 Tunnel 名称和域名修改相应部分
+
+# Tunnel 名称（替换为你的 Tunnel 名称）
+tunnel: my-presentation
+
+# 凭证文件路径（自动生成，无需修改）
+credentials-file: /Users/your-username/.cloudflared/my-presentation.json
+
+# 日志级别
+loglevel: info
+
+# 入站规则
+ingress:
+  # 前端应用
+  - hostname: app.yourdomain.com
+    service: http://localhost:5173
+    originRequest:
+      connectTimeout: 30s
+      tlsTimeout: 30s
+      tcpKeepAlive: 30s
+      noHappyEyeballs: false
+  
+  # 后端 API
+  - hostname: api.yourdomain.com
+    service: http://localhost:8005
+    originRequest:
+      connectTimeout: 30s
+      tlsTimeout: 30s
+      tcpKeepAlive: 30s
+      noHappyEyeballs: false
+  
+  # 如果使用单一域名，可以用路径区分
+  # - hostname: yourdomain.com
+  #   path: /api/*
+  #   service: http://localhost:8005
+  # - hostname: yourdomain.com
+  #   service: http://localhost:5173
+  
+  # 默认路由（必须放在最后）
+  - service: http_status:404
+
+# 可选：高级配置
+# warp-routing:
+#   enabled: true

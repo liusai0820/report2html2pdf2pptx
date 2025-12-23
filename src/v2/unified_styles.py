@@ -7,28 +7,25 @@
 3. ECharts 图表支持 - 提供标准的图表代码模板
 """
 
-# 字体族预设 - 使用 Web 字体确保 PDF 可编辑
-# 关键：使用国内镜像 CDN，确保网络访问稳定
-# fonts.loli.net 是 Google Fonts 的国内镜像
+# 字体族预设 - 使用 Docker 容器中已安装的字体
+# fonts-noto-cjk: Noto Sans CJK SC (思源黑体), Noto Serif CJK SC (思源宋体)
+# fonts-arphic-ukai: AR PL UKai CN (文鼎楷体)
+# fonts-arphic-uming: AR PL UMing CN (文鼎明体)
 FONT_FAMILIES = {
     "modern": {
         # 现代风格 - 黑体系（思源黑体）
-        "primary": "'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif",
+        # Docker 中安装的字体名: 'Noto Sans CJK SC'
+        "primary": "'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', 'Heiti SC', sans-serif",
         "display_name": "现代简约（黑体）",
-        # 使用国内镜像 - fonts.loli.net
-        "import_url": "https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap",
-        # woff2 使用 gstatic.loli.net 镜像
-        "woff2_url": "https://gstatic.loli.net/s/notosanssc/v26/k3kXo84MPvpLmixcA63oeALhLOCT-xWNm8Hqd37g1OkDRZe7lR4sg1IzSy-MNbE9VH8V.0.woff2"
+        "use_local": True,
     },
     "classic": {
         # 典雅风格 - 楷体系
-        # 使用霞鹜文楷 (LXGW WenKai) 或 Ma Shan Zheng
-        "primary": "'LXGW WenKai', 'Ma Shan Zheng', 'STKaiti', 'KaiTi', serif",
+        # Docker 中安装的字体名: 'AR PL UKai CN' (文鼎楷体)
+        # 备选: 'Noto Serif CJK SC' (思源宋体)
+        "primary": "'AR PL UKai CN', 'Noto Serif CJK SC', 'STKaiti', 'KaiTi', 'Songti SC', serif",
         "display_name": "典雅庄重（楷体）",
-        # 使用国内镜像
-        "import_url": "https://fonts.loli.net/css2?family=Ma+Shan+Zheng&family=LXGW+WenKai:wght@300;400;700&display=swap",
-        # woff2 使用 gstatic.loli.net 镜像
-        "woff2_url": "https://gstatic.loli.net/s/mashanzheng/v10/NaPecZTIAOuHOAAy39FUqIcU0PJoDQ.woff2"
+        "use_local": True,
     }
 }
 
@@ -47,50 +44,12 @@ def generate_unified_css(primary_color: str = "#003366", font_style: str = "mode
     # 获取字体配置
     font_config = FONT_FAMILIES.get(font_style, FONT_FAMILIES["modern"])
     font_family = font_config["primary"]
-    font_import_url = font_config["import_url"]
     
-    # 根据字体风格生成不同的 @font-face
-    if font_style == "classic":
-        # 楷体风格 - 使用霞鹜文楷和 Ma Shan Zheng（国内镜像）
-        font_face_css = """
-/* @font-face 声明 - 楷体 (使用国内镜像确保访问) */
-@font-face {
-    font-family: 'LXGW WenKai';
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-    src: url(https://gstatic.loli.net/s/lxgwwenkai/v3/1cXxaULGY-g1qwHiY2yBe_-7VBs2JG_T.woff2) format('woff2');
-    unicode-range: U+4E00-9FFF, U+3400-4DBF, U+20000-2A6DF, U+2A700-2B73F, U+2B740-2B81F, U+2B820-2CEAF, U+2CEB0-2EBEF, U+30000-3134F, U+31350-323AF, U+F900-FAFF, U+FE30-FE4F;
-}
-@font-face {
-    font-family: 'Ma Shan Zheng';
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-    src: url(https://gstatic.loli.net/s/mashanzheng/v10/NaPecZTIAOuHOAAy39FUqIcU0PJoDQ.woff2) format('woff2');
-    unicode-range: U+4E00-9FFF, U+3400-4DBF;
-}
-"""
-    else:
-        # 黑体风格 - 使用思源黑体（国内镜像）
-        font_face_css = """
-/* @font-face 声明 - 黑体 (使用国内镜像确保访问) */
-@font-face {
-    font-family: 'Noto Sans SC';
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-    src: url(https://gstatic.loli.net/s/notosanssc/v26/k3kXo84MPvpLmixcA63oeALhLOCT-xWNm8Hqd37g1OkDRZe7lR4sg1IzSy-MNbE9VH8V.0.woff2) format('woff2');
-    unicode-range: U+4E00-9FFF, U+3400-4DBF, U+20000-2A6DF, U+2A700-2B73F, U+2B740-2B81F, U+2B820-2CEAF, U+2CEB0-2EBEF, U+30000-3134F, U+31350-323AF, U+F900-FAFF, U+FE30-FE4F;
-}
-@font-face {
-    font-family: 'Noto Sans SC';
-    font-style: normal;
-    font-weight: 700;
-    font-display: swap;
-    src: url(https://gstatic.loli.net/s/notosanssc/v26/k3kXo84MPvpLmixcA63oeALhLOCT-xWNm8Hqd37g1OkDRZe7lR4sg1IzSy-MNbE9VH8V.0.woff2) format('woff2');
-    unicode-range: U+4E00-9FFF, U+3400-4DBF;
-}
+    # 使用系统本地字体，不需要 @font-face 和网络加载
+    # 这样可以避免 Type3 字体问题，因为 Puppeteer 直接使用系统字体
+    font_face_css = """
+/* 使用系统本地字体 - 无需网络加载 */
+/* Docker 容器中已安装: fonts-noto-cjk (Noto Sans CJK SC) */
 """
     
     return f"""
@@ -101,16 +60,13 @@ def generate_unified_css(primary_color: str = "#003366", font_style: str = "mode
    ============================================ */
 
 /* ============================================
-   字体嵌入 - 确保 PDF 中的字体可编辑，避免 Type3 字体
+   字体策略 - 使用系统本地字体
    
    核心策略：
-   1. 使用 @font-face 显式声明 Web 字体
-   2. 使用国内镜像 (fonts.loli.net / gstatic.loli.net) 确保访问稳定
-   3. 这样 Puppeteer 会将字体嵌入 PDF
+   1. Docker 容器中已安装 fonts-noto-cjk (思源黑体)
+   2. 直接使用系统字体，避免网络加载失败
+   3. Puppeteer 使用系统字体生成 PDF，确保可编辑
    ============================================ */
-
-/* 字体导入（国内镜像） */
-@import url('{font_import_url}');
 
 {font_face_css}
 
@@ -160,8 +116,13 @@ def generate_unified_css(primary_color: str = "#003366", font_style: str = "mode
     letter-spacing: 0.05em;
 }}
 
-/* 强制全局字体覆盖 - 确保所有元素使用 Web 字体 */
-html, body, body * {{
+/* 强制全局字体覆盖 - 确保所有元素使用系统字体 */
+/* 使用多重选择器和 !important 来覆盖内联样式 */
+html, body, body *,
+div, span, p, h1, h2, h3, h4, h5, h6,
+table, tr, td, th,
+ul, ol, li,
+[style*="font-family"] {{
     font-family: {font_family} !important;
 }}
 

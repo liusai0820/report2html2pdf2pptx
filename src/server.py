@@ -514,9 +514,13 @@ async def generate_stream(req: GenerateRequest):
         generate_with_progress(req),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # 禁用 nginx 缓冲
+            "X-Content-Type-Options": "nosniff",
+            "CF-Cache-Status": "DYNAMIC",
+            "Keep-Alive": "timeout=600, max=1000",
+            "Transfer-Encoding": "chunked",
         }
     )
 
@@ -561,9 +565,15 @@ async def generate_v2(req: GenerateRequest):
         generate_v2_stream(req),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
+            "X-Accel-Buffering": "no",  # 禁用 nginx 缓冲
+            "X-Content-Type-Options": "nosniff",
+            # Cloudflare 相关
+            "CF-Cache-Status": "DYNAMIC",
+            # 防止连接被提前关闭
+            "Keep-Alive": "timeout=600, max=1000",
+            "Transfer-Encoding": "chunked",
         }
     )
 

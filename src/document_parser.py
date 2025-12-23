@@ -78,6 +78,52 @@ class DocumentParser:
         return True
     
     @staticmethod
+    def _parse_doc_with_antiword(file_path: str) -> Dict:
+        """使用 antiword 工具解析旧版 Word 97-2003 (.doc) 文件"""
+        import subprocess
+        
+        try:
+            # 调用 antiword 命令行工具
+            result = subprocess.run(
+                ['antiword', '-m', 'UTF-8', file_path],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode != 0:
+                error_msg = result.stderr.strip()
+                if 'not a Word Document' in error_msg:
+                    raise ValueError("文件不是有效的 Word 文档")
+                raise ValueError(f"antiword 解析失败: {error_msg}")
+            
+            content = result.stdout.strip()
+            
+            if not content:
+                raise ValueError("文档内容为空")
+            
+            # 提取标题（使用文件名）
+            doc_title = os.path.splitext(os.path.basename(file_path))[0]
+            
+            console.print(f"[green]✓[/green] 已使用 antiword 解析旧版 .doc 文件")
+            
+            return {
+                'full_content': content,
+                'pages': [],
+                'title': doc_title,
+                'style_guide': '现代企业风格'
+            }
+            
+        except FileNotFoundError:
+            # antiword 未安装
+            raise ValueError(
+                "无法解析旧版 .doc 文件（antiword 工具未安装）。\n"
+                "请将文件另存为 .docx 格式后重试，或联系管理员安装 antiword。"
+            )
+        except subprocess.TimeoutExpired:
+            raise ValueError("文档解析超时，请尝试使用较小的文件。")
+    
+    @staticmethod
     def parse_docx(file_path: str) -> Dict:
         """解析DOCX格式的文档 - 转为完整Markdown（包含表格和SDT）"""
         try:
@@ -88,7 +134,29 @@ class DocumentParser:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"文件不存在: {file_path}")
         
-        doc = Document(file_path)
+        # 检测文件是否为旧版 .doc 格式（Word 97-2003）
+        # 旧版 .doc 文件以 D0 CF 11 E0 开头（OLE Compound Document）
+        with open(file_path, 'rb') as f:
+            header = f.read(8)
+            # OLE 格式的魔数：D0 CF 11 E0 A1 B1 1A E1
+            if header[:4] == b'\xd0\xcf\x11\xe0':
+                # 尝试使用 antiword 工具解析旧版 .doc 文件
+                return DocumentParser._parse_doc_with_antiword(file_path)
+        
+        try:
+            doc = Document(file_path)
+        except Exception as e:
+            error_msg = str(e)
+            if "no relationship of type" in error_msg and "officeDocument" in error_msg:
+                raise ValueError(
+                    "文档格式不兼容。这可能是因为：\n"
+                    "1. 文件是旧版 .doc 格式（Word 97-2003），请另存为 .docx 格式\n"
+                    "2. 文件已损坏或不是有效的 Word 文档\n"
+                    "3. 文件扩展名错误（例如 PDF 重命名为 .docx）\n\n"
+                    "请检查文件并重新上传。"
+                )
+            raise ValueError(f"无法打开 Word 文档: {error_msg}")
+        
         markdown_content = []
         
         # 遍历文档中的所有块级元素（段落、表格、SDT等）

@@ -10,8 +10,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# lib/ (注意：这里如果写 lib/ 会导致 frontend/src/lib 被忽略)
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -40,6 +41,7 @@ Thumbs.db
 output/
 generated-slides/
 temp_pdfs/
+input/
 
 # 配置文件
 .env

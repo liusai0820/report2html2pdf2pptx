@@ -98,8 +98,7 @@ export default function ConfigPanel({ config, onChange }) {
                     <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block w-48 p-1.5 bg-slate-800 text-white text-[9px] rounded shadow-lg z-50 normal-case font-normal leading-relaxed">
                         为封面、章节切换页、结尾页添加精美背景图<br />
                         <b>无</b>: 使用纯色背景<br />
-                        <b>Unsplash</b>: 高质量免费图库<br />
-                        <b>AI 生成</b>: Nano Banana Pro
+                        <b>Unsplash</b>: 高质量免费图库
                     </div>
                 </label>
                 <select
@@ -109,7 +108,7 @@ export default function ConfigPanel({ config, onChange }) {
                 >
                     <option value="none">无背景图（纯色）</option>
                     <option value="unsplash">Unsplash 图库</option>
-                    <option value="ai">AI 生成（Nano Banana Pro）</option>
+                    <option value="ai" disabled>AI 生成（暂不可用 - 成本较高）</option>
                 </select>
             </div>
 

@@ -23,6 +23,10 @@ class AIClient:
         self.client = AsyncOpenAI(
             api_key=OPENROUTER_API_KEY,
             base_url=OPENROUTER_BASE_URL,
+            default_headers={
+                "HTTP-Referer": "https://ppt.gwy.life",
+                "X-Title": "SlideAI"
+            }
         )
         self.system_prompt = self._load_system_prompt()
     

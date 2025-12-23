@@ -50,10 +50,18 @@ async function convertToPDF(htmlPath, pdfPath) {
         '--disable-gpu',
         '--disable-web-security',
         '--allow-file-access-from-files',
-        // 字体渲染优化 - 防止 Type3 字体
+        // 字体渲染优化 - 关键参数
         '--font-render-hinting=none',
         '--disable-font-subpixel-positioning',
-        '--enable-font-antialiasing'
+        '--enable-font-antialiasing',
+        // 强制使用系统字体（避免下载失败）
+        '--disable-remote-fonts=false',
+        // 禁用字体沙盒，让 Chromium 访问所有系统字体
+        '--disable-features=FontAccess',
+        // 使用硬件加速字体渲染
+        '--enable-oop-rasterization',
+        // 禁用 blink 功能缓存（可能导致字体问题）
+        '--disable-blink-features=AutomationControlled'
       ]
     };
     
@@ -117,14 +125,20 @@ async function convertToPDF(htmlPath, pdfPath) {
       fs.mkdirSync(pdfDir, { recursive: true });
     }
     
-    // 生成 PDF
+    // 生成 PDF - 使用优化配置避免 Type3 字体
     await page.pdf({
       path: absolutePdfPath,
       width: '1280px',
       height: '720px',
       printBackground: true,
       margin: { top: 0, right: 0, bottom: 0, left: 0 },
-      preferCSSPageSize: true
+      preferCSSPageSize: true,
+      // 关键：设置 scale 为 1 可以帮助减少 Type3 字体问题
+      scale: 1,
+      // tagged PDF 可以改善字体嵌入
+      tagged: true,
+      // 设置为 screen 而不是 print，以便更好地保留字体样式
+      omitBackground: false
     });
     
     // 验证文件生成

@@ -105,8 +105,11 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
         
         # 生成大纲
         yield send_event("outline", "AI 设计师正在规划大纲...", 10)
-        outline_pages = await engine.designer.generate_outline(context)
-        outline_pages = engine._complete_outline(outline_pages, context)
+        outline_result = await engine.designer.generate_outline(context)
+        # 提取 AI 生成的标题和页面列表
+        ai_title = outline_result.get("title")  # AI 生成的干净标题
+        outline_pages = outline_result.get("pages", [])
+        outline_pages = engine._complete_outline(outline_pages, context, ai_title)
         total_pages = len(outline_pages)
         
         yield send_event("outline", f"大纲规划完成，共 {total_pages} 页", 20, result={"outline": outline_pages})
@@ -158,18 +161,32 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
         # 不等待 tasks 完成，而是启动它们并在后台运行
         background_tasks = asyncio.gather(*tasks)
         
-        # 监听进度
+        # 监听进度 (带心跳机制，防止 Cloudflare Tunnel 超时)
+        last_heartbeat = asyncio.get_event_loop().time()
+        HEARTBEAT_INTERVAL = 5  # 每 5 秒发送心跳（Cloudflare 超时约 100 秒，留足余量）
+        
         while completed_count < total_pages:
-            # 等待进度更新
-            current = await progress_queue.get()
-            percent = 25 + int(60 * current / total_pages)
-            yield send_event(
-                "content", 
-                f"正在创作页面 ({current}/{total_pages})", 
-                percent, 
-                current=current, 
-                total=total_pages
-            )
+            try:
+                # 使用超时等待，确保可以定期发送心跳
+                current = await asyncio.wait_for(progress_queue.get(), timeout=HEARTBEAT_INTERVAL)
+                percent = 25 + int(60 * current / total_pages)
+                yield send_event(
+                    "content", 
+                    f"正在创作页面 ({current}/{total_pages})", 
+                    percent, 
+                    current=current, 
+                    total=total_pages
+                )
+                last_heartbeat = asyncio.get_event_loop().time()
+            except asyncio.TimeoutError:
+                # 超时未收到进度，发送心跳保持连接
+                yield send_event(
+                    "heartbeat",
+                    f"AI 正在深度思考... ({completed_count}/{total_pages})",
+                    25 + int(60 * completed_count / total_pages),
+                    current=completed_count,
+                    total=total_pages
+                )
         
         # 确保所有任务真的完成了
         await background_tasks
@@ -207,31 +224,77 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
         pptx_path = None
         
         if not req.skip_pdf:
-            yield send_event("pdf", "正在生成 PDF...", 95)
+            yield send_event("pdf", "正在生成 PDF（可能需要较长时间）...", 92)
             # 复用 v1 renderer 的 PDF 生成功能
             from core.output_renderer import OutputRenderer
             v1_renderer = OutputRenderer(str(engine.output_dir))
+            
             try:
-                # 1. 生成 PDF
-                pdf_path = await asyncio.to_thread(v1_renderer.generate_pdf, context.document_name)
+                # 使用后台任务 + 心跳循环，确保 SSE 连接不被断开
+                pdf_task = asyncio.create_task(
+                    asyncio.to_thread(v1_renderer.generate_pdf, context.document_name)
+                )
+                
+                # PDF 生成心跳循环 - 每 5 秒发送一次心跳
+                heartbeat_count = 0
+                while not pdf_task.done():
+                    await asyncio.sleep(5)
+                    heartbeat_count += 1
+                    yield send_event(
+                        "pdf_progress",
+                        f"PDF 生成中... ({heartbeat_count * 5}秒)",
+                        93 + min(heartbeat_count, 4),  # 93-97 之间
+                    )
+                
+                pdf_path = await pdf_task
                 yield send_event("pdf_ready", "PDF 准备就绪", 98, result={"pdf": pdf_path})
                 
                 # 2. 生成 PPTX (依赖 PDF, 且需要用户勾选)
                 if not req.skip_pptx and pdf_path:
-                    yield send_event("pptx", "正在转换 PPTX...", 99)
-                    pptx_path = await asyncio.to_thread(v1_renderer.generate_pptx, pdf_path)
-                    if pptx_path:
-                        yield send_event("pptx_ready", "PPTX 准备就绪", 99, result={"pptx": pptx_path})
+                    try:
+                        yield send_event("pptx", "正在转换 PPTX (可能需要 1-2 分钟)...", 99)
+                        
+                        pptx_task = asyncio.create_task(
+                            asyncio.to_thread(v1_renderer.generate_pptx, pdf_path)
+                        )
+                        
+                        # PPTX 生成心跳循环
+                        heartbeat_count = 0
+                        while not pptx_task.done():
+                            await asyncio.sleep(5)
+                            heartbeat_count += 1
+                            yield send_event(
+                                "pptx_progress",
+                                f"PPTX 转换中... ({heartbeat_count * 5}秒)",
+                                99,
+                            )
+                        
+                        pptx_path = await pptx_task
+                        if pptx_path:
+                            yield send_event("pptx_ready", "PPTX 准备就绪", 99, result={"pptx": pptx_path})
+                        else:
+                            yield send_event("pptx_skipped", "PPTX 转换未成功，但 PDF 可用", 99)
+                    except Exception as pptx_err:
+                        # PPTX 失败不影响整体流程
+                        print(f"PPTX conversion failed: {pptx_err}")
+                        yield send_event("pptx_error", f"PPTX 转换失败 (PDF 仍可用): {str(pptx_err)[:80]}", 99)
                     
             except Exception as e:
-                print(f"PDF/PPTX generation failed: {e}")
+                print(f"PDF generation failed: {e}")
                 import traceback
                 traceback.print_exc()
+                yield send_event("pdf_error", f"PDF 生成失败: {str(e)[:100]}", 98)
                 
-        # 完成
+        # 完成 - 无论 PPTX 是否成功都发送完成事件
         final_result = {
-            "downloads": {"html": str(merged_path), "pdf": pdf_path, "pptx": pptx_path},
-            "pages": pages_result
+            "downloads": {
+                "html": f"/output/{engine.output_dir.name}/presentation.html",
+                "pdf": f"/output/{engine.output_dir.name}/{Path(pdf_path).name}" if pdf_path else None,
+                "pptx": f"/output/{engine.output_dir.name}/{Path(pptx_path).name}" if pptx_path else None,
+            },
+            "output_dir": engine.output_dir.name,  # 直接返回目录名，便于前端使用
+            "pages": pages_result,
+            "pages_count": len(pages_result)
         }
         yield send_event("done", "全部完成", 100, result=final_result)
 
