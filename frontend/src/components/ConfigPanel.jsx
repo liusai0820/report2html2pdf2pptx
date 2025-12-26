@@ -106,9 +106,9 @@ export default function ConfigPanel({ config, onChange }) {
                     onChange={(e) => handleChange('bg_image_source', e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-md px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-slate-400"
                 >
-                    <option value="none">无背景图（纯色）</option>
-                    <option value="unsplash">Unsplash 图库</option>
-                    <option value="ai" disabled>AI 生成（暂不可用 - 成本较高）</option>
+                    <option value="none">无背景图 (纯色)</option>
+                    <option value="unsplash">在线图库 (Unsplash)</option>
+                    <option value="ai">AI 绘图 (ComfyUI)</option>
                 </select>
             </div>
 

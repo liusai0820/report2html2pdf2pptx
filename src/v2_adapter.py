@@ -1,14 +1,32 @@
 """
-V2 API Adapter - 适配 Flask Server
+V2 API Adapter - 适配 FastAPI Server
+
+@input:  前端请求 (GenerateRequest), v2.engine, config
+@output: generate_v2_stream() -> SSE事件流
+@pos:    前端与V2引擎的桥梁，将HTTP请求转换为流式生成过程
+
+⚠️ 一旦我被更新，务必更新：
+   1. 我的头部注释
+   2. /src/_FOLDER.md
 
 将 v2 引擎集成到现有的 FastAPI 服务中
 """
 
 import os
+import asyncio
 from pathlib import Path
 from typing import AsyncGenerator
 from v2.engine import PresentationEngine
 import config
+
+# 全局 PDF 生成信号量 - 限制同时生成 PDF 的任务数
+# Mac Studio M3 Ultra 可以设置为 3-5，防止过多并发导致资源竞争
+MAX_CONCURRENT_PDF_TASKS = int(os.getenv("MAX_CONCURRENT_PDF_TASKS", "3"))
+_pdf_semaphore = asyncio.Semaphore(MAX_CONCURRENT_PDF_TASKS)
+
+# 当前排队情况
+_active_pdf_tasks = 0
+_waiting_pdf_tasks = 0
 
 async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
     """
@@ -109,7 +127,13 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
         # 提取 AI 生成的标题和页面列表
         ai_title = outline_result.get("title")  # AI 生成的干净标题
         outline_pages = outline_result.get("pages", [])
+        
+        # 提取 AI 生成的配图 Prompt
+        cover_image_prompt = outline_result.get("cover_image_prompt")
+        closing_image_prompt = outline_result.get("closing_image_prompt")
+        
         outline_pages = engine._complete_outline(outline_pages, context, ai_title)
+        
         total_pages = len(outline_pages)
         
         yield send_event("outline", f"大纲规划完成，共 {total_pages} 页", 20, result={"outline": outline_pages})
@@ -138,7 +162,14 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
                         section_num=page_data.get('section_num', 0)
                     )
                     
-                    html = await engine.designer.generate_page(context, info)
+                    # 确定是否需要传递自定义配图 Prompt
+                    custom_img_prompt = None
+                    if info.type == "COVER" and cover_image_prompt:
+                        custom_img_prompt = cover_image_prompt
+                    elif info.type == "CLOSING" and closing_image_prompt:
+                        custom_img_prompt = closing_image_prompt
+                    
+                    html = await engine.designer.generate_page(context, info, custom_image_prompt=custom_img_prompt)
                     
                     # 验证
                     validation = validator.validate(html)
@@ -224,66 +255,85 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
         pptx_path = None
         
         if not req.skip_pdf:
-            yield send_event("pdf", "正在生成 PDF（可能需要较长时间）...", 92)
-            # 复用 v1 renderer 的 PDF 生成功能
-            from core.output_renderer import OutputRenderer
-            v1_renderer = OutputRenderer(str(engine.output_dir))
+            global _active_pdf_tasks, _waiting_pdf_tasks
             
-            try:
-                # 使用后台任务 + 心跳循环，确保 SSE 连接不被断开
-                pdf_task = asyncio.create_task(
-                    asyncio.to_thread(v1_renderer.generate_pdf, context.document_name)
-                )
+            # 检查是否需要排队
+            if _pdf_semaphore.locked():
+                _waiting_pdf_tasks += 1
+                yield send_event("pdf_queue", f"PDF 生成排队中... (前面有 {_waiting_pdf_tasks} 个任务)", 91)
+            
+            # 获取 PDF 生成许可
+            async with _pdf_semaphore:
+                if _waiting_pdf_tasks > 0:
+                    _waiting_pdf_tasks -= 1
+                _active_pdf_tasks += 1
                 
-                # PDF 生成心跳循环 - 每 5 秒发送一次心跳
-                heartbeat_count = 0
-                while not pdf_task.done():
-                    await asyncio.sleep(5)
-                    heartbeat_count += 1
-                    yield send_event(
-                        "pdf_progress",
-                        f"PDF 生成中... ({heartbeat_count * 5}秒)",
-                        93 + min(heartbeat_count, 4),  # 93-97 之间
+                yield send_event("pdf", f"正在生成 PDF（当前 {_active_pdf_tasks}/{MAX_CONCURRENT_PDF_TASKS} 个任务运行中）...", 92)
+                # 复用 v1 renderer 的 PDF 生成功能
+                from core.output_renderer import OutputRenderer
+                v1_renderer = OutputRenderer(str(engine.output_dir))
+                
+                try:
+                    # 使用后台任务 + 心跳循环，确保 SSE 连接不被断开
+                    pdf_task = asyncio.create_task(
+                        asyncio.to_thread(v1_renderer.generate_pdf, context.document_name)
                     )
-                
-                pdf_path = await pdf_task
-                yield send_event("pdf_ready", "PDF 准备就绪", 98, result={"pdf": pdf_path})
-                
-                # 2. 生成 PPTX (依赖 PDF, 且需要用户勾选)
-                if not req.skip_pptx and pdf_path:
-                    try:
-                        yield send_event("pptx", "正在转换 PPTX (可能需要 1-2 分钟)...", 99)
-                        
-                        pptx_task = asyncio.create_task(
-                            asyncio.to_thread(v1_renderer.generate_pptx, pdf_path)
-                        )
-                        
-                        # PPTX 生成心跳循环
-                        heartbeat_count = 0
-                        while not pptx_task.done():
-                            await asyncio.sleep(5)
-                            heartbeat_count += 1
-                            yield send_event(
-                                "pptx_progress",
-                                f"PPTX 转换中... ({heartbeat_count * 5}秒)",
-                                99,
-                            )
-                        
-                        pptx_path = await pptx_task
-                        if pptx_path:
-                            yield send_event("pptx_ready", "PPTX 准备就绪", 99, result={"pptx": pptx_path})
-                        else:
-                            yield send_event("pptx_skipped", "PPTX 转换未成功，但 PDF 可用", 99)
-                    except Exception as pptx_err:
-                        # PPTX 失败不影响整体流程
-                        print(f"PPTX conversion failed: {pptx_err}")
-                        yield send_event("pptx_error", f"PPTX 转换失败 (PDF 仍可用): {str(pptx_err)[:80]}", 99)
                     
-            except Exception as e:
-                print(f"PDF generation failed: {e}")
-                import traceback
-                traceback.print_exc()
-                yield send_event("pdf_error", f"PDF 生成失败: {str(e)[:100]}", 98)
+                    # PDF 生成心跳循环 - 每 5 秒发送一次心跳
+                    heartbeat_count = 0
+                    while not pdf_task.done():
+                        await asyncio.sleep(5)
+                        heartbeat_count += 1
+                        yield send_event(
+                            "pdf_progress",
+                            f"PDF 生成中... ({heartbeat_count * 5}秒)",
+                            93 + min(heartbeat_count, 4),  # 93-97 之间
+                        )
+                
+                    pdf_path = await pdf_task
+                    yield send_event("pdf_ready", "PDF 准备就绪", 98, result={"pdf": pdf_path})
+                    
+                    # 2. 生成 PPTX (依赖 PDF, 且需要用户勾选)
+                    # 检查是否全局禁用了 PPTX 转换
+                    if config.DISABLE_PPTX:
+                        yield send_event("pptx_skipped", "PPTX 转换已禁用，请下载 PDF 后使用 WPS 转换", 99)
+                    elif not req.skip_pptx and pdf_path:
+                        try:
+                            yield send_event("pptx", "正在转换 PPTX (可能需要 1-2 分钟)...", 99)
+                            
+                            pptx_task = asyncio.create_task(
+                                asyncio.to_thread(v1_renderer.generate_pptx, pdf_path)
+                            )
+                            
+                            # PPTX 生成心跳循环
+                            heartbeat_count = 0
+                            while not pptx_task.done():
+                                await asyncio.sleep(5)
+                                heartbeat_count += 1
+                                yield send_event(
+                                    "pptx_progress",
+                                    f"PPTX 转换中... ({heartbeat_count * 5}秒)",
+                                    99,
+                                )
+                            
+                            pptx_path = await pptx_task
+                            if pptx_path:
+                                yield send_event("pptx_ready", "PPTX 准备就绪", 99, result={"pptx": pptx_path})
+                            else:
+                                yield send_event("pptx_skipped", "PPTX 转换未成功，但 PDF 可用", 99)
+                        except Exception as pptx_err:
+                            # PPTX 失败不影响整体流程
+                            print(f"PPTX conversion failed: {pptx_err}")
+                            yield send_event("pptx_error", f"PPTX 转换失败 (PDF 仍可用): {str(pptx_err)[:80]}", 99)
+                        
+                except Exception as e:
+                    print(f"PDF generation failed: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    yield send_event("pdf_error", f"PDF 生成失败: {str(e)[:100]}", 98)
+                finally:
+                    # 确保完成后递减活跃任务计数
+                    _active_pdf_tasks -= 1
                 
         # 完成 - 无论 PPTX 是否成功都发送完成事件
         final_result = {

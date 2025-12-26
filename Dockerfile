@@ -59,4 +59,6 @@ ENV PYTHONPATH=/app/src
 
 EXPOSE 8005
 
-CMD ["python", "src/server.py"]
+# 使用 Uvicorn 启动，支持多 worker 模式
+# UVICORN_WORKERS 环境变量控制 worker 数量 (默认 1，生产建议 4+)
+CMD ["sh", "-c", "uvicorn src.server:app --host ${API_HOST:-0.0.0.0} --port ${API_PORT:-8005} --workers ${UVICORN_WORKERS:-1}"]

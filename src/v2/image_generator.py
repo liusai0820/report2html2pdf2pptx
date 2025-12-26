@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Optional, Literal
 from dataclasses import dataclass
 import logging
+import config
 
 logger = logging.getLogger(__name__)
 
@@ -73,14 +74,28 @@ class ImageGenerator:
         self,
         title: str,
         scenario: str,
-        source: Literal["ai", "unsplash"] = "unsplash"
+        source: Literal["ai", "unsplash"] = "unsplash",
+        custom_prompt: Optional[str] = None
     ) -> Optional[GeneratedImage]:
         """生成封面背景图"""
         
-        # 根据场景生成合适的图像描述
-        prompt = self._build_image_prompt(title, scenario, "cover")
+        # 如果提供了自定义 prompt (来自大纲生成)，直接使用
+        if custom_prompt:
+            prompt = custom_prompt
+            # 确保包含关键约束
+            if "no text" not in prompt.lower():
+                prompt += ", no text, photorealistic, 8k, macro photography, depth of field"
+        else:
+            # 根据场景生成合适的图像描述 (fallback)
+            prompt = self._build_image_prompt(title, scenario, "cover")
+        
+        logger.info(f"Generating cover image with source={source}, comfy_enabled={config.COMFYUI_ENABLED}")
         
         if source == "ai":
+            # Try ComfyUI first
+            if config.COMFYUI_ENABLED:
+                res = await self._generate_comfyui_image(prompt)
+                if res: return res
             return await self._generate_ai_image(prompt)
         else:
             return await self._fetch_unsplash_image(prompt)
@@ -96,6 +111,9 @@ class ImageGenerator:
         prompt = self._build_image_prompt(section_title, scenario, "section")
         
         if source == "ai":
+            if config.COMFYUI_ENABLED:
+                res = await self._generate_comfyui_image(prompt)
+                if res: return res
             return await self._generate_ai_image(prompt)
         else:
             return await self._fetch_unsplash_image(prompt)
@@ -104,60 +122,83 @@ class ImageGenerator:
         self,
         organization: str,
         scenario: str,
-        source: Literal["ai", "unsplash"] = "unsplash"
+        source: Literal["ai", "unsplash"] = "unsplash",
+        custom_prompt: Optional[str] = None
     ) -> Optional[GeneratedImage]:
         """生成结尾页背景图"""
         
-        prompt = self._build_image_prompt(organization, scenario, "closing")
+        if custom_prompt:
+            prompt = custom_prompt
+            if "no text" not in prompt.lower():
+                prompt += ", no text, photorealistic, 8k, macro photography, depth of field"
+        else:
+            prompt = self._build_image_prompt(organization, scenario, "closing")
         
         if source == "ai":
+            if config.COMFYUI_ENABLED:
+                res = await self._generate_comfyui_image(prompt)
+                if res: return res
             return await self._generate_ai_image(prompt)
         else:
             return await self._fetch_unsplash_image(prompt)
-    
-    def _build_image_prompt(self, context: str, scenario: str, page_type: str) -> str:
         """根据上下文构建图像生成 prompt - 针对 Nano Banana Pro 优化"""
         
-        # 场景到专业术语的映射（更精确的描述）
-        scenario_keywords = {
-            "consulting": "corporate boardroom, business strategy, executive presentation, professional consulting",
-            "annual_review": "annual celebration, corporate success, achievement award ceremony, year-end milestone",
-            "tech_pitch": "futuristic technology, innovation hub, silicon valley startup, cutting-edge digital",
-            "academic": "university campus, academic research, scholarly study, knowledge discovery",
-            "government": "civic architecture, government building, public policy, institutional governance",
-            "company_intro": "modern corporate headquarters, professional team collaboration, business excellence",
+        # 场景到具体画面的映射（描述实际可见的内容，而非抽象概念）
+        scenario_visuals = {
+            "consulting": "现代化的城市玻璃幕墙建筑群，蓝天白云，俯瞰视角",
+            "annual_review": "金色日出照耀在城市天际线上，温暖的晨光，希望感",
+            "tech_pitch": "科技感的电路板微距特写，蓝色霓虹光效，未来科技",
+            "academic": "古老图书馆的书架走廊，暖色灯光，知识殿堂",
+            "government": "庄严的政府建筑外观，蓝天背景，国旗飘扬",
+            "company_intro": "现代化办公室内部，落地窗外是城市景观，明亮通透",
+            "creative": "彩色抽象几何图形，渐变色彩流动，艺术感",
         }
         
-        # 页面类型对应的场景描述
-        page_descriptions = {
-            "cover": "This is a COVER SLIDE background. Create a wide, cinematic hero image that establishes the theme.",
-            "section": "This is a SECTION DIVIDER background. Create a subtle, elegant abstract background.",
-            "closing": "This is a THANK YOU slide background. Create an inspiring, warm, professional closing image."
+        # 页面类型对应的氛围
+        page_moods = {
+            "cover": "大气磅礴，视觉冲击力强，电影感",
+            "section": "简约优雅，柔和色调，过渡感",
+            "closing": "温暖阳光，积极向上，希望感",
         }
         
-        keywords = scenario_keywords.get(scenario, "professional business corporate")
-        page_desc = page_descriptions.get(page_type, "professional presentation background")
+        visual = scenario_visuals.get(scenario, "现代城市建筑，蓝天白云，商务氛围")
+        mood = page_moods.get(page_type, "专业大气")
         
-        # 构建详细的 prompt
-        prompt = f"""Create a high-quality professional background image for a business presentation slide.
+        # 核心：描述真实可拍摄的画面，明确禁止文字
+        prompt = f"""{visual}，{mood}
 
-TOPIC/CONTEXT: {context}
-STYLE: {keywords}
-PURPOSE: {page_desc}
-
-REQUIREMENTS:
-- Aspect ratio: 16:9 (widescreen)
-- Style: Modern, clean, minimalist with depth
-- Color palette: Sophisticated, professional colors
-- NO TEXT in the image
-- Suitable for dark text overlay (leave some areas for text)
-- High resolution, photorealistic or elegant abstract
-- Professional, premium aesthetic
-
-Generate a stunning, visually striking image that matches this theme perfectly."""
+摄影风格，真实质感，8K超高清
+画面中绝对不能出现任何文字、字母、数字、符号、logo、标志
+纯粹的风景或场景照片，无人物面部特写
+适合作为PPT演示背景图"""
         
         return prompt
     
+    async def _generate_comfyui_image(self, prompt: str) -> Optional[GeneratedImage]:
+        """使用本地 ComfyUI 生成"""
+        import comfyui
+        
+        try:
+             logger.info("Requesting ComfyUI generation...")
+             # run in threadpool because comfyui client is sync
+             image_path = await asyncio.to_thread(comfyui.generate_image, prompt)
+             if image_path:
+                 # Convert to URL path
+                 rel_path = os.path.relpath(image_path, ".")
+                 # Ensure it starts with / for URL
+                 url_path = f"/{rel_path}"
+                 
+                 logger.info(f"ComfyUI success: {url_path}")
+                 return GeneratedImage(
+                     url=url_path,
+                     source="ai_local",
+                     prompt=prompt
+                 )
+        except Exception as e:
+            logger.error(f"ComfyUI generation failed: {e}")
+            
+        return None
+
     async def _generate_ai_image(self, prompt: str) -> Optional[GeneratedImage]:
         """使用 OpenRouter + Gemini (Nano Banana) 生成图像"""
         

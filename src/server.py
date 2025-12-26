@@ -1,6 +1,14 @@
 """
 AI Presentation Generator - FastAPI Server
 支持实时进度推送 (SSE) 和完整的生成流程
+
+@input:  config, core/, v2_adapter, 前端HTTP请求
+@output: REST API端点, SSE流式响应, 静态文件服务
+@pos:    后端服务主入口，所有HTTP请求的网关
+
+⚠️ 一旦我被更新，务必更新：
+   1. 我的头部注释
+   2. /src/_FOLDER.md
 """
 import os
 import sys
@@ -30,7 +38,13 @@ import config
 from core import PresentationGenerator
 from core.context_builder import ContextBuilder
 from core.ai_orchestrator import AIOrchestrator
+import mailer
+import db
 from core.output_renderer import OutputRenderer
+from v2.image_generator import get_image_generator
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+import reporter
 
 # ========== Pydantic Models ==========
 
@@ -82,8 +96,19 @@ async def lifespan(app: FastAPI):
     os.makedirs("input", exist_ok=True)
     os.makedirs("output", exist_ok=True)
     print(f"✓ Adobe PDF Services: {'可用' if config.ADOBE_AVAILABLE else '未配置'}")
+
+    # Initialize Scheduler
+    scheduler = AsyncIOScheduler()
+    # 每天 23:00 (Asia/Shanghai)
+    scheduler.add_job(reporter.send_daily_report, CronTrigger(hour=23, minute=0))
+    scheduler.start()
+    print("📅 Daily report scheduler started (Target: 23:00 Beijing Time)")
+    
     yield
+    
     # Shutdown
+    if scheduler.running:
+        scheduler.shutdown()
 
 app = FastAPI(title="AI Presentation Generator API", lifespan=lifespan)
 
@@ -296,6 +321,26 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Could not save file: {e}")
     
+    # 发送 Telegram 通知 (异步，不阻塞)
+    if config.TELEGRAM_ENABLED:
+        try:
+            msg = f"📂 *新文件上传*\n\n📄 `{file.filename}`\n🕐 {datetime.now().strftime('%H:%M:%S')}"
+            # 这里简单起见直接用 httpx 做一个 fire-and-forget 请求，或者用 BackgroundTasks
+            # 为了避免引入 BackgroundTasks 参数修改太复杂，这里用 asyncio.create_task
+            async def send_notify():
+                try:
+                    async with httpx.AsyncClient() as client:
+                        await client.post(
+                            f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendMessage",
+                            json={"chat_id": config.TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "Markdown"},
+                            timeout=5.0
+                        )
+                except:
+                    pass
+            asyncio.create_task(send_notify())
+        except:
+            pass
+
     return {"filename": file.filename, "status": "success"}
 
 # ========== SSE 实时进度生成 ==========
@@ -363,6 +408,20 @@ async def generate_with_progress(req: GenerateRequest) -> AsyncGenerator[str, No
         
         # ===== Stage 4: 并行生成页面内容 =====
         yield send_event("content", "正在生成幻灯片内容...", 25, current=0, total=total_pages)
+
+        # [ComfyUI Integration] 启动封面生成任务
+        cover_bg_task = None
+        # 只有在配置文件启用了 ComfyUI 且 用户明确选择了 AI 绘图时才生成
+        if config.COMFYUI_ENABLED and req.bg_image_source == "ai":
+            logger.info("启动 AI 封面生成任务 (ComfyUI)...")
+            img_gen = get_image_generator()
+            cover_bg_task = asyncio.create_task(
+                img_gen.generate_cover_image(
+                    title=req.document_name,
+                    scenario=req.scenario,
+                    source="ai"
+                )
+            )
         
         semaphore = asyncio.Semaphore(config.MAX_CONCURRENT_REQUESTS)
         pages_html = [None] * total_pages
@@ -390,6 +449,39 @@ async def generate_with_progress(req: GenerateRequest) -> AsyncGenerator[str, No
         
         # ===== Stage 5: 保存页面并准备预览 =====
         yield send_event("content", "准备预览...", 68)
+
+        # [ComfyUI Integration] 注入封面图
+        if cover_bg_task:
+            try:
+                # 30s 超时
+                cover_img = await asyncio.wait_for(cover_bg_task, timeout=30)
+                if cover_img and cover_img.url and pages_html[0]:
+                    logger.info(f"注入封面图: {cover_img.url}")
+                    # 注入 CSS 覆盖样式
+                    # 增加文字阴影以确保在复杂图片上的可读性
+                    style_inject = f"""
+                    <style>
+                    .cover-slide {{ 
+                        background-image: url('{cover_img.url}') !important;
+                        background-size: cover !important;
+                        background-position: center !important;
+                    }}
+                    /* 增强文字可读性 */
+                    .cover-slide .main-title, 
+                    .cover-slide .sub-title, 
+                    .cover-slide .doc-type,
+                    .cover-slide .footer-item {{ 
+                        color: #ffffff !important; 
+                        text-shadow: 0 2px 10px rgba(0,0,0,0.8) !important;
+                    }}
+                    /* 弱化原有装饰 */
+                    .cover-slide::before, .cover-slide::after {{ opacity: 0; }}
+                    </style>
+                    """
+                    pages_html[0] = pages_html[0].replace("</head>", f"{style_inject}\n</head>")
+                    action_log.append(f"🎨 已生成 AI 封面 ({cover_img.source})")
+            except Exception as e:
+                logger.warning(f"AI 封面生成跳过: {e}")
         
         # 使用线程池执行同步IO操作
         await asyncio.to_thread(lambda: [renderer.save_page(i, html, template) for i, html in enumerate(pages_html, 1)])
@@ -576,6 +668,220 @@ async def generate_v2(req: GenerateRequest):
             "Transfer-Encoding": "chunked",
         }
     )
+
+# ========== Telegram 反馈通知 ==========
+
+import httpx
+
+class FeedbackNotification(BaseModel):
+    rating: int
+    comment: Optional[str] = None
+    user_email: Optional[str] = None
+    document_name: Optional[str] = None
+    generation_id: Optional[str] = None
+    user_id: Optional[str] = None
+
+@app.post("/api/notify-feedback")
+async def notify_feedback(feedback: FeedbackNotification):
+    """发送反馈通知到 Telegram，并尝试自动补发邮件或 AI 回复"""
+    
+    # 异步处理后续逻辑，不阻塞前端响应
+    asyncio.create_task(process_feedback_background(feedback))
+    return {"status": "queued"}
+
+async def process_feedback_background(feedback: FeedbackNotification):
+    """后台处理反馈：补发PDF、AI分析回复、Telegram通知"""
+    
+    # 初始化状态
+    email_sent = False
+    ai_reply_content = None
+    action_log = []
+    
+    # 1. 场景一：生成失败导致的反馈（自动补发 PDF）
+    # 逻辑优化：不仅看当前 generation_id，如果当前没有，尝试搜寻同名文件的最近一次成功记录
+    pdf_path = None
+    
+    # A. 优先检查当前 ID
+    if feedback.generation_id:
+        current_path = Path("output") / feedback.generation_id / "presentation.pdf"
+        if current_path.exists():
+            pdf_path = current_path
+            
+    # B. 如果当前 ID 没找到，尝试智能搜寻最近的成功记录
+    if not pdf_path and feedback.document_name:
+        try:
+            # 提取核心文件名 (假设 document_name 是上传的文件名)
+            # 我们需要遍历 output 下的所有目录，看谁的名字里包含这个 document_name 且里面有 PDF
+            output_dir = Path("output")
+            candidates = []
+            
+            # 简单的模糊匹配
+            raw_name = Path(feedback.document_name).stem # 去掉扩展名
+            
+            for d in output_dir.iterdir():
+                if not d.is_dir(): continue
+                # 检查目录名是否包含文件名关键词 (稍微宽松一点)
+                if raw_name in d.name:
+                    # 检查是否有 PDF
+                    candidate_pdf = d / "presentation.pdf"
+                    if candidate_pdf.exists():
+                        candidates.append(candidate_pdf)
+            
+            # 如果找到了，取修改时间最近的一个
+            if candidates:
+                # 按修改时间倒序
+                candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+                pdf_path = candidates[0]
+                print(f"✨ Smart recovery: Found PDF in {pdf_path.parent.name} for request {feedback.generation_id}")
+                
+        except Exception as e:
+            print(f"Smart recovery failed: {e}")
+
+    pdf_recovered = False
+    
+    # 执行加额度操作 (如果提供了 user_id)
+    quota_added = False
+    new_quota_info = ""
+    if feedback.user_id:
+        success, new_val = db.add_generation_quota(feedback.user_id, 3) # 补偿 3 次
+        if success:
+            quota_added = True
+            new_quota_info = f"（当前剩余额度: {new_val}次）"
+            action_log.append(f"💰 已自动补偿3次额度")
+    
+    if config.SMTP_ENABLED and feedback.user_email and pdf_path and pdf_path.exists():
+        subject = "【HIIC AI团队】您的演示文稿已生成（附系统异常致歉与补偿说明）"
+        body = f"""
+        <p><strong>{feedback.user_email}</strong>，您好！</p>
+        <p>我是创新中心 AI 产品组的运营。</p>
+        <p>监测到您刚才反馈的问题，我们核实发现：您的文档其实<strong>已经成功生成</strong>，只是因为网络原因前端没能加载出来。</p>
+        <p>为了不耽误您使用，我们已人工调取了最新生成的演示文稿 PDF 版本，作为附件发送给您，请查收。</p>
+        <p><strong>🎁 补偿通知</strong>：已为您后台账号补充了 <strong>3次</strong> 额外生成额度{new_quota_info}，您可以继续放心试用。</p>
+        <br>
+        <p>------------------<br>
+        <strong>HIIC AI 产品运营组</strong></p>
+        """
+        # 保存为草稿
+        if mailer.save_to_drafts(feedback.user_email, subject, body, str(pdf_path)):
+            email_sent = True
+            pdf_recovered = True
+            action_log.append(f"📝 PDF补发邮件已存草稿 (来源: {pdf_path.parent.name})")
+
+    # 2. 场景二：AI 智能回复用户评论 (仅当没有触发 PDF 补发，且用户写了有效评论时)
+    # 如果已经补发了 PDF，就不用 AI 再回一封了，免得打扰
+    if not pdf_recovered and config.SMTP_ENABLED and feedback.comment and len(feedback.comment) > 2 and feedback.user_email:
+        try:
+            # 调用 AI 分析并拟写回复
+            ai_reply_content = await generate_ai_reply(feedback, quota_info=new_quota_info)
+            if ai_reply_content:
+                # 发送 AI 写的邮件
+                subject = f"【HIIC AI团队】关于您反馈的回复"
+                # 包装一下 AI 的回复为 HTML
+                html_body = f"""
+                <p>您好！收到您关于 <b>"{feedback.document_name or '文档生成'}"</b> 的反馈。</p>
+                <div style="background-color: #f5f5f5; padding: 15px; border-radius: 8px; font-style: italic; color: #555;">
+                您的反馈："{feedback.comment}"
+                </div>
+                <br>
+                {ai_reply_content.replace(chr(10), '<br>')}
+                <br>
+                <br>
+                <p>------------------<br>
+                <strong>HIIC AI 产品运营组</strong></p>
+                """
+                if mailer.save_to_drafts(feedback.user_email, subject, html_body, pdf_path=None):
+                    email_sent = True
+                    action_log.append("📝 AI回复已存草稿")
+        except Exception as e:
+            print(f"AI reply failed: {e}")
+            action_log.append(f"⚠️ AI回复失败: {e}")
+
+    # 3. 发送汇总是知到 Telegram
+    if config.TELEGRAM_ENABLED:
+        # 评分表情映射
+        rating_emoji = {1: "😞", 2: "😐", 3: "🙂", 4: "😊", 5: "🤩"}
+        stars = "⭐" * feedback.rating + "☆" * (5 - feedback.rating)
+        
+        # 构建消息
+        message = f"""📊 *新用户反馈*
+━━━━━━━━━━━━━━━━━
+{stars} {rating_emoji.get(feedback.rating, "")}
+
+"""
+        if feedback.comment:
+            message += f"💬 *评论:* {feedback.comment}\n\n"
+        if feedback.user_email:
+            message += f"👤 *用户:* `{feedback.user_email}`\n"
+        if feedback.document_name:
+            message += f"📄 *文档:* {feedback.document_name}\n"
+        
+        # 添加操作日志
+        if action_log:
+            message += "\n" + "\n".join(action_log)
+            
+        # 如果有 AI 回复的内容，摘要显示
+        if ai_reply_content:
+            preview = ai_reply_content[:100] + "..." if len(ai_reply_content) > 100 else ai_reply_content
+            message += f"\n\n📝 *AI回复内容:*\n_{preview}_"
+
+        message += f"\n🕐 *时间:* {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendMessage",
+                    json={
+                        "chat_id": config.TELEGRAM_CHAT_ID, 
+                        "text": message, 
+                        "parse_mode": "Markdown"
+                    },
+                    timeout=10.0
+                )
+        except Exception as e:
+            print(f"Telegram notification sent failed: {e}")
+
+async def generate_ai_reply(feedback: FeedbackNotification, quota_info: str = "") -> str:
+    """调用 LLM 生成得体的邮件回复"""
+    import openai # Assuming standard openai compatible client or just use httpx
+    
+    prompt = f"""
+    你是一位高情商、专业的 AI 产品运营经理。
+    用户刚刚提交了一条反馈，情况如下：
+    - 评分：{feedback.rating}/5 星
+    - 评论内容："{feedback.comment}"
+    - 上下文：用户在试用我们的 "AI PPT 生成工具" (内测版)。
+    
+    我们的核心策略是：
+    1. 鼓励反馈：告诉用户反馈非常有价值，是共创产品的一部分。
+    2. 奖励机制：对于提供了有效建议的用户，我们会额外赠送试用次数（我们后台刚刚已经操作完毕，即刻生效）。
+    
+    请起草一封回复邮件的正文（不要标题，只要正文）。
+    - 语气要像朋友一样自然，但保持专业。
+    - 针对用户的具体评论内容进行回应，不要只会说套话。
+    - 必须明确告知用户：**"已为您增加 3 次额外生成额度{quota_info}"**。
+    - 控制在 150 字以内，简洁有力。
+    """
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                url=config.OPENROUTER_BASE_URL + "/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {config.OPENROUTER_API_KEY}",
+                    "HTTP-Referer": "https://ppt.gwy.life",
+                },
+                json={
+                    "model": config.DEFAULT_MODEL,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7
+                },
+                timeout=15.0
+            )
+            data = resp.json()
+            return data['choices'][0]['message']['content']
+    except Exception as e:
+        print(f"LLM generation failed: {e}")
+        return None
 
 # ========== 运行入口 ==========
 

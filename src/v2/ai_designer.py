@@ -1,6 +1,14 @@
 """
 AI Designer - AI 原生设计引擎
 
+@input:  design_system, OpenAI API, GenerationContext
+@output: generate_outline(), generate_page() -> HTML字符串
+@pos:    V2引擎的大脑，负责与AI对话生成幻灯片内容
+
+⚠️ 一旦我被更新，务必更新：
+   1. 我的头部注释
+   2. /src/v2/_FOLDER.md
+
 核心理念：
 1. 让 AI 成为设计师，而不是模板填充员
 2. 给 AI 设计系统约束，让它自由创作
@@ -204,6 +212,7 @@ class AIDesigner:
         self,
         context: GenerationContext,
         page_info: PageInfo,
+        custom_image_prompt: Optional[str] = None
     ) -> str:
         """
         生成单页 HTML
@@ -214,7 +223,8 @@ class AIDesigner:
         bg_image_url = None
         if context.bg_image_source != "none" and page_info.type in ["COVER", "CLOSING"]:
             try:
-                bg_image_url = await self._get_background_image(context, page_info)
+                print(f"DEBUG: Requesting background image for {page_info.type}, source={context.bg_image_source}, custom_prompt={custom_image_prompt[:20] if custom_image_prompt else 'None'}...")
+                bg_image_url = await self._get_background_image(context, page_info, custom_image_prompt)
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning(f"Background image generation failed: {e}")
@@ -229,28 +239,29 @@ class AIDesigner:
             return self._clean_html(html)
         
         # 正常流程：调用 AI 生成 HTML
-        html = await self._call_ai(prompt)
-        return self._clean_html(html)
+        return await self._call_ai(prompt)
     
-    async def _get_background_image(self, context: GenerationContext, page_info: PageInfo) -> Optional[str]:
+    async def _get_background_image(self, context: GenerationContext, page_info: PageInfo, custom_prompt: Optional[str] = None) -> Optional[str]:
         """获取页面背景图 - 仅用于封面和结尾页"""
         try:
-            from v2.image_generator import ImageGenerator
+            from v2.image_generator import get_image_generator
             
-            generator = ImageGenerator()
+            generator = get_image_generator()
             source = "unsplash" if context.bg_image_source == "unsplash" else "ai"
             
             if page_info.type == "COVER":
                 result = await generator.generate_cover_image(
                     title=page_info.title,
                     scenario=context.scenario,
-                    source=source
+                    source=source,
+                    custom_prompt=custom_prompt
                 )
             elif page_info.type == "CLOSING":
                 result = await generator.generate_closing_image(
                     organization=context.organization,
                     scenario=context.scenario,
-                    source=source
+                    source=source,
+                    custom_prompt=custom_prompt
                 )
             else:
                 result = None
@@ -360,29 +371,35 @@ class AIDesigner:
 
 ## 输出格式
 
-**第一行必须是封面标题**，格式：`TITLE|干净的演示文稿标题`
+**必须严格按照以下顺序输出每一行（不要包含 markdown 代码块标记）：**
 
-然后每行一条页面，格式：`类型|标题|内容要点`
+1. `TITLE|干净的演示文稿标题`
+2. `COVER_IMG|封面图Prompt（核心：使用“视觉隐喻”物体，真实摄影风格，与主题强相关）`
+3. `CLOSING_IMG|封底图Prompt（与封面呼应，真实摄影风格）`
+4. `SECTION|...` (章节1)
+5. `CONTENT|...`
+...
 
-类型说明：
-- `SECTION`：章节封面页（如"第一部分 市场分析"）
-- `CONTENT`：正文内容页
+**格式说明**：
+- `TITLE`：提取的核心标题
+- `COVER_IMG`：**极其重要**！生成给 ComfyUI 的提示词。
+  - **核心策略**：**Symbolic Realism (象征写实主义)**。不要生成抽象的 AI 概念图，而是寻找**现实中存在的物体**来隐喻主题。
+  - **隐喻指南**：
+    - *战略/博弈/选择*：围棋/国际象棋特写(Chess board)、指南针(Compass)、岔路口(Fork road)、船舵(Helm)。
+    - *科技/研发*：显微镜下视角(Microscope)、芯片晶圆微距(Silicon Wafer)、实验室玻璃器皿(Glassware)、服务器机房光效(Server room)。
+    - *全球/宏观*：地球地平线(Earth horizon)、飞机舷窗视角(Airplane window)、集装箱码头(Shipping port)、桥梁(Bridge)。
+    - *增长/希望*：破土而出的嫩芽(Sprout)、清晨的第一缕阳光(Morning sun)、登山者的背影。
+    - *商务/合作*：精致的钢笔与记事本、握手特写、会议室一角。
+  - **风格要求**：**微距摄影 (Macro Photography)**、**浅景深 (Depth of Field/Bokeh)**、**电影级布光 (Cinematic Lighting)**。确保画面干净，有留白。
+  - **禁止**：Sci-fi, Cyberpunk, 3D Render, Cartoon, Building facade (除非主题是房地产), Text.
+  - **示例**："close - up shot of a vintage compass on an old map, shallow depth of field, warm cinematic lighting, photorealistic, 8k, meaning of strategy"
+- `CLOSING_IMG`：封底图提示词，风格同上。
 
-**封面标题规则**（非常重要！）：
-- 不要使用原始文件名（可能有日期、下划线、扩展名等杂项）
-- 提取文档的核心主题，生成一个专业、干净的标题
-- 例如："正文_自动驾驶的终局之战.md" → "自动驾驶的终局之战"
-- 例如："2025年AI落地报告_v2.pdf" → "AI落地现状与趋势研究"
-
-**严禁**：
-- 禁止生成 COVER、AGENDA、CLOSING 类型（系统自动添加）
-- 禁止生成引言页、摘要页、概述页
-- 禁止标题中出现"分析"、"研究"、"探讨"等空洞词汇（除非是章节名）
-
-## 示例
-
-```
-TITLE|全球自动驾驶产业格局与未来趋势
+**示例**：
+TITLE|全球自动驾驶产业格局
+COVER_IMG|view from driver's seat inside a modern car, hands on steering wheel, motion blur city road ahead, realistic photography, evening, 4k, no text
+CLOSING_IMG|empty highway road marking leading to infinity, sunset horizon, cinematic lighting, conceptual, realistic, no text
+SECTION|第一部分 产业现状|
 SECTION|第一部分 产业现状|
 CONTENT|战新产业占比突破 40%，产业结构持续优化|2023年数据：战新产业产值达500亿，占比从35%提升至42%；传统产业比重下降
 CONTENT|头部企业集中度高，前三名占据 65% 份额|A公司280亿(32%)、B公司180亿(21%)、C公司100亿(12%)；中小企业生存空间受挤压
@@ -390,8 +407,61 @@ SECTION|第二部分 核心问题|
 CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.1%，低于全市平均3.5%；龙头企业研发投入占比逐年下降
 ```
 
-请开始规划（第一行必须是 TITLE，直接输出，不要解释）：
+请开始规划（严格遵循格式）：
 """
+    
+    def _parse_outline(self, response: str) -> Dict[str, Any]:
+        """解析大纲响应"""
+        lines = response.strip().split('\n')
+        title = "未命名演示文稿"
+        cover_prompt = ""
+        closing_prompt = ""
+        pages = []
+        
+        current_section_num = 0
+        
+        for line in lines:
+            line = line.strip()
+            if not line: continue
+            
+            # 去除可能的 markdown 标记
+            line = line.replace('```', '')
+            
+            parts = line.split('|')
+            if len(parts) < 2: continue
+            
+            type_ = parts[0].strip().upper()
+            content = parts[1].strip()
+            extra = parts[2].strip() if len(parts) > 2 else ""
+            
+            if type_ == "TITLE":
+                title = content
+            elif type_ == "COVER_IMG":
+                cover_prompt = content
+            elif type_ == "CLOSING_IMG":
+                closing_prompt = content
+            elif type_ == "SECTION":
+                current_section_num += 1
+                pages.append({
+                    "type": "SECTION",
+                    "title": content,
+                    "content": extra,
+                    "section_num": current_section_num
+                })
+            elif type_ == "CONTENT":
+                pages.append({
+                    "type": "CONTENT",
+                    "title": content,
+                    "content": extra,
+                    "section_num": current_section_num
+                })
+                
+        return {
+            "title": title,
+            "cover_image_prompt": cover_prompt,
+            "closing_image_prompt": closing_prompt,
+            "pages": pages
+        }
     
     def _build_page_prompt(self, context: GenerationContext, page_info: PageInfo, bg_image_url: str = None) -> str:
         """构建页面生成 Prompt - 这是最核心的部分"""
@@ -815,43 +885,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
                 return await self._call_ai(prompt, retry_count + 1)
             raise
 
-    def _parse_outline(self, text: str) -> Dict[str, Any]:
-        """解析大纲，返回标题和页面列表"""
-        pages = []
-        title = None  # AI 生成的干净标题
-        auto_types = {'COVER', 'AGENDA', 'CLOSING'}
-        
-        for line in text.strip().split('\n'):
-            line = line.strip()
-            if not line or line.startswith('#') or line.startswith('```'):
-                continue
-            
-            parts = line.split('|')
-            if len(parts) >= 2:
-                page_type = parts[0].strip().upper()
-                
-                # 解析 TITLE 行
-                if page_type == 'TITLE':
-                    title = parts[1].strip()
-                    continue
-                
-                # 过滤系统自动生成的类型
-                if page_type in auto_types:
-                    continue
-                
-                if page_type not in {'SECTION', 'CONTENT'}:
-                    page_type = 'CONTENT'
-                
-                pages.append({
-                    'type': page_type,
-                    'title': parts[1].strip(),
-                    'content': parts[2].strip() if len(parts) > 2 else ''
-                })
-        
-        return {
-            "title": title,  # 可能为 None，调用方需要处理
-            "pages": pages
-        }
+
 
     def _clean_html(self, html: str) -> str:
         """清理 HTML"""

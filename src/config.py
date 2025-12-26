@@ -27,6 +27,9 @@ if _adobe_client_secret:
 
 ADOBE_AVAILABLE = bool(_adobe_client_id and _adobe_client_secret)
 
+# 全局禁用 PPTX 转换开关 (设为 true 时，后端将完全跳过 PPTX 转换)
+DISABLE_PPTX = os.getenv("DISABLE_PPTX", "false").lower() in ("true", "1", "yes")
+
 # 从 .env 读取可用模型列表
 def get_available_models():
     """从 .env 文件中读取所有可用的模型"""
@@ -60,6 +63,19 @@ MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))  # 最多重试 3 次
 RETRY_DELAY = int(os.getenv("RETRY_DELAY", "5"))  # 重试延迟 5 秒
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
 
+# Telegram 反馈通知配置
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+TELEGRAM_ENABLED = bool(TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)
+
+# SMTP 邮件发送配置
+SMTP_HOST = os.getenv("SMTP_HOST", "")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_SSL = os.getenv("SMTP_SSL", "true").lower() == "true"
+SMTP_ENABLED = bool(SMTP_HOST and SMTP_USER and SMTP_PASSWORD)
+
 # Prompt模板路径
 PROMPT_TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "..", "promptv4.md")
 
@@ -73,3 +89,13 @@ FINAL_PDF = f"{OUTPUT_DIR}/presentation.pdf"
 # 页面配置
 PAGE_WIDTH = "1280px"
 PAGE_HEIGHT = "720px"
+
+# Supabase
+VITE_SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", "")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+
+
+# ComfyUI Configuration
+COMFYUI_ENABLED = os.getenv("COMFYUI_ENABLED", "false").lower() == "true"
+COMFYUI_HOST = os.getenv("COMFYUI_HOST", "host.docker.internal:8188") # Docker访问宿主机的默认地址
+COMFYUI_WORKFLOW_FILE = os.path.join(os.path.dirname(__file__), "workflow_api.json")
