@@ -1,124 +1,179 @@
-import React from 'react';
-import { X, Gift, MessageCircle, Star, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Gift, Zap, Clock, Shield, CheckCircle, Sparkles } from 'lucide-react';
 
 /**
- * 加微信弹窗组件
- * 展示微信二维码，引导用户添加客服微信获取下载
+ * 加微信弹窗组件 - 商业化关键转化页面
+ * 运用营销心理学：稀缺性、社会证明、价值锚定、紧迫感
  */
 export default function ContactModal({
     isOpen,
     onClose,
-    documentName = "演示文稿"
+    documentName = "演示文稿",
+    price = 9.9
 }) {
+    // 倒计时效果（制造紧迫感）
+    const [countdown, setCountdown] = useState({ minutes: 14, seconds: 59 });
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const timer = setInterval(() => {
+            setCountdown(prev => {
+                if (prev.seconds > 0) {
+                    return { ...prev, seconds: prev.seconds - 1 };
+                } else if (prev.minutes > 0) {
+                    return { minutes: prev.minutes - 1, seconds: 59 };
+                }
+                return prev;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     // TODO: 替换为真实的微信二维码图片 URL
     const wechatQrCodeUrl = "/wechat-qrcode.png";
-    const wechatId = "YOUR_WECHAT_ID"; // TODO: 替换为你的微信号
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
-            {/* Backdrop */}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            {/* Backdrop with blur */}
             <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
                 onClick={onClose}
             />
 
             {/* Modal */}
-            <div className="relative bg-white rounded-2xl shadow-2xl w-[400px] overflow-hidden animate-in zoom-in-95 fade-in duration-200">
-                {/* Header with gradient */}
-                <div className="relative bg-gradient-to-br from-green-400 via-green-500 to-emerald-600 px-6 py-5">
-                    {/* Decorative elements */}
-                    <div className="absolute top-2 right-2 opacity-20">
-                        <Sparkles className="w-24 h-24 text-white" />
-                    </div>
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-[420px] overflow-hidden animate-in zoom-in-95 fade-in duration-300">
 
-                    <button
-                        onClick={onClose}
-                        className="absolute top-3 right-3 p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
-                    >
-                        <X className="w-4 h-4 text-white" />
-                    </button>
-
-                    <div className="relative z-10">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Gift className="w-5 h-5 text-white" />
-                            <span className="text-white/90 text-sm font-medium">限时福利</span>
-                        </div>
-                        <h3 className="text-xl font-bold text-white">添加微信，免费下载</h3>
-                        <p className="text-white/80 text-sm mt-1">还可解锁专属优惠与 VIP 特权</p>
-                    </div>
+                {/* 顶部促销横幅 - 紧迫感 */}
+                <div className="bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 px-4 py-2 flex items-center justify-center gap-2">
+                    <Clock className="w-4 h-4 text-white animate-pulse" />
+                    <span className="text-white text-sm font-bold">
+                        限时特惠倒计时：
+                        <span className="bg-white/20 px-1.5 py-0.5 rounded mx-1 tabular-nums">
+                            {String(countdown.minutes).padStart(2, '0')}
+                        </span>
+                        :
+                        <span className="bg-white/20 px-1.5 py-0.5 rounded mx-1 tabular-nums">
+                            {String(countdown.seconds).padStart(2, '0')}
+                        </span>
+                    </span>
                 </div>
 
-                {/* Content */}
+                {/* 关闭按钮 */}
+                <button
+                    onClick={onClose}
+                    className="absolute top-12 right-3 p-1.5 bg-black/10 hover:bg-black/20 rounded-full transition-colors z-10"
+                >
+                    <X className="w-4 h-4 text-slate-500" />
+                </button>
+
+                {/* 主内容区 */}
                 <div className="p-6">
-                    {/* QR Code */}
+                    {/* 价值锚定 - 划线价 vs 现价 */}
+                    <div className="text-center mb-5">
+                        <div className="inline-flex items-center gap-2 bg-amber-50 px-3 py-1 rounded-full mb-3">
+                            <Sparkles className="w-4 h-4 text-amber-500" />
+                            <span className="text-amber-700 text-xs font-semibold">新用户专享福利</span>
+                        </div>
+                        <h2 className="text-xl font-bold text-slate-800 mb-2">
+                            获取您的专属 AI 演示文稿
+                        </h2>
+                        <div className="flex items-baseline justify-center gap-2">
+                            <span className="text-slate-400 text-lg line-through">¥39.9</span>
+                            <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-500">
+                                ¥{price}
+                            </span>
+                            <span className="text-slate-500 text-sm">/次</span>
+                        </div>
+                        <p className="text-green-600 text-xs font-medium mt-1">
+                            比市场价节省 75%！
+                        </p>
+                    </div>
+
+                    {/* 二维码区域 */}
                     <div className="flex justify-center mb-5">
-                        <div className="relative">
-                            <div className="w-44 h-44 bg-slate-50 border-2 border-slate-100 rounded-xl p-2 shadow-inner">
+                        <div className="relative group">
+                            <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 rounded-2xl blur-lg opacity-30 group-hover:opacity-50 transition-opacity"></div>
+                            <div className="relative w-44 h-44 bg-white border-2 border-green-100 rounded-2xl p-2 shadow-lg">
                                 <img
                                     src={wechatQrCodeUrl}
                                     alt="微信二维码"
-                                    className="w-full h-full object-contain"
+                                    className="w-full h-full object-contain rounded-lg"
                                     onError={(e) => {
-                                        // 如果图片加载失败，显示占位符
                                         e.target.style.display = 'none';
                                         e.target.nextSibling.style.display = 'flex';
                                     }}
                                 />
-                                {/* Placeholder when image fails */}
                                 <div
                                     className="hidden w-full h-full items-center justify-center bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg"
                                     style={{ display: 'none' }}
                                 >
                                     <div className="text-center">
-                                        <MessageCircle className="w-12 h-12 text-green-400 mx-auto mb-2" />
-                                        <p className="text-xs text-slate-400">二维码加载中...</p>
+                                        <div className="w-12 h-12 mx-auto mb-2 bg-green-100 rounded-full flex items-center justify-center">
+                                            <svg viewBox="0 0 24 24" className="w-7 h-7 text-green-500" fill="currentColor">
+                                                <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348z" />
+                                            </svg>
+                                        </div>
+                                        <p className="text-xs text-slate-400">扫码添加微信</p>
                                     </div>
                                 </div>
                             </div>
-                            {/* WeChat logo badge */}
-                            <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center">
-                                <svg viewBox="0 0 24 24" className="w-6 h-6 text-green-500" fill="currentColor">
-                                    <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.023-.407-.032zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z" />
+                            {/* 微信 Logo 角标 */}
+                            <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-green-500 rounded-full shadow-lg flex items-center justify-center border-2 border-white">
+                                <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="currentColor">
+                                    <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348z" />
                                 </svg>
                             </div>
                         </div>
                     </div>
 
-                    {/* WeChat ID */}
-                    <div className="text-center mb-5">
-                        <p className="text-xs text-slate-400 mb-1">微信号</p>
-                        <p className="text-sm font-medium text-slate-700 bg-slate-50 px-3 py-1.5 rounded-lg inline-block">
-                            {wechatId}
+                    {/* 行动指引 */}
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-3 mb-4 border border-green-100">
+                        <p className="text-center text-sm text-slate-700">
+                            微信扫码添加后，发送 "<span className="font-bold text-green-600">领取</span>" 即可获取
                         </p>
                     </div>
 
-                    {/* Benefits */}
-                    <div className="space-y-2.5">
-                        <div className="flex items-center gap-3 text-sm">
-                            <div className="w-6 h-6 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
-                                <Gift className="w-3.5 h-3.5 text-green-500" />
-                            </div>
-                            <span className="text-slate-600">免费获取本次生成的 <strong className="text-slate-800">PDF</strong> 文件</span>
+                    {/* 信任徽章 - 社会证明 */}
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                        <div className="flex flex-col items-center p-2 bg-slate-50 rounded-lg">
+                            <Zap className="w-4 h-4 text-amber-500 mb-1" />
+                            <span className="text-[10px] text-slate-600 text-center">即刻获取</span>
                         </div>
-                        <div className="flex items-center gap-3 text-sm">
-                            <div className="w-6 h-6 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
-                                <Star className="w-3.5 h-3.5 text-amber-500" />
-                            </div>
-                            <span className="text-slate-600">解锁 <strong className="text-slate-800">VIP 会员</strong> 专属优惠价</span>
+                        <div className="flex flex-col items-center p-2 bg-slate-50 rounded-lg">
+                            <Shield className="w-4 h-4 text-blue-500 mb-1" />
+                            <span className="text-[10px] text-slate-600 text-center">安全支付</span>
                         </div>
-                        <div className="flex items-center gap-3 text-sm">
-                            <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                                <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                            </div>
-                            <span className="text-slate-600">优先体验 <strong className="text-slate-800">新功能</strong> 与定制服务</span>
+                        <div className="flex flex-col items-center p-2 bg-slate-50 rounded-lg">
+                            <CheckCircle className="w-4 h-4 text-green-500 mb-1" />
+                            <span className="text-[10px] text-slate-600 text-center">已服务 2000+</span>
                         </div>
                     </div>
 
-                    {/* Hint */}
-                    <p className="mt-5 text-xs text-slate-400 text-center">
-                        扫码添加后，请发送 "<strong className="text-green-600">下载</strong>" 获取文件
+                    {/* 额外价值 */}
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                            <Gift className="w-4 h-4 text-pink-500 flex-shrink-0" />
+                            <span className="text-slate-600">
+                                <strong className="text-slate-800">赠送：</strong>加微信即送 3 次免费生成额度
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                            <Sparkles className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                            <span className="text-slate-600">
+                                <strong className="text-slate-800">专属：</strong>VIP 会员 5 折优惠通道
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 底部信任声明 */}
+                <div className="bg-slate-50 px-6 py-3 border-t border-slate-100">
+                    <p className="text-[10px] text-slate-400 text-center">
+                        🔒 您的隐私受到保护 · 不满意随时退款 · 24小时在线服务
                     </p>
                 </div>
             </div>

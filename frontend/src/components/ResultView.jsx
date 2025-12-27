@@ -521,27 +521,27 @@ export default function ResultView({ result, downloads, isProcessing, generation
                 }
             `}</style>
 
-<<<<<<< HEAD
-    {/* 加微信弹窗 */ }
-    <ContactModal
-        isOpen={showContactModal}
-        onClose={() => setShowContactModal(false)}
-        documentName={result?.document_name}
-=======
+            {/* 加微信弹窗 */}
+            <ContactModal
+                isOpen={showContactModal}
+                onClose={() => setShowContactModal(false)}
+                documentName={result?.document_name}
+                price={9.9}
+            />
+
             {/* 反馈弹窗 */}
             <FeedbackModal
                 isOpen={showFeedbackModal}
                 onClose={() => {
                     setShowFeedbackModal(false);
-                    setFeedbackGiven(true); // 标记已给过反馈，避免重复弹窗
+                    setFeedbackGiven(true);
                 }}
                 generationId={generationId}
                 userId={user?.id}
                 userEmail={user?.email}
                 documentName={documentName}
->>>>>>> main
-    />
-        </div >
+            />
+        </div>
     );
 }
 
