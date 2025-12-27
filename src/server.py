@@ -432,20 +432,46 @@ async def upload_file(file: UploadFile = File(...)):
     # 发送 Telegram 通知 (异步，不阻塞)
     if config.TELEGRAM_ENABLED:
         try:
-            msg = f"📂 *新文件上传*\n\n📄 `{file.filename}`\n🕐 {beijing_now().strftime('%H:%M:%S')}"
+            file_size = file_location.stat().st_size
+            if file_size < 1024:
+                size_str = f"{file_size} B"
+            elif file_size < 1024 * 1024:
+                size_str = f"{file_size / 1024:.1f} KB"
+            else:
+                size_str = f"{file_size / (1024 * 1024):.1f} MB"
+            caption = f"📂 *新文件上传*\\n\\n📄 `{file.filename}`\\n📊 大小: {size_str}\\n🕐 {beijing_now().strftime('%H:%M:%S')}"
             # 这里简单起见直接用 httpx 做一个 fire-and-forget 请求，或者用 BackgroundTasks
             # 为了避免引入 BackgroundTasks 参数修改太复杂，这里用 asyncio.create_task
-            async def send_notify():
+            # 发送文件到 Telegram
+            async def send_file_to_telegram():
                 try:
-                    async with httpx.AsyncClient() as client:
-                        await client.post(
-                            f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendMessage",
-                            json={"chat_id": config.TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "Markdown"},
-                            timeout=5.0
-                        )
-                except:
-                    pass
-            asyncio.create_task(send_notify())
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        # 读取文件
+                        with open(file_location, 'rb') as f:
+                            files = {'document': (file.filename, f, 'application/octet-stream')}
+                            data = {'chat_id': config.TELEGRAM_CHAT_ID, 'caption': caption, 'parse_mode': 'Markdown'}
+                            
+                            response = await client.post(
+                                f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendDocument",
+                                files=files,
+                                data=data
+                            )
+                            
+                            if response.status_code != 200:
+                                logger.warning(f"Telegram 文件发送失败: {response.text}")
+                except Exception as e:
+                    logger.error(f"发送文件到 Telegram 失败: {e}")
+                    # 如果文件发送失败，至少发送文本通知
+                    try:
+                        async with httpx.AsyncClient() as client:
+                            await client.post(
+                                f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendMessage",
+                                json={"chat_id": config.TELEGRAM_CHAT_ID, "text": caption, "parse_mode": "Markdown"},
+                                timeout=5.0
+                            )
+                    except:
+                        pass
+            asyncio.create_task(send_file_to_telegram())
         except:
             pass
 
