@@ -53,6 +53,7 @@ export default function ResultView({ result, downloads, isProcessing, generation
     // 加微信弹窗状态 (商业化模式)
     const [showContactModal, setShowContactModal] = useState(false);
     const [commercialMode, setCommercialMode] = useState(false);
+    const [paymentPrice, setPaymentPrice] = useState(19.9);
 
     // 获取配置
     useEffect(() => {
@@ -61,6 +62,7 @@ export default function ResultView({ result, downloads, isProcessing, generation
             .then(data => {
                 console.log('[DEBUG] Payment config:', data);
                 setCommercialMode(data.commercial_mode || false);
+                setPaymentPrice(data.price || 19.9);
             })
             .catch((err) => {
                 console.error('[DEBUG] Failed to fetch payment config:', err);
@@ -525,8 +527,8 @@ export default function ResultView({ result, downloads, isProcessing, generation
             <ContactModal
                 isOpen={showContactModal}
                 onClose={() => setShowContactModal(false)}
-                documentName={result?.document_name}
-                price={9.9}
+                documentName={documentName || result?.document_name || '演示文稿'}
+                price={paymentPrice}
             />
 
             {/* 反馈弹窗 */}
