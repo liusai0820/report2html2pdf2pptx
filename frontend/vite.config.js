@@ -6,5 +6,19 @@ export default defineConfig({
   plugins: [react()],
   server: {
     allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8005',
+        changeOrigin: true,
+      },
+      '/output': {
+        target: 'http://localhost:8005',
+        changeOrigin: true,
+      },
+      '/previews': {
+        target: 'http://localhost:8005',
+        changeOrigin: true,
+      },
+    },
   },
 })

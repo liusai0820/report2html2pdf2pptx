@@ -58,8 +58,13 @@ export default function ResultView({ result, downloads, isProcessing, generation
     useEffect(() => {
         fetch('/api/payment/config')
             .then(res => res.json())
-            .then(data => setCommercialMode(data.commercial_mode || false))
-            .catch(() => { });
+            .then(data => {
+                console.log('[DEBUG] Payment config:', data);
+                setCommercialMode(data.commercial_mode || false);
+            })
+            .catch((err) => {
+                console.error('[DEBUG] Failed to fetch payment config:', err);
+            });
     }, []);
 
     // 如果正在处理中，模拟进度
@@ -307,7 +312,7 @@ export default function ResultView({ result, downloads, isProcessing, generation
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {/* PDF Download */}
+                        {/* PDF Download - 点击时弹出商业化弹窗 */}
                         {downloads?.pdf ? (
                             <button onClick={handlePdfDownload} disabled={downloadingPdf} className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200" title="下载 PDF 文档">
                                 {downloadingPdf ? (
@@ -316,12 +321,6 @@ export default function ResultView({ result, downloads, isProcessing, generation
                                     <Download className="w-4 h-4" />
                                 )}
                                 <span>PDF</span>
-                                {/* 商业化模式显示加微信提示 */}
-                                {commercialMode && (
-                                    <span className="ml-1 px-1.5 py-0.5 text-[10px] font-semibold bg-green-500 text-white rounded">
-                                        加微信领取
-                                    </span>
-                                )}
                             </button>
                         ) : (
                             <button disabled className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-400 cursor-not-allowed">
@@ -330,8 +329,8 @@ export default function ResultView({ result, downloads, isProcessing, generation
                             </button>
                         )}
 
-                        {/* PPTX Download */}
-                        {downloads?.pptx ? (
+                        {/* PPTX Download - Turbo 用户专属 */}
+                        {downloads?.pptx && !commercialMode ? (
                             <button onClick={handlePptxDownload} disabled={downloadingPptx} className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200" title="下载 PPTX 演示文稿">
                                 {downloadingPptx ? (
                                     <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
@@ -340,16 +339,17 @@ export default function ResultView({ result, downloads, isProcessing, generation
                                 )}
                                 <span>PPTX</span>
                             </button>
-                        ) : isPptxTimeout ? (
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100">
-                                    网络超时，建议下载PDF后使用WPS转PPT格式
-                                </span>
-                            </div>
                         ) : (
-                            <button disabled className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-400 cursor-not-allowed">
-                                <Loader2 className="w-4 h-4 animate-spin opacity-50" />
-                                <span>准备中</span>
+                            <button
+                                disabled
+                                className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-400 cursor-not-allowed opacity-60"
+                                title="升级 Turbo 会员解锁 PPTX 下载"
+                            >
+                                <Download className="w-4 h-4" />
+                                <span>PPTX</span>
+                                <span className="ml-0.5 px-1.5 py-0.5 text-[9px] font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-sm uppercase tracking-wide">
+                                    Turbo
+                                </span>
                             </button>
                         )}
 
