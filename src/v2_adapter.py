@@ -188,9 +188,24 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
                     await progress_queue.put(completed_count)
 
         # 启动任务
-        tasks = [generate_worker(i, p) for i, p in enumerate(outline_pages)]
+        # 优化：优先启动封面和封底任务 (因为它们包含耗时的 AI 绘图)
+        # 这样可以确保绘图任务尽早进入 ComfyUI 队列，掩盖在文本生成的时间里
+        tasks = []
+        priority_tasks = []
+        normal_tasks = []
+        
+        for i, p in enumerate(outline_pages):
+            task = generate_worker(i, p)
+            if p.get('type') in ['COVER', 'CLOSING']:
+                priority_tasks.append(task)
+            else:
+                normal_tasks.append(task)
+        
+        # 将优先任务排在前面
+        all_ordered_tasks = priority_tasks + normal_tasks
+        
         # 不等待 tasks 完成，而是启动它们并在后台运行
-        background_tasks = asyncio.gather(*tasks)
+        background_tasks = asyncio.gather(*all_ordered_tasks)
         
         # 监听进度 (带心跳机制，防止 Cloudflare Tunnel 超时)
         last_heartbeat = asyncio.get_event_loop().time()
@@ -230,6 +245,12 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
             if html:
                 page_path = engine.output_dir / "pages" / f"page-{i+1:02d}.html"
                 full_page_html = engine._wrap_page_html(html, ds)
+                
+                # 修复 PDF 生成时的图片路径问题
+                # 将 /output/ 绝对路径替换为相对路径 ../../
+                # 这样 PDF 生成器 (file://) 和 Web 浏览器都能正确加载图片
+                full_page_html = full_page_html.replace("url('/output/", "url('../../")
+                
                 page_path.write_text(full_page_html, encoding='utf-8')
                 
                 pages_result.append({
@@ -241,6 +262,8 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
         
         merged_path = engine.output_dir / "presentation.html"
         merged_html = engine._merge_all_pages(pages_html, ds)
+        # 同样修复合并后的 HTML
+        merged_html = merged_html.replace("url('/output/", "url('../../")
         merged_path.write_text(merged_html, encoding='utf-8')
         
         # 预览就绪

@@ -1,6 +1,20 @@
+/**
+ * ResultView.jsx - 结果展示组件
+ *
+ * @input:  result (pages数组), downloads (PDF/PPTX路径), api.getOutputUrl
+ * @output: ResultView组件（分栏预览、网格视图、全屏演示、下载功能）
+ * @pos:    前端的核心展示组件，负责幻灯片预览和导出操作
+ *
+ * ⚠️ 一旦我被更新，务必更新：
+ *    1. 我的头部注释
+ *    2. /frontend/src/components/_FOLDER.md
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Download, MonitorPlay, LayoutGrid, PanelLeft, ChevronLeft, ChevronRight, X, Loader2, ZoomIn, ZoomOut } from 'lucide-react';
 import { getOutputUrl } from '../api';
+import { useAuth } from '../contexts/AuthContext';
+import FeedbackModal from './FeedbackModal';
 
 // 强制下载文件（避免浏览器打开文件导致页面跳转）
 const forceDownload = async (url, filename) => {
@@ -22,13 +36,18 @@ const forceDownload = async (url, filename) => {
     }
 };
 
-export default function ResultView({ result, downloads, isProcessing }) {
+export default function ResultView({ result, downloads, isProcessing, generationId, documentName }) {
+    const { user } = useAuth();
     const [activeIndex, setActiveIndex] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [viewMode, setViewMode] = useState('split'); // 'split' | 'grid'
     const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [downloadingPptx, setDownloadingPptx] = useState(false);
     const [gridColumns, setGridColumns] = useState(4); // 网格列数控制 (1-6)
+    
+    // 反馈弹窗状态
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+    const [feedbackGiven, setFeedbackGiven] = useState(false); // 本次生成是否已给过反馈
 
     // 如果正在处理中，模拟进度
     const [progress, setProgress] = useState(0);
@@ -43,6 +62,43 @@ export default function ResultView({ result, downloads, isProcessing }) {
         }
     }, [isProcessing]);
 
+    // PPTX 生成超时检测
+    const [isPptxTimeout, setIsPptxTimeout] = useState(false);
+    const prevPdfRef = React.useRef(downloads?.pdf);
+    
+    useEffect(() => {
+        let timeoutTimer;
+        
+        // 检测是否切换了文档（PDF 路径变了）
+        const pdfChanged = prevPdfRef.current !== downloads?.pdf;
+        prevPdfRef.current = downloads?.pdf;
+        
+        if (downloads?.pptx) {
+            // 如果 PPTX 有了，清除超时状态
+            setIsPptxTimeout(false);
+        } else {
+            // 如果没有 PPTX
+            if (pdfChanged) {
+                // 切换文档时，根据当前状态决定：如果不在处理中，直接显示超时
+                if (!isProcessing) {
+                    setIsPptxTimeout(true);
+                } else {
+                    // 正在处理中的新任务，重置超时状态，开始新的计时
+                    setIsPptxTimeout(false);
+                }
+            } else if (!isProcessing) {
+                // 同一文档，不在处理中，直接显示超时（历史记录或已结束任务）
+                setIsPptxTimeout(true);
+            } else if (!isPptxTimeout) {
+                // 正在处理中，且尚未超时，开始 2 分钟倒计时
+                timeoutTimer = setTimeout(() => {
+                    setIsPptxTimeout(true);
+                }, 120000);
+            }
+        }
+        return () => clearTimeout(timeoutTimer);
+    }, [downloads?.pptx, downloads?.pdf, isProcessing, isPptxTimeout]);
+
     // 处理 PDF 下载
     const handlePdfDownload = async () => {
         if (!downloads?.pdf) return;
@@ -50,6 +106,13 @@ export default function ResultView({ result, downloads, isProcessing }) {
         const filename = downloads.pdf.split('/').pop();
         await forceDownload(getOutputUrl(downloads.pdf), filename);
         setDownloadingPdf(false);
+        
+        // PDF 下载完成后，如果还没给过反馈，弹出反馈框
+        if (!feedbackGiven) {
+            setTimeout(() => {
+                setShowFeedbackModal(true);
+            }, 500); // 稍微延迟，让下载提示先出现
+        }
     };
 
     // 处理 PPTX 下载
@@ -251,6 +314,12 @@ export default function ResultView({ result, downloads, isProcessing }) {
                                 )}
                                 <span>PPTX</span>
                             </button>
+                        ) : isPptxTimeout ? (
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100">
+                                    网络超时，建议下载PDF后使用WPS转PPT格式
+                                </span>
+                            </div>
                         ) : (
                             <button disabled className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-400 cursor-not-allowed">
                                 <Loader2 className="w-4 h-4 animate-spin opacity-50" />
@@ -425,6 +494,19 @@ export default function ResultView({ result, downloads, isProcessing }) {
                     @apply flex items-center bg-white border border-slate-200 text-slate-700 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm active:translate-y-0.5;
                 }
             `}</style>
+
+            {/* 反馈弹窗 */}
+            <FeedbackModal
+                isOpen={showFeedbackModal}
+                onClose={() => {
+                    setShowFeedbackModal(false);
+                    setFeedbackGiven(true); // 标记已给过反馈，避免重复弹窗
+                }}
+                generationId={generationId}
+                userId={user?.id}
+                userEmail={user?.email}
+                documentName={documentName}
+            />
         </div>
     );
 }

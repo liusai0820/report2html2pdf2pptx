@@ -1,6 +1,14 @@
 """
 场景化 Prompt - 针对不同场景的专业提示词
 
+@input:  场景类型字符串 (consulting, academic, etc.)
+@output: get_scenario_prompt(), get_scenario_info(), SCENARIO_PROMPTS
+@pos:    Prompt系统的场景知识库，存储各行业的专业写作规范
+
+⚠️ 一旦我被更新，务必更新：
+   1. 我的头部注释
+   2. /src/prompts/_FOLDER.md
+
 每个场景都有其特定的：
 1. 受众特点
 2. 内容重点

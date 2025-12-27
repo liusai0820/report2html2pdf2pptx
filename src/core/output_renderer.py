@@ -72,6 +72,15 @@ class OutputRenderer:
     def save_page(self, page_num: int, html_content: str, template: str) -> str:
         """保存单页"""
         full_html = template.replace("{{CONTENT_PLACEHOLDER}}", html_content)
+        
+        # 修复 PDF 生成时的图片路径问题
+        # HTML 中的路径通常是 /output/assets/... (Web 路径)
+        # 本地 PDF 生成(use file://) 需要相对路径: ../../assets/...
+        
+        # 将绝对路径 /output/ 替换为相对路径 ../../
+        # 结果: url('../../assets/...')
+        full_html = full_html.replace("url('/output/", "url('../../")
+        
         page_path = self.pages_dir / f"page-{page_num:02d}.html"
         page_path.write_text(full_html, encoding='utf-8')
         return str(page_path)
