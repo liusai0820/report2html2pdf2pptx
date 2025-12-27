@@ -893,13 +893,13 @@ class PaymentCreateRequest(BaseModel):
 class PaymentCreateResponse(BaseModel):
     success: bool
     order_id: Optional[str] = None
-    qrcode_url: Optional[str] = None  # 二维码内容
-    payjs_order_id: Optional[str] = None
+    payment_url: Optional[str] = None  # 支付页面 URL
+    trade_order_id: Optional[str] = None  # 虎皮椒订单号
     price: float = 9.9
     message: Optional[str] = None
 
 class PaymentCheckRequest(BaseModel):
-    payjs_order_id: str
+    trade_order_id: str  # 商户订单号
     order_id: str
 
 class PaymentCheckResponse(BaseModel):
@@ -918,7 +918,7 @@ async def create_payment_order(req: PaymentCreateRequest):
             message="Payment not required in this mode"
         )
     
-    if not config.PAYJS_ENABLED:
+    if not config.XUNHU_ENABLED:
         return PaymentCreateResponse(
             success=False,
             message="Payment service not configured"
@@ -936,21 +936,20 @@ async def create_payment_order(req: PaymentCreateRequest):
     import uuid
     order_id = f"PPT_{int(time.time())}_{uuid.uuid4().hex[:8]}"
     
-    # 调用 PayJS 创建订单
-    success, qrcode_url, payjs_order_id = await payment.create_payment(
+    # 调用虎皮椒创建订单
+    success, payment_url, trade_order_id = await payment.create_payment(
         order_id=order_id,
         amount_yuan=config.DOWNLOAD_PRICE_YUAN,
-        body=f"AI演示文稿下载 - {req.generation_id[:20]}"
+        title=f"AI演示文稿下载 - {req.generation_id[:20]}"
     )
     
     if success:
         # TODO: 将订单信息存入 Supabase payments 表
-        # 暂时先返回，后续补充数据库逻辑
         return PaymentCreateResponse(
             success=True,
             order_id=order_id,
-            qrcode_url=qrcode_url,
-            payjs_order_id=payjs_order_id,
+            payment_url=payment_url,
+            trade_order_id=trade_order_id,
             price=config.DOWNLOAD_PRICE_YUAN
         )
     else:
@@ -964,10 +963,10 @@ async def check_payment_status(req: PaymentCheckRequest):
     """
     检查订单支付状态
     """
-    if not config.PAYJS_ENABLED:
+    if not config.XUNHU_ENABLED:
         return PaymentCheckResponse(paid=False)
     
-    is_paid, _ = await payment.check_payment(req.payjs_order_id)
+    is_paid, status = await payment.check_payment(req.trade_order_id)
     
     if is_paid:
         # TODO: 更新 Supabase 订单状态
@@ -986,7 +985,7 @@ async def get_payment_config():
     """
     return {
         "commercial_mode": config.COMMERCIAL_MODE,
-        "payment_enabled": config.PAYJS_ENABLED,
+        "payment_enabled": config.XUNHU_ENABLED,
         "price": config.DOWNLOAD_PRICE_YUAN if config.COMMERCIAL_MODE else 0
     }
 

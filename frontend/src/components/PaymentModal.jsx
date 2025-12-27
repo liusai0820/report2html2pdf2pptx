@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, Check, QrCode, CreditCard } from 'lucide-react';
+import { X, Loader2, Check, ExternalLink, CreditCard } from 'lucide-react';
 
 /**
  * 支付弹窗组件
- * 展示微信支付二维码，轮询支付状态
+ * 虎皮椒支付 - 跳转支付页面，轮询支付状态
  */
 export default function PaymentModal({
     isOpen,
@@ -14,9 +14,9 @@ export default function PaymentModal({
 }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [qrcodeUrl, setQrcodeUrl] = useState(null);
+    const [paymentUrl, setPaymentUrl] = useState(null);
     const [orderId, setOrderId] = useState(null);
-    const [payjsOrderId, setPayjsOrderId] = useState(null);
+    const [tradeOrderId, setTradeOrderId] = useState(null);
     const [isPaid, setIsPaid] = useState(false);
     const [polling, setPolling] = useState(false);
 
@@ -37,9 +37,9 @@ export default function PaymentModal({
                 const data = await resp.json();
 
                 if (data.success) {
-                    setQrcodeUrl(data.qrcode_url);
+                    setPaymentUrl(data.payment_url);
                     setOrderId(data.order_id);
-                    setPayjsOrderId(data.payjs_order_id);
+                    setTradeOrderId(data.trade_order_id);
                     setPolling(true);
                 } else {
                     setError(data.message || '创建订单失败');
@@ -56,7 +56,7 @@ export default function PaymentModal({
 
     // 轮询支付状态
     useEffect(() => {
-        if (!polling || !payjsOrderId || !orderId) return;
+        if (!polling || !tradeOrderId || !orderId) return;
 
         const checkPayment = async () => {
             try {
@@ -64,7 +64,7 @@ export default function PaymentModal({
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        payjs_order_id: payjsOrderId,
+                        trade_order_id: tradeOrderId,
                         order_id: orderId
                     })
                 });
@@ -86,17 +86,24 @@ export default function PaymentModal({
         // 每 2 秒检查一次
         const interval = setInterval(checkPayment, 2000);
         return () => clearInterval(interval);
-    }, [polling, payjsOrderId, orderId, onPaymentSuccess]);
+    }, [polling, tradeOrderId, orderId, onPaymentSuccess]);
 
     // 关闭时重置状态
     const handleClose = () => {
         setPolling(false);
-        setQrcodeUrl(null);
+        setPaymentUrl(null);
         setOrderId(null);
-        setPayjsOrderId(null);
+        setTradeOrderId(null);
         setIsPaid(false);
         setError(null);
         onClose?.();
+    };
+
+    // 跳转支付页面
+    const handlePayNow = () => {
+        if (paymentUrl) {
+            window.open(paymentUrl, '_blank');
+        }
     };
 
     if (!isOpen) return null;
@@ -118,8 +125,8 @@ export default function PaymentModal({
                             <CreditCard className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                            <h3 className="font-semibold text-slate-800">扫码支付</h3>
-                            <p className="text-xs text-slate-500">微信扫码完成支付</p>
+                            <h3 className="font-semibold text-slate-800">在线支付</h3>
+                            <p className="text-xs text-slate-500">支持微信、支付宝</p>
                         </div>
                     </div>
                     <button
@@ -166,36 +173,25 @@ export default function PaymentModal({
                                 <p className="text-sm text-slate-500 mt-1">AI 演示文稿下载</p>
                             </div>
 
-                            {/* QR Code */}
-                            {qrcodeUrl ? (
-                                <div className="relative">
-                                    <div className="w-48 h-48 bg-white border-2 border-slate-100 rounded-xl p-2 shadow-inner">
-                                        {/* 使用第三方服务生成二维码图片 */}
-                                        <img
-                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrcodeUrl)}`}
-                                            alt="Payment QR Code"
-                                            className="w-full h-full"
-                                        />
-                                    </div>
-                                    {/* WeChat logo overlay */}
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                        <div className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center">
-                                            <svg viewBox="0 0 24 24" className="w-6 h-6 text-green-500" fill="currentColor">
-                                                <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.023-.407-.032zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z" />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                </div>
+                            {/* Pay Button */}
+                            {paymentUrl ? (
+                                <button
+                                    onClick={handlePayNow}
+                                    className="w-full py-3 px-6 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-medium rounded-xl shadow-lg shadow-green-500/30 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                                >
+                                    <span>立即支付</span>
+                                    <ExternalLink className="w-4 h-4" />
+                                </button>
                             ) : (
-                                <div className="w-48 h-48 bg-slate-100 rounded-xl flex items-center justify-center">
-                                    <QrCode className="w-12 h-12 text-slate-300" />
+                                <div className="w-full py-3 px-6 bg-slate-100 text-slate-400 font-medium rounded-xl text-center">
+                                    准备中...
                                 </div>
                             )}
 
                             {/* Hint */}
                             <p className="mt-4 text-xs text-slate-400 text-center">
-                                请使用微信扫描二维码完成支付<br />
-                                支付成功后将自动开始下载
+                                点击按钮将跳转至支付页面<br />
+                                支付成功后请返回此页等待自动下载
                             </p>
 
                             {/* Polling indicator */}
