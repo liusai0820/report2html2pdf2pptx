@@ -1,3 +1,15 @@
+/**
+ * App.jsx - 应用主入口
+ *
+ * @input:  components/, contexts/AuthContext, api.js
+ * @output: App组件, MainApp组件（包含完整的用户界面和状态管理）
+ * @pos:    前端应用的根组件，协调所有子组件和全局状态
+ *
+ * ⚠️ 一旦我被更新，务必更新：
+ *    1. 我的头部注释
+ *    2. /frontend/src/_FOLDER.md
+ */
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Loader2, AlertCircle, Layout, ChevronLeft, ChevronRight, LogOut, User, ChevronDown } from 'lucide-react';
@@ -64,6 +76,7 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
   const [outlineData, setOutlineData] = useState([]);
   const [previewData, setPreviewData] = useState(null);
   const [downloads, setDownloads] = useState({ html: null, pdf: null, pptx: null });
+  const [currentGenerationId, setCurrentGenerationId] = useState(null); // 当前生成记录的 ID，用于反馈关联
 
   useEffect(() => {
     loadData();
@@ -126,7 +139,7 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
           theme_color: customColor, // Pass custom color if set
           ...config
         },
-        (event) => {
+        async (event) => {
           console.log('Event:', event);
           setProgress(event.progress);
           setProgressStage(event.stage);
@@ -155,12 +168,13 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
             // Track successful generation with output path
             // 优先使用 output_dir（纯目录名），否则回退到 html 路径
             const outputPath = event.result.output_dir || event.result.downloads?.html;
-            trackGeneration({
+            const genId = await trackGeneration({
               scenario: selectedScenario,
               document_name: selectedFile.name,
               output_path: outputPath,
               pages: event.result.pages_count || 0
             });
+            setCurrentGenerationId(genId); // 保存生成记录 ID，用于反馈
           }
         }
       );
@@ -210,17 +224,53 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
             
             {/* User Dropdown Menu */}
             {showUserMenu && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden">
-                <button
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    onLogout();
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>退出登录</span>
-                </button>
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
+                {/* Contact for Upgrade */}
+                <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/80">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <span className="text-xs font-bold text-slate-800">🚀 升级额度 / 技术支持</span>
+                  </div>
+                  <div className="space-y-2">
+                    {/* WeChat */}
+                    <div className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-slate-200 shadow-sm group hover:border-blue-400 hover:shadow-md transition-all">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-5 h-5 flex items-center justify-center bg-[#07C160]/10 text-[#07C160] rounded-sm">
+                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M8.7 15.3l-.4 2.1 1.7-1.1c.5.2 1 .2 1.5.2 3.6 0 6.5-2.6 6.5-5.8 0-3.2-2.9-5.8-6.5-5.8-3.6 0-6.5 2.6-6.5 5.8 0 1.9 1 3.6 2.6 4.7 0 .1-.1.4-.9 1.6 1.4-.2 2.7-.8 2.7-.8zM20.2 12c.5 0 .9 0 1.4.1.2-2.5-1.7-4.6-4.9-4.6-4.1 0-7.3 3-7.3 6.9 0 .5.1.9.2 1.4 1.1-.9 2.5-1.4 4.1-1.4 3.6 0 6.5 2.7 6.5 6 0 1-.3 2-.8 2.8 1.9-.3 3.6-1.5 3.6-3.8 0-1.2-.5-2.3-1.4-3.1.5-.7 1.5-2.6 1.5-2.6-1.9.3-3.1 1.1-3.1 1.1.1-.3.2-.5.2-.8z"/></svg>
+                        </span>
+                        <div>
+                          <div className="text-[10px] text-slate-400 leading-none mb-0.5">微信 (点击复制)</div>
+                          <div className="text-xs font-mono font-medium text-slate-700 select-all cursor-text hover:text-blue-600">liusai0820</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Email */}
+                    <div className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-slate-200 shadow-sm group hover:border-blue-400 hover:shadow-md transition-all">
+                      <div className="flex items-center gap-2.5">
+                         <span className="w-5 h-5 flex items-center justify-center bg-blue-50 text-blue-500 rounded-sm">
+                           <span className="text-xs font-bold">@</span>
+                         </span>
+                        <div>
+                          <div className="text-[10px] text-slate-400 leading-none mb-0.5">邮箱</div>
+                          <div className="text-xs font-mono font-medium text-slate-700 select-all cursor-text hover:text-blue-600">liusai64@gmail.com</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-1.5">
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      onLogout();
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>退出登录</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -455,6 +505,8 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
                 result={previewData}
                 downloads={downloads}
                 isProcessing={progress < 100}
+                generationId={currentGenerationId}
+                documentName={selectedFile?.name}
               />
             </motion.div>
           )}

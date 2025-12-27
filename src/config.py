@@ -93,6 +93,7 @@ PAGE_HEIGHT = "720px"
 # Supabase
 VITE_SUPABASE_URL = os.getenv("VITE_SUPABASE_URL", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")  # JWT 签名密钥（从 Supabase 项目设置获取）
 
 
 # ComfyUI Configuration

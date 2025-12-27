@@ -16,10 +16,20 @@ import json
 import shutil
 import asyncio
 import traceback
+import logging
 from pathlib import Path
 from typing import List, Optional, AsyncGenerator
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from contextlib import asynccontextmanager
+
+logger = logging.getLogger(__name__)
+
+# 北京时区 (UTC+8)
+BEIJING_TZ = timezone(timedelta(hours=8))
+
+def beijing_now():
+    """获取北京时间"""
+    return datetime.now(BEIJING_TZ)
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -121,12 +131,110 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 挂载预览模板目录
+# ========== 安全的静态文件服务 ==========
+
+from fastapi import Request, Response, status
+from fastapi.responses import FileResponse
+import jwt
+
+# JWT 验证辅助函数
+def verify_jwt_token(token: str) -> Optional[dict]:
+    """验证 JWT token 并返回用户信息"""
+    if not token:
+        return None
+    try:
+        # 从 Supabase JWT 中解析（使用 JWT服务密钥）
+        payload = jwt.decode(
+            token, 
+            config.SUPABASE_JWT_SECRET,  # 需要在 config 中添加
+            algorithms=["HS256"],
+            audience="authenticated"
+        )
+        return payload
+    except Exception as e:
+        logger.warning(f"JWT验证失败: {e}")
+        return None
+
+@app.middleware("http")
+async def protect_output_directory(request: Request, call_next):
+    """保护 /output 目录，仅允许已认证用户访问自己的文件"""
+    
+    # 只拦截 /output 路径
+    if not request.url.path.startswith("/output/"):
+        return await call_next(request)
+    
+    # 排除预览模板（公开访问）
+    if "/theme_previews" in request.url.path or "/previews/" in request.url.path:
+        return await call_next(request)
+    
+    # 从 Authorization header 或 cookie 获取 token
+    auth_header = request.headers.get("authorization", "")
+    token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else None
+    
+    # 如果没有 header，尝试从 Cookie 获取
+    if not token:
+        token = request.cookies.get("sb-access-token") or request.cookies.get("access_token")
+    
+    # 验证 token
+    user_payload = verify_jwt_token(token) if token else None
+    
+    if not user_payload:
+        return Response(
+            content="未授权访问。请登录后重试。",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    user_id = user_payload.get("sub")
+    
+    # 提取请求的输出目录名（例如：/output/xxx_20251227_123456/file.pdf）
+    path_parts = request.url.path.split("/")
+    if len(path_parts) < 3:
+        return await call_next(request)
+    
+    output_name = path_parts[2]  # 输出目录名
+    
+    # 验证用户是否有权限访问此输出
+    # 通过查询 generations 表检查
+    client = db.get_client()
+    if client:
+        try:
+            result = client.table("generations")\
+                .select("user_id")\
+                .eq("output_path", output_name)\
+                .execute()
+            
+            if not result.data:
+                # 如果数据库中找不到记录，拒绝访问（安全第一）
+                return Response(
+                    content="无法访问此文件：未找到记录或权限不足。",
+                    status_code=status.HTTP_403_FORBIDDEN
+                )
+            
+            # 检查是否匹配
+            owner_id = result.data[0].get("user_id")
+            if owner_id != user_id:
+                return Response(
+                    content="无权访问其他用户的文件。",
+                    status_code=status.HTTP_403_FORBIDDEN
+                )
+        except Exception as e:
+            logger.error(f"权限验证失败: {e}")
+            # 出错时默认拒绝（fail-close）
+            return Response(
+                content="服务器错误，无法验证权限。",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    # 验证通过，放行请求
+    return await call_next(request)
+
+# 挂载预览模板目录（公开）
 previews_dir = Path("output/theme_previews")
 if previews_dir.exists():
     app.mount("/previews", StaticFiles(directory=str(previews_dir)), name="previews")
 
-# 静态文件服务
+# 静态文件服务（已由上面的中间件保护）
 app.mount("/output", StaticFiles(directory="output"), name="output")
 
 # ========== 场景配置 ==========
@@ -324,7 +432,7 @@ async def upload_file(file: UploadFile = File(...)):
     # 发送 Telegram 通知 (异步，不阻塞)
     if config.TELEGRAM_ENABLED:
         try:
-            msg = f"📂 *新文件上传*\n\n📄 `{file.filename}`\n🕐 {datetime.now().strftime('%H:%M:%S')}"
+            msg = f"📂 *新文件上传*\n\n📄 `{file.filename}`\n🕐 {beijing_now().strftime('%H:%M:%S')}"
             # 这里简单起见直接用 httpx 做一个 fire-and-forget 请求，或者用 BackgroundTasks
             # 为了避免引入 BackgroundTasks 参数修改太复杂，这里用 asyncio.create_task
             async def send_notify():
@@ -824,7 +932,7 @@ async def process_feedback_background(feedback: FeedbackNotification):
             preview = ai_reply_content[:100] + "..." if len(ai_reply_content) > 100 else ai_reply_content
             message += f"\n\n📝 *AI回复内容:*\n_{preview}_"
 
-        message += f"\n🕐 *时间:* {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        message += f"\n🕐 *时间:* {beijing_now().strftime('%Y-%m-%d %H:%M')}"
         
         try:
             async with httpx.AsyncClient() as client:
