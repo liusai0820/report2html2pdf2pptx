@@ -1,26 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { X, Copy, Check, ShieldCheck, Zap, Crown, Palette, Briefcase, FileSignature, ChevronRight } from 'lucide-react';
+import { X, Copy, Check, Crown, Palette, Briefcase, FileSignature } from 'lucide-react';
 
 /**
- * 加微信弹窗组件 - 高端商务版 Pro
+ * 加微信弹窗组件 - 高端商务版 Pro (Final)
  * 
- * 升级内容：
- * 1. 完善订单号逻辑：复制内容包含 ID + 文件名（双重保险）
- * 2. 增加高价值服务引导：定制开发、模板定制等
- * 3. 价格修正为 19.9
+ * 优化点：
+ * 1. 彻底移除订单号 (Order Number)，解决 ID 不一致问题
+ * 2. 简化流程：直接复制文档名称
+ * 3. 复制内容优化：更自然的对话口吻
+ * 4. 保持高端黑金设计
  */
 export default function ContactModal({
     isOpen,
     onClose,
     documentName,
-    price = 19.9,
-    generationId
+    price = 19.9
 }) {
-    // 订单号逻辑
-    const orderNo = generationId
-        ? `ORDER-${generationId.slice(0, 8).toUpperCase()}`
-        : `ORDER-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-
     const [countdown, setCountdown] = useState({ minutes: 9, seconds: 59 });
     const [copied, setCopied] = useState(false);
 
@@ -41,9 +36,9 @@ export default function ContactModal({
         return () => clearInterval(timer);
     }, [isOpen]);
 
-    // 复制完整信息
+    // 简化复制逻辑：只复制文档名称
     const handleCopyInfo = () => {
-        const textToCopy = `订单号：${orderNo}\n文档：${documentName}`;
+        const textToCopy = `你好，我想获取文档：${documentName}`;
         navigator.clipboard.writeText(textToCopy);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -64,7 +59,7 @@ export default function ContactModal({
             {/* 主卡片 */}
             <div className="relative bg-white w-full max-w-[400px] rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300 ring-1 ring-black/5 flex flex-col max-h-[90vh]">
 
-                {/* Header */}
+                {/* Header - 黑金风格 */}
                 <div className="bg-slate-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
                     <div className="flex items-center gap-2">
                         <Crown className="w-4 h-4 text-amber-400" />
@@ -90,7 +85,7 @@ export default function ContactModal({
                         <div className="flex items-center justify-center gap-2 text-xs text-slate-500 mb-4">
                             <span>PDF 高清导出</span>
                             <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                            <span>PPTX 可编辑源码</span>
+                            <span>PPTX 可编辑版</span>
                         </div>
 
                         <div className="relative inline-flex flex-col items-center bg-slate-50 border border-slate-100 rounded-2xl p-4 w-full">
@@ -104,102 +99,109 @@ export default function ContactModal({
                         </div>
                     </div>
 
-                    {/* 扫码与复制区域 */}
-                    <div className="flex gap-4 mb-6">
-                        {/* 左侧：二维码 */}
-                        <div className="flex-shrink-0 w-32 h-32 bg-white border border-slate-100 rounded-xl p-1.5 shadow-sm">
-                            <img
-                                src={wechatQrCodeUrl}
-                                alt="微信二维码"
-                                className="w-full h-full object-contain rounded-lg"
-                                onError={(e) => {
-                                    e.target.style.display = 'none';
-                                    e.target.nextSibling.style.display = 'flex';
-                                }}
-                            />
-                            <div
-                                className="hidden w-full h-full items-center justify-center bg-slate-50 rounded-lg text-center p-2"
-                                style={{ display: 'none' }}
-                            >
-                                <span className="text-[10px] text-slate-400">二维码加载失败</span>
-                            </div>
-                        </div>
-
-                        {/* 右侧：操作指引 */}
-                        <div className="flex-1 flex flex-col justify-center space-y-3">
-                            <div>
-                                <h3 className="text-sm font-bold text-slate-900 mb-1">第 1 步</h3>
-                                <p className="text-xs text-slate-500">扫码添加客服微信</p>
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-slate-900 mb-1">第 2 步</h3>
-                                <p className="text-xs text-slate-500 mb-2">点击复制订单信息并发送</p>
-                                <button
-                                    onClick={handleCopyInfo}
-                                    className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all ${copied
-                                            ? 'bg-green-100 text-green-700 border border-green-200'
-                                            : 'bg-slate-900 text-white hover:bg-slate-800 shadow-md hover:shadow-lg'
-                                        }`}
+                    {/* 扫码与操作指引 */}
+                    <div className="bg-slate-50/50 rounded-xl p-4 border border-slate-100/50 mb-6">
+                        <div className="flex gap-4">
+                            {/* 左侧：二维码 */}
+                            <div className="flex-shrink-0 w-28 h-28 bg-white border border-slate-100 rounded-xl p-1.5 shadow-sm">
+                                <img
+                                    src={wechatQrCodeUrl}
+                                    alt="微信二维码"
+                                    className="w-full h-full object-contain rounded-lg"
+                                    onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        e.target.nextSibling.style.display = 'flex';
+                                    }}
+                                />
+                                <div
+                                    className="hidden w-full h-full items-center justify-center bg-slate-50 rounded-lg text-center p-2"
+                                    style={{ display: 'none' }}
                                 >
-                                    {copied ? (
-                                        <>
-                                            <Check className="w-3.5 h-3.5" />
-                                            已复制
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Copy className="w-3.5 h-3.5" />
-                                            复制订单号
-                                        </>
-                                    )}
-                                </button>
+                                    <span className="text-[10px] text-slate-400">二维码加载失败</span>
+                                </div>
+                            </div>
+
+                            {/* 右侧：步骤指引 */}
+                            <div className="flex-1 flex flex-col justify-center space-y-3">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="flex items-center justify-center w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-bold">1</span>
+                                        <h3 className="text-xs font-bold text-slate-900">扫码添加客服</h3>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 pl-5.5">长按识别或截图扫码</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="flex items-center justify-center w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-bold">2</span>
+                                        <h3 className="text-xs font-bold text-slate-900">发送文档名称</h3>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 pl-5.5">直接发送即刻获取</p>
+                                </div>
                             </div>
                         </div>
+
+                        {/* 复制按钮 */}
+                        <div className="mt-4">
+                            <button
+                                onClick={handleCopyInfo}
+                                className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all ${copied
+                                        ? 'bg-green-100 text-green-700 border border-green-200'
+                                        : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg hover:shadow-xl hover:-translate-y-0.5'
+                                    }`}
+                            >
+                                {copied ? (
+                                    <>
+                                        <Check className="w-4 h-4" />
+                                        已复制文档名
+                                    </>
+                                ) : (
+                                    <>
+                                        <Copy className="w-4 h-4" />
+                                        一键复制文档名称
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
 
-                    {/* 文档名称确认 */}
-                    <div className="bg-slate-50 rounded-lg px-3 py-2 mb-6 border border-slate-100">
-                        <div className="flex justify-between items-center text-[10px] text-slate-500 mb-1">
-                            <span>当前文档</span>
-                            <span className="font-mono text-slate-400">{orderNo}</span>
-                        </div>
-                        <div className="text-xs font-medium text-slate-700 truncate" title={documentName}>
-                            {documentName}
-                        </div>
+                    {/* 当前文档信息 */}
+                    <div className="text-center mb-6 px-2">
+                        <p className="text-[10px] text-slate-400 mb-1">当前文档</p>
+                        <p className="text-xs font-medium text-slate-700 truncate select-all">{documentName}</p>
                     </div>
 
-                    {/* 高级定制服务引导 */}
+                    {/* 高级定制服务引导 - 底部附加价值 */}
                     <div className="border-t border-slate-100 pt-5">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-xs font-bold text-slate-900">更多企业级服务</h3>
-                            <span className="text-[10px] text-slate-400">联系客服咨询</span>
+                            <span className="text-[10px] text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">联系客服咨询</span>
                         </div>
                         <div className="grid grid-cols-1 gap-2">
-                            <div className="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors group cursor-default">
-                                <div className="p-1.5 bg-blue-50 text-blue-600 rounded-md group-hover:bg-blue-100 transition-colors">
+                            <div className="flex items-start gap-3 p-2.5 rounded-xl bg-slate-50/50 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all cursor-default group">
+                                <div className="p-1.5 bg-white text-blue-600 rounded-lg shadow-sm group-hover:bg-blue-50 transition-colors">
                                     <Palette className="w-3.5 h-3.5" />
                                 </div>
                                 <div>
-                                    <div className="text-xs font-medium text-slate-700">PPT 深度美化定制</div>
-                                    <div className="text-[10px] text-slate-400">专业设计师 1v1 排版优化</div>
+                                    <div className="text-xs font-medium text-slate-800">PPT 深度美化定制</div>
+                                    <div className="text-[10px] text-slate-400 mt-0.5">专业设计师美化排版，提升质感</div>
                                 </div>
                             </div>
-                            <div className="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors group cursor-default">
-                                <div className="p-1.5 bg-purple-50 text-purple-600 rounded-md group-hover:bg-purple-100 transition-colors">
+                            <div className="flex items-start gap-3 p-2.5 rounded-xl bg-slate-50/50 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all cursor-default group">
+                                <div className="p-1.5 bg-white text-purple-600 rounded-lg shadow-sm group-hover:bg-purple-50 transition-colors">
                                     <Briefcase className="w-3.5 h-3.5" />
                                 </div>
                                 <div>
-                                    <div className="text-xs font-medium text-slate-700">企业模版开发</div>
-                                    <div className="text-[10px] text-slate-400">品牌 VI 植入与专属母版定制</div>
+                                    <div className="text-xs font-medium text-slate-800">企业模版开发</div>
+                                    <div className="text-[10px] text-slate-400 mt-0.5">品牌专属母版定制，规范视觉</div>
                                 </div>
                             </div>
-                            <div className="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors group cursor-default">
-                                <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-md group-hover:bg-emerald-100 transition-colors">
+                            <div className="flex items-start gap-3 p-2.5 rounded-xl bg-slate-50/50 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all cursor-default group">
+                                <div className="p-1.5 bg-white text-emerald-600 rounded-lg shadow-sm group-hover:bg-emerald-50 transition-colors">
                                     <FileSignature className="w-3.5 h-3.5" />
                                 </div>
                                 <div>
-                                    <div className="text-xs font-medium text-slate-700">内容润色与撰写</div>
-                                    <div className="text-[10px] text-slate-400">行业专家提供内容优化服务</div>
+                                    <div className="text-xs font-medium text-slate-800">内容润色与撰写</div>
+                                    <div className="text-[10px] text-slate-400 mt-0.5">行业专家优化文案，逻辑更清晰</div>
                                 </div>
                             </div>
                         </div>

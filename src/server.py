@@ -670,7 +670,9 @@ async def generate_with_progress(req: GenerateRequest) -> AsyncGenerator[str, No
                 yield send_event("pdf_ready", "PDF 准备就绪", 85, result={"pdf": pdf_path})
                 
                 # 有了 PDF 后，继续生成 PPTX
-                if not req.skip_pptx and pdf_path and config.ADOBE_AVAILABLE:
+                # 商业化版本：后端不再自动生成 PPTX，节省资源
+                # 用户需要加微信获取，由于 Adobe 转换慢且不稳定，直接截断
+                if False and not req.skip_pptx and pdf_path and config.ADOBE_AVAILABLE:
                     yield send_event("pptx", "正在后台转换 PPTX...", 90)
                     pptx_path = await asyncio.to_thread(renderer.generate_pptx, pdf_path)
                     
