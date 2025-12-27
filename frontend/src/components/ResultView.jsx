@@ -529,6 +529,7 @@ export default function ResultView({ result, downloads, isProcessing, generation
                 onClose={() => setShowContactModal(false)}
                 documentName={documentName || result?.document_name || '演示文稿'}
                 price={paymentPrice}
+                generationId={generationId}
             />
 
             {/* 反馈弹窗 */}
