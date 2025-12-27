@@ -99,3 +99,13 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 COMFYUI_ENABLED = os.getenv("COMFYUI_ENABLED", "false").lower() == "true"
 COMFYUI_HOST = os.getenv("COMFYUI_HOST", "host.docker.internal:8188") # Docker访问宿主机的默认地址
 COMFYUI_WORKFLOW_FILE = os.path.join(os.path.dirname(__file__), "workflow_api.json")
+
+# PayJS 支付配置 (商业化)
+PAYJS_MCHID = os.getenv("PAYJS_MCHID", "")  # 商户号
+PAYJS_KEY = os.getenv("PAYJS_KEY", "")  # 通信密钥
+PAYJS_ENABLED = bool(PAYJS_MCHID and PAYJS_KEY)
+DOWNLOAD_PRICE_YUAN = float(os.getenv("DOWNLOAD_PRICE_YUAN", "9.9"))  # 下载价格（元）
+
+# 商业化模式开关
+COMMERCIAL_MODE = os.getenv("COMMERCIAL_MODE", "false").lower() == "true"
+

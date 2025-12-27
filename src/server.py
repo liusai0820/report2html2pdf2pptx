@@ -45,6 +45,7 @@ from v2.image_generator import get_image_generator
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import reporter
+import payment
 
 # ========== Pydantic Models ==========
 
@@ -883,9 +884,116 @@ async def generate_ai_reply(feedback: FeedbackNotification, quota_info: str = ""
         print(f"LLM generation failed: {e}")
         return None
 
+# ========== 支付相关接口 (商业化) ==========
+
+class PaymentCreateRequest(BaseModel):
+    generation_id: str  # 生成记录 ID (output 目录名)
+    user_id: Optional[str] = None
+
+class PaymentCreateResponse(BaseModel):
+    success: bool
+    order_id: Optional[str] = None
+    qrcode_url: Optional[str] = None  # 二维码内容
+    payjs_order_id: Optional[str] = None
+    price: float = 9.9
+    message: Optional[str] = None
+
+class PaymentCheckRequest(BaseModel):
+    payjs_order_id: str
+    order_id: str
+
+class PaymentCheckResponse(BaseModel):
+    paid: bool
+    download_url: Optional[str] = None
+
+@app.post("/api/payment/create", response_model=PaymentCreateResponse)
+async def create_payment_order(req: PaymentCreateRequest):
+    """
+    创建支付订单
+    商业化模式下，用户需要支付后才能下载 PDF
+    """
+    if not config.COMMERCIAL_MODE:
+        return PaymentCreateResponse(
+            success=False,
+            message="Payment not required in this mode"
+        )
+    
+    if not config.PAYJS_ENABLED:
+        return PaymentCreateResponse(
+            success=False,
+            message="Payment service not configured"
+        )
+    
+    # 检查生成记录是否存在
+    output_dir = Path("output") / req.generation_id
+    if not output_dir.exists():
+        return PaymentCreateResponse(
+            success=False,
+            message="Generation not found"
+        )
+    
+    # 生成唯一订单号
+    import uuid
+    order_id = f"PPT_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+    
+    # 调用 PayJS 创建订单
+    success, qrcode_url, payjs_order_id = await payment.create_payment(
+        order_id=order_id,
+        amount_yuan=config.DOWNLOAD_PRICE_YUAN,
+        body=f"AI演示文稿下载 - {req.generation_id[:20]}"
+    )
+    
+    if success:
+        # TODO: 将订单信息存入 Supabase payments 表
+        # 暂时先返回，后续补充数据库逻辑
+        return PaymentCreateResponse(
+            success=True,
+            order_id=order_id,
+            qrcode_url=qrcode_url,
+            payjs_order_id=payjs_order_id,
+            price=config.DOWNLOAD_PRICE_YUAN
+        )
+    else:
+        return PaymentCreateResponse(
+            success=False,
+            message="Failed to create payment order"
+        )
+
+@app.post("/api/payment/check", response_model=PaymentCheckResponse)
+async def check_payment_status(req: PaymentCheckRequest):
+    """
+    检查订单支付状态
+    """
+    if not config.PAYJS_ENABLED:
+        return PaymentCheckResponse(paid=False)
+    
+    is_paid, _ = await payment.check_payment(req.payjs_order_id)
+    
+    if is_paid:
+        # TODO: 更新 Supabase 订单状态
+        # 返回下载链接（后续可以改为签名 URL）
+        return PaymentCheckResponse(
+            paid=True,
+            download_url=f"/output/{req.order_id}/presentation.pdf"
+        )
+    else:
+        return PaymentCheckResponse(paid=False)
+
+@app.get("/api/payment/config")
+async def get_payment_config():
+    """
+    获取支付配置（前端用）
+    """
+    return {
+        "commercial_mode": config.COMMERCIAL_MODE,
+        "payment_enabled": config.PAYJS_ENABLED,
+        "price": config.DOWNLOAD_PRICE_YUAN if config.COMMERCIAL_MODE else 0
+    }
+
 # ========== 运行入口 ==========
 
 if __name__ == "__main__":
     port = int(os.getenv("API_PORT", "8005"))
     host = os.getenv("API_HOST", "0.0.0.0")
     uvicorn.run("server:app", host=host, port=port, reload=True)
+

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Download, MonitorPlay, LayoutGrid, PanelLeft, ChevronLeft, ChevronRight, X, Loader2, ZoomIn, ZoomOut } from 'lucide-react';
 import { getOutputUrl } from '../api';
+import PaymentModal from './PaymentModal';
 
 // 强制下载文件（避免浏览器打开文件导致页面跳转）
 const forceDownload = async (url, filename) => {
@@ -30,6 +31,19 @@ export default function ResultView({ result, downloads, isProcessing }) {
     const [downloadingPptx, setDownloadingPptx] = useState(false);
     const [gridColumns, setGridColumns] = useState(4); // 网格列数控制 (1-6)
 
+    // 支付相关状态
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paymentConfig, setPaymentConfig] = useState({ commercial_mode: false, price: 0 });
+    const [isPaid, setIsPaid] = useState(false);
+
+    // 获取支付配置
+    useEffect(() => {
+        fetch('/api/payment/config')
+            .then(res => res.json())
+            .then(data => setPaymentConfig(data))
+            .catch(() => { });
+    }, []);
+
     // 如果正在处理中，模拟进度
     const [progress, setProgress] = useState(0);
     useEffect(() => {
@@ -46,10 +60,28 @@ export default function ResultView({ result, downloads, isProcessing }) {
     // 处理 PDF 下载
     const handlePdfDownload = async () => {
         if (!downloads?.pdf) return;
+
+        // 商业化模式下，未支付需要弹出支付弹窗
+        if (paymentConfig.commercial_mode && !isPaid) {
+            setShowPaymentModal(true);
+            return;
+        }
+
         setDownloadingPdf(true);
         const filename = downloads.pdf.split('/').pop();
         await forceDownload(getOutputUrl(downloads.pdf), filename);
         setDownloadingPdf(false);
+    };
+
+    // 支付成功回调
+    const handlePaymentSuccess = (downloadUrl) => {
+        setShowPaymentModal(false);
+        setIsPaid(true);
+        // 支付成功后自动下载
+        if (downloadUrl) {
+            const filename = downloadUrl.split('/').pop();
+            forceDownload(getOutputUrl(downloadUrl), filename);
+        }
     };
 
     // 处理 PPTX 下载
@@ -233,6 +265,12 @@ export default function ResultView({ result, downloads, isProcessing }) {
                                     <Download className="w-4 h-4" />
                                 )}
                                 <span>PDF</span>
+                                {/* 商业化模式显示价格 */}
+                                {paymentConfig.commercial_mode && !isPaid && (
+                                    <span className="ml-1 px-1.5 py-0.5 text-[10px] font-semibold bg-green-500 text-white rounded">
+                                        ¥{paymentConfig.price}
+                                    </span>
+                                )}
                             </button>
                         ) : (
                             <button disabled className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-400 cursor-not-allowed">
@@ -425,6 +463,15 @@ export default function ResultView({ result, downloads, isProcessing }) {
                     @apply flex items-center bg-white border border-slate-200 text-slate-700 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm active:translate-y-0.5;
                 }
             `}</style>
+
+            {/* 支付弹窗 */}
+            <PaymentModal
+                isOpen={showPaymentModal}
+                onClose={() => setShowPaymentModal(false)}
+                onPaymentSuccess={handlePaymentSuccess}
+                generationId={result?.generation_id || downloads?.pdf?.split('/')[2]}
+                price={paymentConfig.price}
+            />
         </div>
     );
 }
