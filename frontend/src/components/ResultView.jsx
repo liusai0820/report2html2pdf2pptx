@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Download, MonitorPlay, LayoutGrid, PanelLeft, ChevronLeft, ChevronRight, X, Loader2, ZoomIn, ZoomOut } from 'lucide-react';
 import { getOutputUrl } from '../api';
-import PaymentModal from './PaymentModal';
+import ContactModal from './ContactModal';
 
 // 强制下载文件（避免浏览器打开文件导致页面跳转）
 const forceDownload = async (url, filename) => {
@@ -31,16 +31,15 @@ export default function ResultView({ result, downloads, isProcessing }) {
     const [downloadingPptx, setDownloadingPptx] = useState(false);
     const [gridColumns, setGridColumns] = useState(4); // 网格列数控制 (1-6)
 
-    // 支付相关状态
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [paymentConfig, setPaymentConfig] = useState({ commercial_mode: false, price: 0 });
-    const [isPaid, setIsPaid] = useState(false);
+    // 加微信弹窗状态 (商业化模式)
+    const [showContactModal, setShowContactModal] = useState(false);
+    const [commercialMode, setCommercialMode] = useState(false);
 
-    // 获取支付配置
+    // 获取配置
     useEffect(() => {
         fetch('/api/payment/config')
             .then(res => res.json())
-            .then(data => setPaymentConfig(data))
+            .then(data => setCommercialMode(data.commercial_mode || false))
             .catch(() => { });
     }, []);
 
@@ -61,9 +60,9 @@ export default function ResultView({ result, downloads, isProcessing }) {
     const handlePdfDownload = async () => {
         if (!downloads?.pdf) return;
 
-        // 商业化模式下，未支付需要弹出支付弹窗
-        if (paymentConfig.commercial_mode && !isPaid) {
-            setShowPaymentModal(true);
+        // 商业化模式下，弹出加微信弹窗
+        if (commercialMode) {
+            setShowContactModal(true);
             return;
         }
 
@@ -71,17 +70,6 @@ export default function ResultView({ result, downloads, isProcessing }) {
         const filename = downloads.pdf.split('/').pop();
         await forceDownload(getOutputUrl(downloads.pdf), filename);
         setDownloadingPdf(false);
-    };
-
-    // 支付成功回调
-    const handlePaymentSuccess = (downloadUrl) => {
-        setShowPaymentModal(false);
-        setIsPaid(true);
-        // 支付成功后自动下载
-        if (downloadUrl) {
-            const filename = downloadUrl.split('/').pop();
-            forceDownload(getOutputUrl(downloadUrl), filename);
-        }
     };
 
     // 处理 PPTX 下载
@@ -265,10 +253,10 @@ export default function ResultView({ result, downloads, isProcessing }) {
                                     <Download className="w-4 h-4" />
                                 )}
                                 <span>PDF</span>
-                                {/* 商业化模式显示价格 */}
-                                {paymentConfig.commercial_mode && !isPaid && (
+                                {/* 商业化模式显示加微信提示 */}
+                                {commercialMode && (
                                     <span className="ml-1 px-1.5 py-0.5 text-[10px] font-semibold bg-green-500 text-white rounded">
-                                        ¥{paymentConfig.price}
+                                        加微信领取
                                     </span>
                                 )}
                             </button>
@@ -464,13 +452,11 @@ export default function ResultView({ result, downloads, isProcessing }) {
                 }
             `}</style>
 
-            {/* 支付弹窗 */}
-            <PaymentModal
-                isOpen={showPaymentModal}
-                onClose={() => setShowPaymentModal(false)}
-                onPaymentSuccess={handlePaymentSuccess}
-                generationId={result?.generation_id || downloads?.pdf?.split('/')[2]}
-                price={paymentConfig.price}
+            {/* 加微信弹窗 */}
+            <ContactModal
+                isOpen={showContactModal}
+                onClose={() => setShowContactModal(false)}
+                documentName={result?.document_name}
             />
         </div>
     );
