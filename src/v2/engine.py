@@ -1,6 +1,14 @@
 """
 Presentation Engine - 核心引擎
 
+@input:  ai_designer, design_system, validator, unified_styles
+@output: PresentationEngine.generate() -> {html_path, pages[]}
+@pos:    V2引擎的调度中心，协调所有组件完成端到端生成
+
+⚠️ 一旦我被更新，务必更新：
+   1. 我的头部注释
+   2. /src/v2/_FOLDER.md
+
 职责：
 1. 协调 AI 设计师、设计系统、验证器
 2. 管理生成流程（解析 -> 大纲 -> 页面 -> 合并）

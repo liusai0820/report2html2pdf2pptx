@@ -1,4 +1,14 @@
-"""文档解析器 - 解析用户输入的文档数据"""
+"""
+文档解析器 - 解析用户输入的文档数据
+
+@input:  文件路径 (PDF/DOCX/MD/TXT/JSON)
+@output: load_document() -> {full_content, pages[], title}
+@pos:    数据入口，将各种格式的文档统一转换为可处理的结构
+
+⚠️ 一旦我被更新，务必更新：
+   1. 我的头部注释
+   2. /src/_FOLDER.md
+"""
 import json
 import os
 from typing import List, Dict

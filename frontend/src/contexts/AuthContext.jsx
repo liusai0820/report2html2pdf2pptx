@@ -99,14 +99,16 @@ export const AuthProvider = ({ children }) => {
   const canGenerate = profile ? (profile.generations_used < profile.generation_quota) : true;
   const quotaRemaining = profile ? (profile.generation_quota - profile.generations_used) : null;
 
-  // Record a generation and refresh profile
+  // Record a generation and refresh profile, returns generation ID
   const trackGeneration = async (metadata = {}) => {
-    if (!user?.id) return;
+    if (!user?.id) return null;
     try {
-      await recordGeneration(user.id, metadata);
+      const record = await recordGeneration(user.id, metadata);
       await refreshProfile();
+      return record?.id || null; // 返回生成记录的 ID，用于反馈关联
     } catch (error) {
       console.error('Error tracking generation:', error);
+      return null;
     }
   };
 

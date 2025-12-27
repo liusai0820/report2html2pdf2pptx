@@ -1,6 +1,14 @@
 """
 Design System - 设计系统 Token
 
+@input:  场景类型, 用户自定义颜色, 字体风格
+@output: DesignSystem, DesignTokens, ColorPalette, Typography
+@pos:    V2引擎的视觉约束层，定义所有可用的设计变量
+
+⚠️ 一旦我被更新，务必更新：
+   1. 我的头部注释
+   2. /src/v2/_FOLDER.md
+
 这是唯一的"约束层"，只定义：
 1. 颜色 Palette
 2. 字体/字号范围

@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SlideCraft 定价方案 | 思考即演示</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+SC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0F172A;
+            --accent: #2563EB;
+            --accent-light: #3B82F6;
+            --accent-glow: rgba(37, 99, 235, 0.15);
+            --turbo: #F59E0B;
+            --turbo-dark: #D97706;
+            --turbo-glow: rgba(245, 158, 11, 0.2);
+            --success: #10B981;
+            --secondary: #64748B;
+            --bg: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --border: #E2E8F0;
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-turbo: linear-gradient(135deg, #F59E0B 0%, #EF4444 50%, #EC4899 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        /* Animated Background */
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 20%, var(--accent-glow) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, var(--turbo-glow) 0%, transparent 50%),
+                var(--bg);
+            z-index: -1;
+        }
+
+        /* Header */
+        .header {
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-weight: 900;
+            font-size: 24px;
+            letter-spacing: -0.5px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--gradient-1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+
+        .back-link {
+            color: var(--secondary);
+            text-decoration: none;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+            color: #92400E;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .hero h1 {
+            font-size: clamp(32px, 5vw, 48px);
+            font-weight: 900;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 18px;
+            color: var(--secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Pricing Cards Grid */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            align-items: stretch;
+            margin-top: 40px;
+        }
+
+        @media (max-width: 1100px) {
+            .pricing-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Pricing Card */
+        .pricing-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 32px 24px;
+            position: relative;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+        }
+
+        /* Recommended Card (Turbo) */
+        .pricing-card.recommended {
+            background: linear-gradient(180deg, #FFFBEB 0%, #FEF3C7 100%);
+            border: 2px solid var(--turbo);
+            transform: scale(1.05);
+            z-index: 10;
+            box-shadow: 0 25px 50px -12px rgba(245, 158, 11, 0.25);
+        }
+
+        .pricing-card.recommended:hover {
+            transform: scale(1.05) translateY(-4px);
+        }
+
+        .recommended-badge {
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--gradient-turbo);
+            color: white;
+            padding: 6px 20px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+        }
+
+        .plan-header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .pricing-card.recommended .plan-header {
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        .plan-name {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: var(--primary);
+        }
+
+        .plan-desc {
+            font-size: 13px;
+            color: var(--secondary);
+            min-height: 40px; /* Align heights */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .price-container {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .price {
+            font-size: 40px;
+            font-weight: 900;
+            color: var(--primary);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 2px;
+        }
+
+        .pricing-card.recommended .price {
+            color: var(--turbo-dark);
+        }
+
+        .currency {
+            font-size: 18px;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+
+        .period {
+            font-size: 14px;
+            color: var(--secondary);
+            font-weight: 500;
+        }
+
+        .original-price {
+            text-decoration: line-through;
+            color: #CBD5E1;
+            font-size: 14px;
+            margin-bottom: 4px;
+            height: 20px;
+        }
+
+        /* Features List */
+        .features-list {
+            list-style: none;
+            margin-bottom: 32px;
+            flex-grow: 1;
+        }
+
+        .features-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 10px 0;
+            font-size: 14px;
+            color: var(--primary);
+        }
+
+        .features-list .icon {
+            width: 20px;
+            height: 20px;
+            background: #DCFCE7;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: var(--success);
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .feature-highlight {
+            font-weight: 700;
+            color: var(--turbo-dark);
+            background: rgba(245, 158, 11, 0.1);
+            padding: 0 4px;
+            border-radius: 4px;
+        }
+
+        /* CTA Button */
+        .cta-btn {
+            display: block;
+            width: 100%;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .cta-btn.primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .cta-btn.primary:hover {
+            background: #1E293B;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.2);
+        }
+
+        .cta-btn.turbo {
+            background: var(--gradient-turbo);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-btn.turbo::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            100% { left: 100%; }
+        }
+
+        .cta-btn.turbo:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(245, 158, 11, 0.4);
+        }
+
+        .cta-btn.outline {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--secondary);
+        }
+
+        .cta-btn.outline:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Contact Section */
+        .contact-section {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 800px;
+            margin: 80px auto 0;
+            text-align: center;
+            scroll-margin-top: 100px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .contact-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .contact-desc {
+            color: var(--secondary);
+            margin-bottom: 32px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .contact-methods {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        .contact-card {
+            background: var(--bg);
+            border-radius: 16px;
+            padding: 24px;
+            min-width: 250px;
+            text-align: center;
+            flex: 1;
+            max-width: 320px;
+        }
+
+        .contact-icon {
+            font-size: 32px;
+            margin-bottom: 16px;
+            display: block;
+        }
+        
+        .qr-box {
+            width: 160px;
+            height: 160px;
+            background: #F8FAFC;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            border: 2px dashed #CBD5E1;
+            padding: 8px;
+            transition: all 0.2s;
+        }
+        
+        .qr-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            border-radius: 8px;
+            color: var(--secondary);
+            font-size: 13px;
+            overflow: hidden;
+        }
+
+        .contact-card:hover .qr-box {
+            border-color: var(--accent);
+            background: #EFF6FF;
+        }
+
+        /* FAQ Teaser */
+        .faq-teaser {
+            background: white;
+            border-top: 1px solid var(--border);
+            padding: 60px 20px;
+            margin-top: 80px;
+        }
+
+        .faq-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-teaser h3 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .faq-item {
+            padding: 24px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .faq-item:first-child {
+            border-top: 1px solid var(--border);
+        }
+
+        .faq-q {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+
+        .faq-a {
+            font-size: 15px;
+            color: var(--secondary);
+            line-height: 1.7;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--secondary);
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">⚡</div>
+            SlideCraft
+        </div>
+        <a href="https://ppt.gwy.life" class="back-link">
+            ← 返回首页
+        </a>
+    </header>
+
+    <main class="container">
+        <!-- Hero -->
+        <section class="hero">
+            <div class="hero-badge">
+                <span>🔥</span> 首发特惠进行中
+            </div>
+            <h1>灵活定价，助力无限创意</h1>
+            <p>从个人创作者到专业团队，我们都有适合您的方案</p>
+        </section>
+
+        <!-- Pricing Cards -->
+        <div class="pricing-grid">
+            <!-- Free Tier -->
+            <div class="pricing-card">
+                <div class="plan-header">
+                    <div class="plan-name">免费体验</div>
+                    <div class="plan-desc">适合偶尔的演示需求</div>
+                </div>
+                <div class="price-container">
+                    <div class="original-price"></div>
+                    <div class="price">
+                        <span class="currency">¥</span>0
+                    </div>
+                    <div class="period">永久免费</div>
+                </div>
+                <ul class="features-list">
+                    <li>
+                        <span class="icon">✓</span>
+                        每月拥有 <strong>3 次</strong> 免费额度
+                    </li>
+                    <li>
+                        <span class="icon">✓</span>
+                        提供基础模板风格
+                    </li>
+                    <li>
+                        <span class="icon">✓</span>
+                        支持 HTML 在线预览
+                    </li>
+                    <li>
+                        <span class="icon">✓</span>
+                        标准生成速度
+                    </li>
+                </ul>
+                <a href="https://ppt.gwy.life" class="cta-btn outline">开始免费使用</a>
+            </div>
+
+            <!-- Basic Tier -->
+            <div class="pricing-card">
+                <div class="plan-header">
+                    <div class="plan-name">基础版</div>
+                    <div class="plan-desc">适合日常工作汇报频率</div>
+                </div>
+                <div class="price-container">
+                    <div class="original-price">¥99</div>
+                    <div class="price">
+                        <span class="currency">¥</span>79
+                    </div>
+                    <div class="period">/月</div>
+                </div>
+                <ul class="features-list">
+                    <li>
+                        <span class="icon">✓</span>
+                        每月 <strong>10 次</strong> 生成额度
+                    </li>
+                    <li>
+                        <span class="icon">✓</span>
+                        解锁<strong>全部</strong>精美模板
+                    </li>
+                    <li>
+                        <span class="icon">✓</span>
+                        <strong>PDF + PPTX</strong> 双格式下载
+                    </li>
+                    <li>
+                        <span class="icon">✓</span>
+                        邮件技术支持
+                    </li>
+                </ul>
+                <a href="#contact" class="cta-btn primary">开通基础版</a>
+            </div>
+
+            <!-- Turbo Tier (Recommended) -->
+            <div class="pricing-card recommended">
+                <div class="recommended-badge">
+                    <span>⚡</span> 老用户首选
+                </div>
+                <div class="plan-header">
+                    <div class="plan-name">Turbo 专业版</div>
+                    <div class="plan-desc">为追求极致效率的你打造</div>
+                </div>
+                <div class="price-container">
+                    <div class="original-price">¥299</div>
+                    <div class="price">
+                        <span class="currency">¥</span>199
+                    </div>
+                    <div class="period">/月</div>
+                </div>
+                <ul class="features-list">
+                    <li>
+                        <span class="icon">✓</span>
+                        每月 <span class="feature-highlight">30 次</span> 超大额度
+                    </li>
+                    <li>
+                        <span class="icon">✓</span>
+                        <span class="feature-highlight">VIP 通道</span>，秒级响应
+                    </li>
+                    <li>
+                        <span class="icon">✓</span>
+                        独家 <span class="feature-highlight">AI 绘图</span> 封面功能
+                    </li>
+                    <li>
+                        <span class="icon">✓</span>
+                        1对1 专属客服服务
+                    </li>
+                    <li>
+                        <span class="icon">✓</span>
+                        优先体验新功能
+                    </li>
+                </ul>
+                <a href="#contact" class="cta-btn turbo">立即升级 Turbo</a>
+            </div>
+
+            <!-- Enterprise Tier -->
+            <div class="pricing-card">
+                <div class="plan-header">
+                    <div class="plan-name">企业定制</div>
+                    <div class="plan-desc">团队协作与私有化部署</div>
+                </div>
+                <div class="price-container">
+                    <div class="original-price"></div>
+                    <div class="price">
+                        <span style="font-size: 32px;">定制</span>
+                    </div>
+                    <div class="period">按需报价</div>
+                </div>
+                <ul class="features-list">
+                    <li>
+                        <span class="icon">✓</span>
+                        包含 Turbo 全部权益
+                    </li>
+                    <li>
+                        <span class="icon">✓</span>
+                        支持团队多人协作
+                    </li>
+                    <li>
+                        <span class="icon">✓</span>
+                        可私有化部署
+                    </li>
+                    <li>
+                        <span class="icon">✓</span>
+                        API 接口开放对接
+                    </li>
+                </ul>
+                <a href="mailto:liusai0820@gmail.com" class="cta-btn outline">联系商务</a>
+            </div>
+        </div>
+
+        <!-- Contact/Payment Section -->
+        <section id="contact" class="contact-section">
+            <h2 class="contact-title">如何开通权益？</h2>
+            <p class="contact-desc">
+                作为独立开发者，为了能把精力集中在产品优化上，暂未接入复杂的自动支付系统。<br>
+                <strong>您可以直接通过主流支付软件扫码付款，备注您的"邮箱"或"微信名"，通常在 10 分钟内极速开通。</strong>
+            </p>
+            
+            <div class="contact-methods">
+                <!-- WeChat Pay -->
+                <div class="contact-card">
+                    <span class="contact-icon" style="color: #09BB07;">💬</span>
+                    <h3>微信支付 / 加好友</h3>
+                    <p style="color: var(--secondary); font-size: 13px; margin: 8px 0 16px;">
+                        推荐！直接扫码转账<br>或添加开发者好友咨询
+                    </p>
+                    <div class="qr-box">
+                        <div class="qr-placeholder">
+                            <!-- 替换为你的微信二维码图片 -->
+                             <!-- <img src="/images/wechat-qr.jpg" style="width:100%;height:100%;object-fit:cover;"> -->
+                            <span>此处放置微信二维码</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alipay -->
+                <div class="contact-card">
+                    <span class="contact-icon" style="color: #1677FF;">💳</span>
+                    <h3>支付宝直接转账</h3>
+                    <p style="color: var(--secondary); font-size: 13px; margin: 8px 0 16px;">
+                        支持花呗/银行卡<br>付款请务必<strong>备注邮箱</strong>
+                    </p>
+                    <div class="qr-box" style="border-color: #93C5FD;">
+                        <div class="qr-placeholder">
+                             <!-- 替换为你的支付宝收款码图片 -->
+                             <!-- <img src="/images/alipay-qr.jpg" style="width:100%;height:100%;object-fit:cover;"> -->
+                            <span>此处放置支付宝二维码</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 32px; font-size: 13px; color: var(--secondary);">
+                <p>如需对公转账或发票（企业版），或使用 <span style="text-decoration: underline; cursor: help;" title="支持 Wise 等国际方式">国际卡支付</span>，请联系邮件：</p>
+                <a href="mailto:liusai0820@gmail.com" style="color: var(--accent); font-weight: 600;">liusai0820@gmail.com</a>
+            </div>
+        </section>
+
+        <!-- FAQ -->
+        <section class="faq-teaser">
+            <div class="faq-container">
+                <h3>💬 常见问题</h3>
+                <div class="faq-item">
+                    <div class="faq-q">基础版和 Turbo 版怎么选？</div>
+                    <div class="faq-a">
+                        如果您只是偶尔需要做 PPT 汇报，<strong>基础版 (10次)</strong> 完全够用，平均每天一次。
+                        如果您是 PPT 高度依赖者（如咨询师、教师、市场），或者需要高质量的 AI 配图，<strong>Turbo 版 (30次)</strong> 是性价比最高的选择，不仅量大，速度也更快。
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-q">直接转账安全吗？</div>
+                    <div class="faq-a">
+                        <strong>绝对安全。</strong> 这是开发者个人的直接收款账户（已实名认证）。信誉是独立开发者的生命线。如果您付款后有任何疑虑或需要退款，可以随时通过添加上面的微信好友或邮件联系，我们会第一时间处理。
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-q">额度是用完即止还是每天刷新？</div>
+                    <div class="faq-a">
+                        额度是按<strong>自然月</strong>计算的。例如基础版每月 30 次，您可以一天用完，也可以分30天用。次月1日会自动重置额度。
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="footer">
+        <p>© 2025 SlideCraft. All rights reserved.</p>
+        <p style="margin-top: 8px;">Designed by HIIC Innovation</p>
+    </footer>
+</body>
+</html>

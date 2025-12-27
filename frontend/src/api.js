@@ -1,6 +1,24 @@
+/**
+ * api.js - 后端 API 通信层
+ *
+ * @input:  VITE_API_URL 环境变量, 后端HTTP端点
+ * @output: fetchScenarios, uploadFile, generatePresentationStream, getOutputUrl 等API函数
+ * @pos:    前端与后端的桥梁，封装所有HTTP请求和SSE流处理
+ *
+ * ⚠️ 一旦我被更新，务必更新：
+ *    1. 我的头部注释
+ *    2. /frontend/src/_FOLDER.md
+ */
+
 // API 配置
 // 生产环境使用环境变量，开发环境使用本地
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8005/api';
+
+// 获取完整的 API URL
+export const getApiUrl = (endpoint) => {
+    const base = API_BASE.endsWith('/api') ? API_BASE.replace('/api', '') : API_BASE;
+    return `${base}${endpoint}`;
+};
 
 export const fetchScenarios = async () => {
     const response = await fetch(`${API_BASE}/scenarios`);

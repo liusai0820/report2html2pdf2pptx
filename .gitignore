@@ -51,3 +51,26 @@ config/pdfservices-api-credentials.json
 # Node
 node_modules/
 package-lock.json
+
+# Logs
+*.log
+logs/
+*_run.log
+*_clean.log
+
+# Temporary/Debug Scripts
+debug_*.py
+test_*.py
+*~
+*.bak
+*.orig
+*.rej
+
+# Documentation drafts
+*_通知.*
+notification_poster*.png
+
+# Dev scripts
+dev_*.sh
+docs/
+

@@ -1,3 +1,15 @@
+/**
+ * UploadZone.jsx - 文件上传组件
+ *
+ * @input:  onFileSelect, onUpload 回调函数
+ * @output: UploadZone组件（拖拽上传区域 + 已选文件卡片）
+ * @pos:    用户交互入口，处理文档上传和文件选择
+ *
+ * ⚠️ 一旦我被更新，务必更新：
+ *    1. 我的头部注释
+ *    2. /frontend/src/components/_FOLDER.md
+ */
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileText, X } from 'lucide-react';

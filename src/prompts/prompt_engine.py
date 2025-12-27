@@ -1,6 +1,14 @@
 """
 Prompt 引擎 - 智能生成高质量提示词
 
+@input:  scenario, user_config, theme_config, methodology
+@output: PromptEngine 类, generate_*_prompt() 方法
+@pos:    Prompt系统的核心，动态构建AI可理解的提示词
+
+⚠️ 一旦我被更新，务必更新：
+   1. 我的头部注释
+   2. /src/prompts/_FOLDER.md
+
 核心功能：
 1. 根据场景生成系统提示词
 2. 根据页面类型生成页面提示词
