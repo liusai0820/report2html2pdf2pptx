@@ -112,4 +112,9 @@ DOWNLOAD_PRICE_YUAN = float(os.getenv("DOWNLOAD_PRICE_YUAN", "9.9"))  # 下载�
 # 商业化模式开关
 COMMERCIAL_MODE = os.getenv("COMMERCIAL_MODE", "false").lower() == "true"
 
+# Telegram Consfiguration
+TELEGRAM_BOT_TOKEN = os.getenv("TG_BOT_TOKEN", "") # Compatible with reporter.py which uses TELEGRAM_BOT_TOKEN
+TELEGRAM_CHAT_ID = os.getenv("TG_CHAT_ID", "")
+TELEGRAM_ENABLED = bool(TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)
+
 

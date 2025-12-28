@@ -1,0 +1,15 @@
+tunnel: <TUNNEL_UUID>
+credentials-file: /etc/cloudflared/cert.json
+
+ingress:
+  # 1. API 请求转发给后端容器 (端口 8005)
+  - hostname: slide.gwy.life
+    path: /api/*
+    service: http://backend:8005
+
+  # 2. 其他请求转发给前端容器 (端口 5173)
+  - hostname: slide.gwy.life
+    service: http://frontend:5173
+
+  # 3. 兜底规则 (返回 404)
+  - service: http_status:404

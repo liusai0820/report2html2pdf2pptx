@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Loader2, AlertCircle, Sparkles, ArrowRight, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { notifyAction } from '../api';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -31,6 +32,9 @@ export default function AuthPage() {
           throw new Error('密码至少需要 6 个字符');
         }
         await register(email, password);
+        // 通知后端新用户注册
+        notifyAction('signup', 'New User Registration', email);
+
         setSuccess('注册成功！请检查邮箱确认链接（如果启用了邮箱验证）');
         setIsLogin(true);
       }
@@ -46,7 +50,7 @@ export default function AuthPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-dot-pattern opacity-[0.03]" />
-      
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -67,21 +71,19 @@ export default function AuthPage() {
           <div className="flex border-b border-slate-100">
             <button
               onClick={() => { setIsLogin(true); setError(''); setSuccess(''); }}
-              className={`flex-1 py-4 text-sm font-medium transition-colors ${
-                isLogin 
-                  ? 'text-slate-900 border-b-2 border-slate-900' 
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
+              className={`flex-1 py-4 text-sm font-medium transition-colors ${isLogin
+                ? 'text-slate-900 border-b-2 border-slate-900'
+                : 'text-slate-400 hover:text-slate-600'
+                }`}
             >
               登录
             </button>
             <button
               onClick={() => { setIsLogin(false); setError(''); setSuccess(''); }}
-              className={`flex-1 py-4 text-sm font-medium transition-colors ${
-                !isLogin 
-                  ? 'text-slate-900 border-b-2 border-slate-900' 
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
+              className={`flex-1 py-4 text-sm font-medium transition-colors ${!isLogin
+                ? 'text-slate-900 border-b-2 border-slate-900'
+                : 'text-slate-400 hover:text-slate-600'
+                }`}
             >
               注册
             </button>

@@ -893,13 +893,13 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         
         html = html.strip()
         
-        # 移除 markdown 代码块
-        if html.startswith('```html'):
-            html = html[7:]
-        elif html.startswith('```'):
-            html = html[3:]
-        if html.endswith('```'):
-            html = html[:-3]
+        html = html.strip()
+        
+        # 强力移除 markdown 代码块标记 (支持 ```html, ```, 以及前后可能有空格/换行的情况)
+        # 替换开头的 ```Tag
+        html = re.sub(r'^```(?:html|xml|markdown)?\s*', '', html, flags=re.IGNORECASE)
+        # 替换结尾的 ```
+        html = re.sub(r'\s*```$', '', html)
         
         # 移除 HTML 之前的解释文字
         first_tag = re.search(r'<div\s', html, re.IGNORECASE)

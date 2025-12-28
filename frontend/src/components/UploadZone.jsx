@@ -124,7 +124,7 @@ export default function UploadZone({ onFileSelect, selectedFile, onUpload }) {
                         className="w-full"
                     >
                         <div className="bg-white border border-slate-200 p-2.5 flex items-center gap-2.5 rounded-lg shadow-sm relative group hover:border-blue-300 transition-colors">
-                             <div className="w-8 h-8 rounded-md bg-blue-50 flex items-center justify-center border border-blue-100">
+                            <div className="w-8 h-8 rounded-md bg-blue-50 flex items-center justify-center border border-blue-100">
                                 <FileText className="w-4 h-4 text-blue-600" />
                             </div>
                             <div className="flex-1 min-w-0 text-left">

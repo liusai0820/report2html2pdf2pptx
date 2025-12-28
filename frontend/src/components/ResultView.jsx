@@ -121,13 +121,13 @@ export default function ResultView({ result, downloads, isProcessing, generation
 
     // 处理 PDF 下载
     const handlePdfDownload = async () => {
-        if (!downloads?.pdf) return;
-
-        // 商业化模式下，弹出加微信弹窗
+        // 商业化模式下，优先弹出加微信弹窗
         if (commercialMode) {
             setShowContactModal(true);
             return;
         }
+
+        if (!downloads?.pdf) return;
 
         setDownloadingPdf(true);
         const filename = downloads.pdf.split('/').pop();
@@ -314,9 +314,14 @@ export default function ResultView({ result, downloads, isProcessing, generation
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {/* PDF Download - 点击时弹出商业化弹窗 */}
-                        {downloads?.pdf ? (
-                            <button onClick={handlePdfDownload} disabled={downloadingPdf} className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200" title="下载 PDF 文档">
+                        {/* PDF Download - 商业化模式立即弹窗，非商业模式等PDF就绪 */}
+                        {result?.pages?.length > 0 ? (
+                            <button
+                                onClick={handlePdfDownload}
+                                disabled={downloadingPdf}
+                                className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                                title="下载 PDF 文档"
+                            >
                                 {downloadingPdf ? (
                                     <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
                                 ) : (
@@ -331,8 +336,8 @@ export default function ResultView({ result, downloads, isProcessing, generation
                             </button>
                         )}
 
-                        {/* PPTX Download - Turbo 用户专属 */}
-                        {downloads?.pptx && !commercialMode ? (
+                        {/* PPTX Download - 商业化模式下也可点击弹窗 */}
+                        {((downloads?.pptx || commercialMode) && !commercialMode) ? (
                             <button onClick={handlePptxDownload} disabled={downloadingPptx} className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200" title="下载 PPTX 演示文稿">
                                 {downloadingPptx ? (
                                     <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
@@ -340,6 +345,18 @@ export default function ResultView({ result, downloads, isProcessing, generation
                                     <Download className="w-4 h-4" />
                                 )}
                                 <span>PPTX</span>
+                            </button>
+                        ) : commercialMode ? (
+                            <button
+                                onClick={() => setShowContactModal(true)}
+                                className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                                title="获取 PPTX 源文件"
+                            >
+                                <Download className="w-4 h-4" />
+                                <span>PPTX</span>
+                                <span className="ml-0.5 px-1.5 py-0.5 text-[9px] font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-sm uppercase tracking-wide">
+                                    Pro
+                                </span>
                             </button>
                         ) : (
                             <button

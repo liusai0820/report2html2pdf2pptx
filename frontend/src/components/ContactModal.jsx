@@ -14,8 +14,10 @@ export default function ContactModal({
     isOpen,
     onClose,
     documentName,
-    price = 19.9
+    // price prop is ignored to ensure 39.9
 }) {
+    // 强制设定价格
+    const displayPrice = 39.9;
     const [countdown, setCountdown] = useState({ minutes: 9, seconds: 59 });
     const [copied, setCopied] = useState(false);
 
@@ -46,8 +48,9 @@ export default function ContactModal({
 
     if (!isOpen) return null;
 
-    const wechatQrCodeUrl = "/wechat-qrcode.png";
-    const originalPrice = 59;
+    // 添加时间戳防止缓存
+    const wechatQrCodeUrl = `/wechat-qrcode.png?v=${new Date().getTime()}`;
+    const originalPrice = 99;
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -77,7 +80,8 @@ export default function ContactModal({
                     <X className="w-5 h-5" />
                 </button>
 
-                <div className="px-6 py-6 overflow-y-auto custom-scrollbar">
+                {/* 滚动区域：包含所有主要内容 */}
+                <div className="px-6 py-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
 
                     {/* 价格与核心价值 */}
                     <div className="text-center mb-6">
@@ -91,7 +95,7 @@ export default function ContactModal({
                         <div className="relative inline-flex flex-col items-center bg-slate-50 border border-slate-100 rounded-2xl p-4 w-full">
                             <div className="flex items-baseline gap-2">
                                 <span className="text-slate-400 text-sm line-through">¥{originalPrice}</span>
-                                <span className="text-4xl font-bold text-slate-900 tracking-tight">¥{price}</span>
+                                <span className="text-4xl font-bold text-slate-900 tracking-tight">¥{displayPrice}</span>
                             </div>
                             <div className="mt-2 text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-medium border border-amber-100">
                                 限时特惠 · 极速交付
@@ -99,15 +103,15 @@ export default function ContactModal({
                         </div>
                     </div>
 
-                    {/* 扫码与操作指引 */}
-                    <div className="bg-slate-50/50 rounded-xl p-4 border border-slate-100/50 mb-6">
-                        <div className="flex gap-4">
-                            {/* 左侧：二维码 */}
-                            <div className="flex-shrink-0 w-28 h-28 bg-white border border-slate-100 rounded-xl p-1.5 shadow-sm">
+                    {/* 扫码与操作指引 - 左右布局 (w-40 QR) */}
+                    <div className="bg-slate-50/50 rounded-xl p-5 border border-slate-100/50 mb-4">
+                        <div className="flex items-center gap-5">
+                            {/* 左侧：二维码 - 放大尺寸 */}
+                            <div className="flex-shrink-0 w-40 h-40 rounded-xl shadow-sm overflow-hidden border border-slate-200 bg-white">
                                 <img
                                     src={wechatQrCodeUrl}
                                     alt="微信二维码"
-                                    className="w-full h-full object-contain rounded-lg"
+                                    className="w-full h-full object-cover"
                                     onError={(e) => {
                                         e.target.style.display = 'none';
                                         e.target.nextSibling.style.display = 'flex';
@@ -121,56 +125,53 @@ export default function ContactModal({
                                 </div>
                             </div>
 
-                            {/* 右侧：步骤指引 */}
-                            <div className="flex-1 flex flex-col justify-center space-y-3">
+                            {/* 右侧：步骤指引 - 紧凑布局 */}
+                            <div className="flex-1 flex flex-col justify-center space-y-4">
                                 <div className="space-y-1">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="flex items-center justify-center w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-bold">1</span>
-                                        <h3 className="text-xs font-bold text-slate-900">扫码添加客服</h3>
+                                    <div className="flex items-center gap-2">
+                                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-900 text-white text-xs font-bold">1</span>
+                                        <h3 className="text-sm font-bold text-slate-900">扫码添加</h3>
                                     </div>
-                                    <p className="text-[10px] text-slate-500 pl-5.5">长按识别或截图扫码</p>
+                                    <p className="text-[11px] text-slate-500 pl-7">长按识别/截图扫码</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="flex items-center justify-center w-4 h-4 rounded-full bg-slate-900 text-white text-[10px] font-bold">2</span>
-                                        <h3 className="text-xs font-bold text-slate-900">发送文档名称</h3>
+                                    <div className="flex items-center gap-2">
+                                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-900 text-white text-xs font-bold">2</span>
+                                        <h3 className="text-sm font-bold text-slate-900">发送文档名</h3>
                                     </div>
-                                    <p className="text-[10px] text-slate-500 pl-5.5">直接发送即刻获取</p>
+                                    <p className="text-[11px] text-slate-500 pl-7">即刻获取文件</p>
+                                </div>
+
+                                <div className="pt-1">
+                                    <button
+                                        onClick={handleCopyInfo}
+                                        className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${copied
+                                            ? 'bg-green-100 text-green-700 border border-green-200'
+                                            : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg'
+                                            }`}
+                                    >
+                                        {copied ? (
+                                            <>
+                                                <Check className="w-3.5 h-3.5" /> 已复制
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Copy className="w-3.5 h-3.5" /> 一键复制文档名
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
                             </div>
                         </div>
-
-                        {/* 复制按钮 */}
-                        <div className="mt-4">
-                            <button
-                                onClick={handleCopyInfo}
-                                className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all ${copied
-                                        ? 'bg-green-100 text-green-700 border border-green-200'
-                                        : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg hover:shadow-xl hover:-translate-y-0.5'
-                                    }`}
-                            >
-                                {copied ? (
-                                    <>
-                                        <Check className="w-4 h-4" />
-                                        已复制文档名
-                                    </>
-                                ) : (
-                                    <>
-                                        <Copy className="w-4 h-4" />
-                                        一键复制文档名称
-                                    </>
-                                )}
-                            </button>
-                        </div>
                     </div>
 
-                    {/* 当前文档信息 */}
+                    {/* 当前文档信息 (包含在滚动区域内) */}
                     <div className="text-center mb-6 px-2">
                         <p className="text-[10px] text-slate-400 mb-1">当前文档</p>
                         <p className="text-xs font-medium text-slate-700 truncate select-all">{documentName}</p>
                     </div>
 
-                    {/* 高级定制服务引导 - 底部附加价值 */}
+                    {/* 高级定制服务引导 - 底部附加价值 (包含在滚动区域内) */}
                     <div className="border-t border-slate-100 pt-5">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-xs font-bold text-slate-900">更多企业级服务</h3>
@@ -206,6 +207,7 @@ export default function ContactModal({
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>

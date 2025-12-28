@@ -31,7 +31,7 @@ def beijing_now():
     """获取北京时间"""
     return datetime.now(BEIJING_TZ)
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
@@ -47,6 +47,21 @@ if str(src_path) not in sys.path:
 import config
 from core import PresentationGenerator
 from core.context_builder import ContextBuilder
+
+def _upload_and_notify(file_path, doc_name):
+    """
+    后台任务：上传并通知
+    """
+    try:
+        logging.getLogger("uvicorn").info(f"后台任务开始: 上传 {doc_name}")
+        url = upload_to_r2(file_path)
+        if url:
+            send_telegram_notify(doc_name, url)
+            logging.getLogger("uvicorn").info(f"后台任务完成: {doc_name} -> {url}")
+        else:
+            logging.getLogger("uvicorn").error("上传失败，未发送通知")
+    except Exception as e:
+        logging.getLogger("uvicorn").error(f"后台任务异常: {e}")
 from core.ai_orchestrator import AIOrchestrator
 import mailer
 import db
@@ -56,6 +71,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import reporter
 import payment
+from upload_utils import send_user_action_notify, upload_to_r2, send_telegram_notify, send_document_to_telegram
 
 # ========== Pydantic Models ==========
 
@@ -84,6 +100,7 @@ class GenerateRequest(BaseModel):
     skip_pdf: bool = False
     skip_pptx: bool = False
     custom_instructions: Optional[str] = None  # 用户自定义 AI 指令
+    user_email: Optional[str] = None # 用户邮箱 (用于通知)
     bg_image_source: Optional[str] = "none"  # 背景图来源: 'none', 'unsplash', 'ai'
 
 class FileInfo(BaseModel):
@@ -436,8 +453,75 @@ async def load_output(output_name: str):
     
     return result
 
+# ... (Keep existing code)
+
+class NotifyRequest(BaseModel):
+    action_type: str
+    details: str
+    email: Optional[str] = None
+
+from fastapi.responses import FileResponse
+
+@app.get("/api/files/{filename}")
+async def get_file(filename: str):
+    """
+    提供文件下载代理，解决 R2 域名 DNS 未配置的问题
+    优先查找 output 目录，然后 input 目录
+    """
+    import os
+    from urllib.parse import unquote
+    
+    decoded_filename = unquote(filename)
+    
+    # 1. 尝试从 output 目录找 (生成的文件)
+    # output 结构比较复杂，可能是 output/task_id/filename.pdf
+    # 这里做简单的遍历查找，因为文件名通常带时间戳比较唯一
+    output_path = Path("output")
+    found_file = None
+    
+    if (output_path / decoded_filename).exists():
+        found_file = output_path / decoded_filename
+    else:
+        # 递归查找
+        for p in output_path.rglob(decoded_filename):
+            found_file = p
+            break
+            
+    # 2. 尝试从 input 目录找 (上传的文件)
+    if not found_file:
+        input_path = Path("input")
+        if (input_path / decoded_filename).exists():
+            found_file = input_path / decoded_filename
+            
+    if found_file and found_file.exists():
+        return FileResponse(
+            path=found_file, 
+            filename=decoded_filename,
+            media_type='application/octet-stream'
+        )
+        
+    raise HTTPException(status_code=404, detail="File not found")
+
+@app.post("/api/notify/action")
+async def notify_action(req: NotifyRequest):
+    """
+    通用前端通知上报接口 (如注册、登录等)
+    """
+    if config.TELEGRAM_ENABLED:
+        try:
+            # 异步发送
+            asyncio.create_task(
+                asyncio.to_thread(send_user_action_notify, req.action_type, req.details, req.email)
+            )
+            return {"status": "ok"}
+        except Exception as e:
+            logger.error(f"Notify action failed: {e}")
+            return {"status": "error", "message": str(e)}
+    return {"status": "skipped"}
+
 @app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
+# ... (Keep existing upload_file)
+async def upload_file(file: UploadFile = File(...), email: Optional[str] = Form(None)):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
     
@@ -448,51 +532,15 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Could not save file: {e}")
     
-    # 发送 Telegram 通知 (异步，不阻塞)
+    # 发送 Telegram 通知和文档
     if config.TELEGRAM_ENABLED:
         try:
-            file_size = file_location.stat().st_size
-            if file_size < 1024:
-                size_str = f"{file_size} B"
-            elif file_size < 1024 * 1024:
-                size_str = f"{file_size / 1024:.1f} KB"
-            else:
-                size_str = f"{file_size / (1024 * 1024):.1f} MB"
-            caption = f"📂 *新文件上传*\\n\\n📄 `{file.filename}`\\n📊 大小: {size_str}\\n🕐 {beijing_now().strftime('%H:%M:%S')}"
-            # 这里简单起见直接用 httpx 做一个 fire-and-forget 请求，或者用 BackgroundTasks
-            # 为了避免引入 BackgroundTasks 参数修改太复杂，这里用 asyncio.create_task
-            # 发送文件到 Telegram
-            async def send_file_to_telegram():
-                try:
-                    async with httpx.AsyncClient(timeout=30.0) as client:
-                        # 读取文件
-                        with open(file_location, 'rb') as f:
-                            files = {'document': (file.filename, f, 'application/octet-stream')}
-                            data = {'chat_id': config.TELEGRAM_CHAT_ID, 'caption': caption, 'parse_mode': 'Markdown'}
-                            
-                            response = await client.post(
-                                f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendDocument",
-                                files=files,
-                                data=data
-                            )
-                            
-                            if response.status_code != 200:
-                                logger.warning(f"Telegram 文件发送失败: {response.text}")
-                except Exception as e:
-                    logger.error(f"发送文件到 Telegram 失败: {e}")
-                    # 如果文件发送失败，至少发送文本通知
-                    try:
-                        async with httpx.AsyncClient() as client:
-                            await client.post(
-                                f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendMessage",
-                                json={"chat_id": config.TELEGRAM_CHAT_ID, "text": caption, "parse_mode": "Markdown"},
-                                timeout=5.0
-                            )
-                    except:
-                        pass
-            asyncio.create_task(send_file_to_telegram())
-        except:
-            pass
+            # 发送文档文件到 Telegram (异步)
+            asyncio.create_task(
+                asyncio.to_thread(send_document_to_telegram, str(file_location), None, email)
+            )
+        except Exception as e:
+            logger.error(f"Failed to send document to Telegram: {e}")
 
     return {"filename": file.filename, "status": "success"}
 
@@ -668,6 +716,18 @@ async def generate_with_progress(req: GenerateRequest) -> AsyncGenerator[str, No
                 # 后台生成 PDF
                 pdf_path = await asyncio.to_thread(renderer.generate_pdf, doc_name)
                 yield send_event("pdf_ready", "PDF 准备就绪", 85, result={"pdf": pdf_path})
+
+                # 商业化流程自动化：上传 PDF 到 R2 并推送到 Telegram
+                if pdf_path and os.getenv("R2_ACCESS_KEY_ID"):
+                    try:
+                        from src.upload_utils import upload_to_r2, send_telegram_notify
+                        # 以后台任务方式运行，不阻塞当前生成流
+                        asyncio.create_task(
+                            asyncio.to_thread(_upload_and_notify, pdf_path, doc_name)
+                        )
+                        logger.info("已触发后台上传通知任务")
+                    except Exception as e:
+                        logger.error(f"无法触发后台任务: {e}")
                 
                 # 有了 PDF 后，继续生成 PPTX
                 # 商业化版本：后端不再自动生成 PPTX，节省资源

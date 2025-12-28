@@ -46,15 +46,30 @@ export const loadOutput = async (outputName) => {
     return response.json();
 };
 
-export const uploadFile = async (file) => {
+export const uploadFile = async (file, email = null) => {
     const formData = new FormData();
     formData.append('file', file);
+    if (email) {
+        formData.append('email', email);
+    }
     const response = await fetch(`${API_BASE}/upload`, {
         method: 'POST',
         body: formData,
     });
     if (!response.ok) throw new Error('Upload failed');
     return response.json();
+};
+
+export const notifyAction = async (actionType, details, email = null) => {
+    try {
+        await fetch(`${API_BASE}/notify/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action_type: actionType, details, email }),
+        });
+    } catch (e) {
+        console.warn('Failed to send notification:', e);
+    }
 };
 
 // 同步生成 (向后兼容)
@@ -83,57 +98,57 @@ export const generatePresentationStream = (data, onProgress) => {
         fetch(`${API_BASE}/generate-v2`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...data, engine: 'v2' }), 
+            body: JSON.stringify({ ...data, engine: 'v2' }),
         })
-        .then(response => {
-            if (!response.ok) {
-                return response.text().then(text => {
-                    throw new Error(`HTTP ${response.status}: ${text}`);
-                });
-            }
-            
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            
-            function processText(text) {
-                buffer += text;
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || ''; // 保留最后一个不完整的行
-                
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        try {
-                            const event = JSON.parse(line.slice(6));
-                            onProgress(event);
-                            
-                            if (event.stage === 'done') {
-                                resolve(event.result);
-                            } else if (event.stage === 'error') {
-                                reject(new Error(event.message));
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`HTTP ${response.status}: ${text}`);
+                    });
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                function processText(text) {
+                    buffer += text;
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || ''; // 保留最后一个不完整的行
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const event = JSON.parse(line.slice(6));
+                                onProgress(event);
+
+                                if (event.stage === 'done') {
+                                    resolve(event.result);
+                                } else if (event.stage === 'error') {
+                                    reject(new Error(event.message));
+                                }
+                            } catch (e) {
+                                console.warn('Failed to parse SSE event:', line);
                             }
-                        } catch (e) {
-                            console.warn('Failed to parse SSE event:', line);
                         }
                     }
                 }
-            }
-            
-            function read() {
-                reader.read().then(({ done, value }) => {
-                    if (done) {
-                        // 处理剩余的 buffer
-                        if (buffer) processText('');
-                        return;
-                    }
-                    processText(decoder.decode(value, { stream: true }));
-                    read();
-                }).catch(reject);
-            }
-            
-            read();
-        })
-        .catch(reject);
+
+                function read() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            // 处理剩余的 buffer
+                            if (buffer) processText('');
+                            return;
+                        }
+                        processText(decoder.decode(value, { stream: true }));
+                        read();
+                    }).catch(reject);
+                }
+
+                read();
+            })
+            .catch(reject);
     });
 };
 

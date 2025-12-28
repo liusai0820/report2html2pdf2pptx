@@ -1,50 +1,29 @@
 services:
-  # 后端服务 - 优化版本 (Mac Studio M3 Ultra)
+  # 后端服务
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: ai-presentation-backend
-    ports:
-      - "8005:8005"
     environment:
       - PYTHONUNBUFFERED=1
       - API_HOST=0.0.0.0
       - API_PORT=8005
       - PYTHONPATH=/app/src
-      # Uvicorn 多 worker 配置 (充分利用 M3 Ultra 多核)
       - UVICORN_WORKERS=4
-      # 覆盖 .env 中的 ComfyUI 地址，确保 Docker 能访问宿主机
       - COMFYUI_HOST=host.docker.internal:8188
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file:
       - config/.env
     volumes:
-      # 挂载输入输出目录
       - ./input:/app/input
       - ./output:/app/output
       - ./config:/app/config
-      # 挂载源代码，支持热更新（开发模式）
       - ./src:/app/src
     networks:
       - app-network
-    restart: unless-stopped
-    # 资源限制与保留 - 充分利用 M3 Ultra 性能
-    deploy:
-      resources:
-        limits:
-          cpus: '16'      # 最多使用 16 核 (M3 Ultra 有 24 核)
-          memory: 32G     # 最多使用 32GB 内存
-        reservations:
-          cpus: '4'       # 保证至少有 4 核
-          memory: 8G      # 保证至少有 8GB
-    healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8005/api/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    restart: always
 
   # 前端服务
   frontend:
@@ -52,17 +31,41 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=${VITE_API_URL:-https://ppt.gwy.life/api}
+        - VITE_API_URL=/api
         - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
         - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
     container_name: ai-presentation-frontend
-    ports:
-      - "5173:5173"
-    depends_on:
-      - backend
     networks:
       - app-network
-    restart: unless-stopped
+    restart: always
+
+  # Nginx 网关 - 统一路由
+  gateway:
+    image: nginx:alpine
+    container_name: ai-presentation-gateway
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - app-network
+    restart: always
+
+  # Cloudflare Tunnel - 只需指向 gateway
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: always
+    command: tunnel --protocol http2 run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    networks:
+      - app-network
+    depends_on:
+      - gateway
 
 networks:
   app-network:

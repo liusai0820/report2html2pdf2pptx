@@ -359,6 +359,27 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
                     _active_pdf_tasks -= 1
                 
         # 完成 - 无论 PPTX 是否成功都发送完成事件
+        
+        # [商业化自动化] 上传 PDF 到 R2 并通知 TG
+        if pdf_path and os.getenv("R2_ACCESS_KEY_ID"):
+             try:
+                from src.upload_utils import upload_to_r2, send_telegram_notify
+                # 获取用户邮箱
+                user_email = req.user_email
+                
+                # 以后台任务方式运行，避免阻塞最后的 done 事件
+                async def _upload_task():
+                    try:
+                        r2_url = upload_to_r2(pdf_path)
+                        if r2_url:
+                            send_telegram_notify(Path(pdf_path).name, r2_url, email=user_email)
+                    except Exception as e:
+                        print(f"Upload task failed: {e}")
+
+                asyncio.create_task(_upload_task())
+             except Exception as e:
+                print(f"Failed to trigger upload task: {e}")
+
         final_result = {
             "downloads": {
                 "html": f"/output/{engine.output_dir.name}/presentation.html",

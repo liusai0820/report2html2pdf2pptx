@@ -7,30 +7,33 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-[#F7F8FA] text-slate-800 antialiased;
     font-family: 'Inter', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
   }
 }
 
 @layer utilities {
   .text-gradient {
-    @apply text-slate-900;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600;
   }
-  
+
   .glass-card {
-    @apply bg-white border border-slate-200 shadow-sm rounded-xl;
+    @apply bg-white/80 backdrop-blur-xl border border-white/20 shadow-[0_8px_30px_rgb(0, 0, 0, 0.04)] rounded-2xl;
   }
-  
+
   /* Custom Scrollbar for Sidebar */
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
   }
+
   .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-slate-200 rounded-full;
+    @apply bg-slate-200/80 rounded-full;
   }
+
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     @apply bg-slate-300;
   }

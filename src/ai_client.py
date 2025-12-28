@@ -251,13 +251,11 @@ class AIClient:
 
     def _clean_markdown(self, text: str) -> str:
         """清理 Markdown 代码块标记"""
+        import re
         text = text.strip()
-        if text.startswith('```html'):
-            text = text[7:].strip()
-        elif text.startswith('```'):
-            text = text[3:].strip()
-        if text.endswith('```'):
-            text = text[:-3].strip()
+        # 强力移除 markdown 代码块
+        text = re.sub(r'^```(?:html|xml|markdown)?\s*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'\s*```$', '', text)
         return text
     
     def _remove_header(self, html: str) -> str:

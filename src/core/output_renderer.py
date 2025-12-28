@@ -197,7 +197,8 @@ class OutputRenderer:
                 merger.append(pdf_file)
         
         date_str = datetime.now().strftime("%Y%m%d")
-        pdf_path = self.output_dir / f"{doc_name}_{date_str}.pdf"
+        # 使用连字符代替下划线，避免 Telegram Markdown 解析问题导致 URL 错误
+        pdf_path = self.output_dir / f"{doc_name}-{date_str}.pdf"
         
         merger.write(str(pdf_path))
         merger.close()
