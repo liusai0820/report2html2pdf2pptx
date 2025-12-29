@@ -115,6 +115,15 @@ ul, ol {{
     font-weight: var(--weight-bold);
     font-family: var(--font-family-heading);
 }}
+
+/* 标题排版优化 - 防止单字换行 */
+h1, h2, h3, h4, 
+.main-title, .sub-title, 
+.page-title, .section-title, 
+.closing-title {{
+    text-wrap: balance;
+    word-break: break-word;
+}}
 """
 
     def _generate_cover_styles(self) -> str:

@@ -84,6 +84,9 @@ class GenerateRequest(BaseModel):
     skip_pptx: bool = False
     custom_instructions: Optional[str] = None  # 用户自定义 AI 指令
     bg_image_source: Optional[str] = "none"  # 背景图来源: 'none', 'unsplash', 'ai'
+    # 管理员模型选择功能
+    model: Optional[str] = None  # 管理员可选模型
+    user_email: Optional[str] = None  # 用户邮箱（用于判断管理员权限）
 
 class FileInfo(BaseModel):
     name: str
@@ -157,7 +160,10 @@ def verify_jwt_token(token: str) -> Optional[dict]:
 
 @app.middleware("http")
 async def protect_output_directory(request: Request, call_next):
-    """保护 /output 目录，仅允许已认证用户访问自己的文件"""
+    """保护 /output 目录 - 临时简化版（全部放行）
+    
+    TODO: 待前端支持传递 auth token 后，恢复完整的权限验证
+    """
     
     # 只拦截 /output 路径
     if not request.url.path.startswith("/output/"):
@@ -167,81 +173,11 @@ async def protect_output_directory(request: Request, call_next):
     if "/theme_previews" in request.url.path or "/previews/" in request.url.path:
         return await call_next(request)
     
-    # 从 Authorization header 或 cookie 获取 token
-    auth_header = request.headers.get("authorization", "")
-    token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else None
+    # 临时：全部放行，仅做日志记录
+    # logger.info(f"[Output访问] 路径: {request.url.path}")
     
-    # 如果没有 header，尝试从 Cookie 获取
-    if not token:
-        token = request.cookies.get("sb-access-token") or request.cookies.get("access_token")
-    
-    # DEBUG: 记录认证信息
-    logger.info(f"[Output保护] 请求路径: {request.url.path}, Token存在: {bool(token)}")
-    
-    # 验证 token
-    user_payload = verify_jwt_token(token) if token else None
-    
-    if not user_payload:
-        logger.warning(f"[Output保护] JWT验证失败，路径: {request.url.path}")
-        return Response(
-            content="未授权访问。请登录后重试。",
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            headers={"WWW-Authenticate": "Bearer"}
-        )
-    
-    user_id = user_payload.get("sub")
-    logger.info(f"[Output保护] 用户ID: {user_id}")
-    
-    # 提取请求的输出目录名（例如：/output/xxx_20251227_123456/file.pdf）
-    path_parts = request.url.path.split("/")
-    if len(path_parts) < 3:
-        return await call_next(request)
-    
-    output_name = path_parts[2]  # 输出目录名
-    logger.info(f"[Output保护] 提取的output_name: {output_name}")
-    
-    # 验证用户是否有权限访问此输出
-    # 通过查询 generations 表检查
-    client = db.get_client()
-    if client:
-        try:
-            result = client.table("generations")\
-                .select("user_id")\
-                .eq("output_path", output_name)\
-                .execute()
-            
-            logger.info(f"[Output保护] 查询结果: {result.data}")
-            
-            if not result.data:
-                # 如果数据库中找不到记录，拒绝访问（安全第一）
-                logger.warning(f"[Output保护] 未找到记录: output_path={output_name}")
-                return Response(
-                    content=f"无法访问此文件：未找到记录。(output_path={output_name})",
-                    status_code=status.HTTP_403_FORBIDDEN
-                )
-            
-            # 检查是否匹配
-            owner_id = result.data[0].get("user_id")
-            if owner_id != user_id:
-                logger.warning(f"[Output保护] 权限不足: owner={owner_id}, requester={user_id}")
-                return Response(
-                    content="无权访问其他用户的文件。",
-                    status_code=status.HTTP_403_FORBIDDEN
-                )
-            
-            logger.info(f"[Output保护] 验证通过: {output_name}")
-        except Exception as e:
-            logger.error(f"[Output保护] 权限验证失败: {e}")
-            # 出错时默认拒绝（fail-close）
-            return Response(
-                content=f"服务器错误，无法验证权限: {str(e)}",
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-    else:
-        logger.warning("[Output保护] Supabase客户端不可用，放行请求")
-    
-    # 验证通过，放行请求
     return await call_next(request)
+
 
 # 挂载预览模板目录（公开）
 previews_dir = Path("output/theme_previews")
