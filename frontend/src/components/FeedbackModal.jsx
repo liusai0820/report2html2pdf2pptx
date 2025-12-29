@@ -1,27 +1,69 @@
 /**
- * FeedbackModal - 生成完成后的用户反馈弹窗
+ * FeedbackModal - 用户反馈（轻量化单页设计 V3 Pro）
  * 
- * @input:  isOpen, onClose, generationId, userId, userEmail, documentName
- * @output: 用户评分和评论提交到 Supabase，并发送 Telegram 通知
+ * 设计理念：
+ * - 极简交互：单页展示，减少点击层级
+ * - 动态响应：评分后自动展开标签和输入框
+ * - 情感化：根据分数高低展示不同文案和标签
+ * - 瑞士设计：注重留白、极简排版、无多余装饰
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, X, Send, Loader2, MessageSquare, CheckCircle, Heart, Lightbulb } from 'lucide-react';
+import { X, Send, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getApiUrl } from '../api';
 
-export default function FeedbackModal({ isOpen, onClose, generationId, userId, userEmail, documentName, mandatory = false, onFeedbackComplete = null }) {
-  const [rating, setRating] = useState(0);
-  const [hoveredRating, setHoveredRating] = useState(0);
+// 标签配置
+const TAGS_NEGATIVE = [
+  { id: 'content_depth', label: '内容太浅' },
+  { id: 'layout_issues', label: '排版混乱' },
+  { id: 'speed_slow', label: '生成太慢' },
+  { id: 'style_bad', label: '审美一般' },
+  { id: 'ocr_error', label: '解析错误' },
+];
+
+const TAGS_POSITIVE = [
+  { id: 'format_more', label: '想要更多格式' },
+  { id: 'style_more', label: '想要更多风格' },
+  { id: 'chart_auto', label: '自动生成图表' },
+  { id: 'ppt_export', label: '支持导出PPTX' },
+  { id: 'image_search', label: '自动配图' },
+];
+
+export default function FeedbackModal({ 
+  isOpen, 
+  onClose, 
+  generationId, 
+  userId, 
+  userEmail, 
+  documentName, 
+  mandatory = false, 
+  onFeedbackComplete = null 
+}) {
+  const [overallScore, setOverallScore] = useState(0);
+  const [hoveredScore, setHoveredScore] = useState(0);
+  const [selectedTags, setSelectedTags] = useState([]);
   const [comment, setComment] = useState('');
+  
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
+  // 重置状态
+  useEffect(() => {
+    if (isOpen) {
+      setOverallScore(0);
+      setSelectedTags([]);
+      setComment('');
+      setSubmitted(false);
+      setError('');
+    }
+  }, [isOpen]);
+
   const handleSubmit = async () => {
-    if (rating === 0) {
-      setError('请先选择评分');
+    if (overallScore === 0) {
+      setError('请轻点星星打个分~');
       return;
     }
 
@@ -29,71 +71,82 @@ export default function FeedbackModal({ isOpen, onClose, generationId, userId, u
     setError('');
 
     try {
-      // 1. 保存到 Supabase
+      const feedbackData = {
+        rating: overallScore,
+        comment: comment.trim() || null,
+        survey_data: {
+          tags: selectedTags, // 简化的标签列表
+          submitted_at: new Date().toISOString(),
+          is_mandatory: mandatory
+        }
+      };
+      
+      if (userId) feedbackData.user_id = userId;
+      if (generationId) feedbackData.generation_id = generationId;
+
       const { error: insertError } = await supabase
         .from('feedback')
-        .insert({
-          user_id: userId,
-          generation_id: generationId,
-          rating: rating,
-          comment: comment.trim() || null,
-        });
+        .insert(feedbackData);
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Supabase insert error:', insertError);
+        throw insertError;
+      }
 
-      // 2. 发送 Telegram 通知
+      // 异步发送通知
       try {
+        const tagsDesc = selectedTags
+          .map(id => [...TAGS_NEGATIVE, ...TAGS_POSITIVE].find(t => t.id === id)?.label)
+          .filter(Boolean)
+          .join(', ');
+
         await fetch(getApiUrl('/api/notify-feedback'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            rating,
+            rating: overallScore,
             comment: comment.trim() || null,
             user_email: userEmail,
             document_name: documentName,
             generation_id: generationId,
-            user_id: userId
+            user_id: userId,
+            improvements: tagsDesc // 复用 improvements 字段传标签
           })
         });
       } catch (notifyErr) {
-        console.error('Telegram notification failed:', notifyErr);
-        // 不影响主流程
+        // Ignore
       }
 
       setSubmitted(true);
       
-      // 如果是强制模式，回调通知可以下载了
-      if (mandatory && onFeedbackComplete) {
-        setTimeout(() => {
-          onFeedbackComplete();
-          onClose();
-          // 重置状态
-          setRating(0);
-          setComment('');
-          setSubmitted(false);
-        }, 1000);
-      } else {
-        setTimeout(() => {
-          onClose();
-          // 重置状态
-          setRating(0);
-          setComment('');
-          setSubmitted(false);
-        }, 1500);
-      }
+      const delay = mandatory ? 1500 : 2000;
+      setTimeout(() => {
+        if (mandatory && onFeedbackComplete) onFeedbackComplete();
+        onClose();
+      }, delay);
+
     } catch (err) {
-      console.error('Feedback submission error:', err);
-      setError('提交失败，请稍后重试');
+      setError('提交出错了，请重试');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleSkip = () => {
-    onClose();
-    setRating(0);
-    setComment('');
+    if (!mandatory) onClose();
   };
+
+  const toggleTag = (id) => {
+    setSelectedTags(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  // 根据分数决定显示的标签组和文案
+  const currentTags = overallScore <= 6 ? TAGS_NEGATIVE : TAGS_POSITIVE;
+  const promptText = overallScore === 0 ? "这一刻，您的真实感受？" :
+                     overallScore <= 6 ? "抱歉没能让您满意，主要问题是？" :
+                     "太棒了！您最期待加入什么新功能？";
 
   if (!isOpen) return null;
 
@@ -103,151 +156,173 @@ export default function FeedbackModal({ isOpen, onClose, generationId, userId, u
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-        onClick={mandatory ? undefined : handleSkip}  // 强制模式不允许点击背景关闭
+        className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={mandatory ? undefined : handleSkip}
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden relative"
           onClick={(e) => e.stopPropagation()}
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
         >
-          {/* Header */}
-          <div className="px-6 pt-6 pb-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-200">
-                  <Heart className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-lg">您觉得效果如何？</h3>
-                  <p className="text-sm text-slate-600">您的反馈是产品进步的最大动力</p>
+          {/* 装饰背景 - 极简渐变条 */}
+          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-slate-200 via-slate-400 to-slate-200 opacity-50" />
+          
+          {!mandatory && (
+            <button 
+              onClick={handleSkip}
+              className="absolute top-4 right-4 p-2 text-slate-300 hover:text-slate-600 rounded-full transition-colors z-10"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+
+          {submitted ? (
+            <div className="p-12 flex flex-col items-center justify-center text-center">
+              <motion.div 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 10 }}
+                className="w-16 h-16 bg-slate-50 text-slate-800 rounded-full flex items-center justify-center mb-6"
+              >
+                <CheckCircle className="w-6 h-6" />
+              </motion.div>
+              <h3 className="text-xl font-serif text-slate-800 mb-2 tracking-tight">Thank you.</h3>
+              <p className="text-slate-400 text-xs tracking-wider uppercase">Your feedback matters.</p>
+            </div>
+          ) : (
+            <div className="p-8">
+              {/* 标题区 - 极简排版 */}
+              <div className="text-center mb-10 px-4">
+                <h3 className="text-2xl font-serif font-medium text-slate-800 mb-4 tracking-tight" style={{ textWrap: 'balance' }}>
+                  {overallScore === 0 ? "这一刻，您的真实感受？" : promptText}
+                </h3>
+                <div className="text-xs text-slate-400 font-light tracking-wide leading-relaxed mx-auto max-w-sm">
+                  {overallScore === 0 ? (
+                    <>
+                      <p>如您所见，我们离完美还有距离。</p>
+                      <p className="mt-1">您的每一条建议，都在缩短这段路程。</p>
+                    </>
+                  ) : (
+                    <span className="opacity-0 animate-fade-in transition-opacity duration-500 delay-200">
+                      您的反馈是我们最珍贵的礼物
+                    </span>
+                  )}
                 </div>
               </div>
-              {/* 强制模式不显示关闭按钮 */}
-              {!mandatory && (
-                <button
-                  onClick={handleSkip}
-                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white/80 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          </div>
 
-          {/* Content */}
-          <div className="p-6 space-y-5">
-            {submitted ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex flex-col items-center py-8"
-              >
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                  <CheckCircle className="w-8 h-8 text-green-600" />
-                </div>
-                <p className="text-lg font-medium text-slate-900">感谢您的宝贵反馈！</p>
-                <p className="text-sm text-slate-500 mt-1">我们会认真倾听每一条建议 ❤️</p>
-              </motion.div>
-            ) : (
-              <>
-                {/* Star Rating */}
-                <div className="flex flex-col items-center">
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
+              {/* 评分条 - 极简数字 */}
+              <div className="flex justify-center items-center gap-1 mb-10">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
+                  <button
+                    key={score}
+                    onClick={() => setOverallScore(score)}
+                    onMouseEnter={() => setHoveredScore(score)}
+                    onMouseLeave={() => setHoveredScore(0)}
+                    className={`
+                      w-9 h-12 flex items-center justify-center
+                      font-serif text-lg transition-all duration-300 relative group
+                    `}
+                  >
+                    {/* 背景色块 */}
+                    <span className={`
+                      absolute inset-0 rounded-lg transition-all duration-300 opacity-20
+                      ${score <= (hoveredScore || overallScore)
+                        ? score <= 6 ? 'bg-orange-500 scale-100' : 'bg-indigo-500 scale-100'
+                        : 'bg-slate-200 scale-75 group-hover:scale-100'
+                      }
+                    `} />
+                    
+                    {/* 数字 */}
+                    <span className={`
+                      relative z-10 transition-colors duration-300
+                      ${score <= (hoveredScore || overallScore)
+                        ? score <= 6 ? 'text-orange-900 font-bold' : 'text-indigo-900 font-bold'
+                        : 'text-slate-400 group-hover:text-slate-600'
+                      }
+                    `}>
+                      {score}
+                    </span>
+                    
+                    {/* 底部指示点 (仅选中时显示) */}
+                    {score === overallScore && (
+                      <motion.div 
+                        layoutId="active-dot"
+                        className={`absolute -bottom-2 w-1 h-1 rounded-full ${score <= 6 ? 'bg-orange-500' : 'bg-indigo-500'}`}
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* 动态展开区域 */}
+              <AnimatePresence>
+                {overallScore > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, y: 10 }}
+                    animate={{ opacity: 1, height: 'auto', y: 0 }}
+                    exit={{ opacity: 0, height: 0, y: 10 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} 
+                    className="overflow-hidden"
+                  >
+                    {/* 标签云 - 极简胶囊 */}
+                    <div className="flex flex-wrap gap-2 justify-center mb-8 px-4">
+                      {currentTags.map(tag => (
+                        <button
+                          key={tag.id}
+                          onClick={() => toggleTag(tag.id)}
+                          className={`
+                            px-4 py-1.5 text-xs tracking-wider transition-all duration-300
+                            ${selectedTags.includes(tag.id)
+                              ? 'bg-slate-900 text-white shadow-lg shadow-slate-200'
+                              : 'bg-transparent text-slate-500 border border-slate-200 hover:border-slate-400'
+                            }
+                          `}
+                          style={{ borderRadius: '2px' }}
+                        >
+                          {tag.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* 文本框 - 极简线条 */}
+                    <div className="relative mb-8 mx-4">
+                      <textarea
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        placeholder="在这里写下您的想法..."
+                        className="w-full p-0 bg-transparent border-0 border-b border-slate-200 text-sm focus:ring-0 focus:border-slate-800 transition-all resize-none placeholder:text-slate-300 placeholder:font-light leading-relaxed min-h-[80px]"
+                      />
+                    </div>
+
+                    {/* 提交按钮 - 黑色方块 */}
+                    <div className="px-4">
                       <button
-                        key={star}
-                        onMouseEnter={() => setHoveredRating(star)}
-                        onMouseLeave={() => setHoveredRating(0)}
-                        onClick={() => setRating(star)}
-                        className="p-1 transition-transform hover:scale-110 active:scale-95"
+                        onClick={handleSubmit}
+                        disabled={submitting}
+                        className="w-full py-4 bg-slate-900 text-white text-xs font-bold tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2 uppercase"
                       >
-                        <Star
-                          className={`w-11 h-11 transition-all duration-200 ${
-                            star <= (hoveredRating || rating)
-                              ? 'text-amber-400 fill-amber-400 drop-shadow-md'
-                              : 'text-slate-200'
-                          }`}
-                        />
+                        {submitting ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <>
+                            <span className="mr-1">Submit Feedback</span>
+                            <Send className="w-3 h-3" />
+                          </>
+                        )}
                       </button>
-                    ))}
-                  </div>
-                  <p className="text-sm text-slate-500 mt-3 h-5">
-                    {rating === 0 && '点击星星评分'}
-                    {rating === 1 && '😞 很差 - 我们会努力改进'}
-                    {rating === 2 && '😐 一般 - 还有提升空间'}
-                    {rating === 3 && '🙂 还行 - 基本满足需求'}
-                    {rating === 4 && '😊 不错 - 超出预期'}
-                    {rating === 5 && '🤩 非常棒！感谢认可'}
-                  </p>
-                </div>
-
-                {/* Encouragement Banner */}
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
-                  <Lightbulb className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-900">您的建议对我们极为重要！</p>
-                    <p className="text-xs text-blue-700 mt-1">
-                      无论是功能改进、Bug 反馈还是使用体验，我们都会认真阅读并持续优化产品。
-                    </p>
-                  </div>
-                </div>
-
-                {/* Comment (Optional but Encouraged) */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-slate-500" />
-                    详细反馈
-                    <span className="text-xs font-normal text-slate-400">（选填，但非常欢迎）</span>
-                  </label>
-                  <textarea
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="例如：&#10;• 生成的内容是否符合预期？&#10;• 有什么功能希望我们添加？&#10;• 遇到了什么问题或困难？"
-                    rows={4}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
-                  />
-                </div>
-
-                {/* Error */}
-                {error && (
-                  <p className="text-sm text-red-600 text-center bg-red-50 py-2 px-3 rounded-lg">{error}</p>
+                    </div>
+                  </motion.div>
                 )}
-              </>
-            )}
-          </div>
+              </AnimatePresence>
 
-          {/* Footer */}
-          {!submitted && (
-            <div className="px-6 pb-6 flex gap-3">
-              {/* 强制模式不显示跳过按钮 */}
-              {!mandatory && (
-                <button
-                  onClick={handleSkip}
-                  className="flex-1 py-3 px-4 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-medium transition-colors"
-                >
-                  稍后再说
-                </button>
+              {/* 隐私提示 */}
+              {!overallScore && (
+                <p className="text-center text-[10px] text-slate-300 mt-12 tracking-widest opacity-50 uppercase">
+                  Feedback for Product Improvement
+                </p>
               )}
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || rating === 0}
-                className={`${mandatory ? 'w-full' : 'flex-1'} py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-200 disabled:shadow-none`}
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>提交中...</span>
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    <span>提交反馈</span>
-                  </>
-                )}
-              </button>
             </div>
           )}
         </motion.div>

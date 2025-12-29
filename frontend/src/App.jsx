@@ -22,7 +22,7 @@ import HistoryOutputSelector from './components/HistoryOutputSelector';
 import UserHistoryPanel from './components/UserHistoryPanel';
 import AuthPage from './components/AuthPage';
 import { useAuth } from './contexts/AuthContext';
-import { fetchScenarios, uploadFile, generatePresentationStream } from './api';
+import { fetchScenarios, uploadFile, generatePresentationStream, checkAdminStatus } from './api';
 
 function App() {
   const { user, profile, loading: authLoading, logout, isAuthenticated, canGenerate, quotaRemaining, trackGeneration, refreshProfile } = useAuth();
@@ -78,9 +78,36 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
   const [downloads, setDownloads] = useState({ html: null, pdf: null, pptx: null });
   const [currentGenerationId, setCurrentGenerationId] = useState(null); // 当前生成记录的 ID，用于反馈关联
 
+  // 🔐 管理员状态
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminModels, setAdminModels] = useState([]);
+  const [selectedModel, setSelectedModel] = useState(null); // null = 使用默认模型
+
   useEffect(() => {
     loadData();
   }, []);
+
+  // 🔐 检查管理员权限
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (user?.email) {
+        console.log('🔐 Checking admin status for:', user.email);
+        const adminData = await checkAdminStatus(user.email);
+        console.log('🔐 Admin check result:', adminData);
+        setIsAdmin(adminData.is_admin);
+        setAdminModels(adminData.models || []);
+        if (!adminData.is_admin) {
+          setSelectedModel(null); // 非管理员重置模型选择
+        }
+      } else {
+        console.log('🔐 No user email, skipping admin check');
+        setIsAdmin(false);
+        setAdminModels([]);
+        setSelectedModel(null);
+      }
+    };
+    checkAdmin();
+  }, [user?.email]);
 
   const loadData = async () => {
     try {
@@ -137,7 +164,10 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
           document_name: selectedFile.name,
           scenario: selectedScenario,
           theme_color: customColor, // Pass custom color if set
-          ...config
+          ...config,
+          // 🔐 管理员专用：自定义模型
+          model: isAdmin ? selectedModel : null,
+          user_email: user?.email
         },
         async (event) => {
           console.log('Event:', event);
@@ -323,6 +353,32 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
             <Section title="生成设置" step="3">
               <ConfigPanel config={config} onChange={setConfig} />
             </Section>
+
+            {/* 🔐 管理员面板 - 仅对管理员可见 */}
+            {isAdmin && (
+              <Section title="🔐 管理员" step="★">
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-3">
+                  <label className="block text-xs font-medium text-purple-700 mb-2">
+                    AI 模型选择
+                  </label>
+                  <select
+                    value={selectedModel || ''}
+                    onChange={(e) => setSelectedModel(e.target.value || null)}
+                    className="w-full px-3 py-2 text-sm border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  >
+                    <option value="">默认 (使用配置文件模型)</option>
+                    {adminModels.map(model => (
+                      <option key={model.id} value={model.id}>
+                        {model.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-purple-500 mt-1.5">
+                    ⚡ Pro 模型生成质量更高，但速度较慢
+                  </p>
+                </div>
+              </Section>
+            )}
           </div>
         </div>
 

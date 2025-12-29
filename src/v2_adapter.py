@@ -66,13 +66,23 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
             yield send_event("error", "文档内容为空或解析失败", 0)
             return
 
-        # 2. 初始化引擎（使用高并发模型）
+        # 2. 初始化引擎
         import datetime
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # 🔐 管理员可以选择自定义模型
+        selected_model = config.DEFAULT_MODEL
+        if req.model and req.user_email and config.is_admin(req.user_email):
+            # 验证模型是否在允许列表中
+            allowed_model_ids = [m["id"] for m in config.ADMIN_MODELS]
+            if req.model in allowed_model_ids:
+                selected_model = req.model
+                yield send_event("info", f"🔐 管理员模式：使用 {req.model}", 3)
+        
         engine = PresentationEngine(
             api_key=config.OPENROUTER_API_KEY,
             base_url=config.OPENROUTER_BASE_URL,
-            model=config.DEFAULT_MODEL,  # 使用配置的模型
+            model=selected_model,
             output_dir=f"output/{input_file.stem}_{timestamp}_v2",
             max_concurrent=config.MAX_CONCURRENT_REQUESTS
         )

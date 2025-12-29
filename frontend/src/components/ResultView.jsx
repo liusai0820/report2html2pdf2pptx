@@ -11,10 +11,103 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, MonitorPlay, LayoutGrid, PanelLeft, ChevronLeft, ChevronRight, X, Loader2, ZoomIn, ZoomOut } from 'lucide-react';
+import { Download, MonitorPlay, LayoutGrid, PanelLeft, ChevronLeft, ChevronRight, X, Loader2, ZoomIn, ZoomOut, Sparkles, Zap } from 'lucide-react';
 import { getOutputUrl } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import FeedbackModal from './FeedbackModal';
+
+// Turbo 升级弹窗组件 - 瑞士杂志风格
+const TurboUpgradeModal = ({ isOpen, onClose }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
+            <div 
+                className="relative bg-white rounded-none shadow-2xl max-w-md w-full overflow-hidden"
+                style={{ fontFamily: '"Inter", "Noto Sans SC", sans-serif' }}
+            >
+                {/* 关闭按钮 */}
+                <button 
+                    onClick={onClose}
+                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-900 transition-colors z-10"
+                >
+                    <X className="w-5 h-5" />
+                </button>
+
+                {/* 头部 - 极简标题 */}
+                <div className="px-8 pt-12 pb-6 border-b border-slate-100">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Zap className="w-5 h-5 text-amber-500" />
+                        <span className="text-xs font-medium tracking-widest uppercase text-slate-400">Premium Feature</span>
+                    </div>
+                    <h2 className="text-3xl font-light tracking-tight text-slate-900 mb-2" style={{ lineHeight: '1.2' }}>
+                        解锁 Turbo
+                    </h2>
+                    <p className="text-sm text-slate-500 font-light leading-relaxed">
+                        使用顶尖 AI 模型，生成更高质量的演示文稿
+                    </p>
+                </div>
+
+                {/* 功能列表 */}
+                <div className="px-8 py-6 space-y-4">
+                    <div className="flex items-start gap-3">
+                        <div className="w-1 h-1 bg-slate-900 rounded-full mt-2" />
+                        <div>
+                            <p className="text-sm font-medium text-slate-900">PPTX 格式导出</p>
+                            <p className="text-xs text-slate-500 mt-0.5">原生 PowerPoint 格式，完美兼容</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="w-1 h-1 bg-slate-900 rounded-full mt-2" />
+                        <div>
+                            <p className="text-sm font-medium text-slate-900">顶尖 AI 模型</p>
+                            <p className="text-xs text-slate-500 mt-0.5">更强的文本理解与创作能力，页面精美</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="w-1 h-1 bg-slate-900 rounded-full mt-2" />
+                        <div>
+                            <p className="text-sm font-medium text-slate-900">优先生成队列</p>
+                            <p className="text-xs text-slate-500 mt-0.5">无需等待，即刻生成，额度管够</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* CTA 按钮 */}
+                <div className="px-8 pb-8">
+                    <div className="bg-slate-50 border border-slate-200 rounded-sm p-4 mb-3">
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs font-medium tracking-widest uppercase text-slate-400">联系方式</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-green-500 rounded-sm flex items-center justify-center flex-shrink-0">
+                                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/>
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-slate-900">微信号</p>
+                                <p className="text-base font-mono text-slate-700 tracking-wide">liusai0820</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-3 leading-relaxed">
+                            添加微信备注「Turbo」，了解升级详情
+                        </p>
+                    </div>
+                    <button 
+                        onClick={onClose}
+                        className="block w-full py-3 text-slate-500 hover:text-slate-900 text-center text-xs font-light transition-colors"
+                    >
+                        暂不升级
+                    </button>
+                </div>
+
+                {/* 底部装饰线 */}
+                <div className="h-1 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600" />
+            </div>
+        </div>
+    );
+};
 
 // 强制下载文件（避免浏览器打开文件导致页面跳转）
 const forceDownload = async (url, filename) => {
@@ -49,6 +142,9 @@ export default function ResultView({ result, downloads, isProcessing, generation
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [feedbackGiven, setFeedbackGiven] = useState(false); // 本次生成是否已给过反馈
     const [pendingDownload, setPendingDownload] = useState(null); // 'pdf' | 'pptx' | null - 等待下载的文件类型
+    
+    // Turbo 升级弹窗状态
+    const [showTurboModal, setShowTurboModal] = useState(false);
 
     // 如果正在处理中，模拟进度
     const [progress, setProgress] = useState(0);
@@ -340,28 +436,16 @@ export default function ResultView({ result, downloads, isProcessing, generation
                             </button>
                         )}
 
-                        {/* PPTX Download */}
-                        {downloads?.pptx ? (
-                            <button onClick={handlePptxDownload} disabled={downloadingPptx} className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200" title="下载 PPTX 演示文稿">
-                                {downloadingPptx ? (
-                                    <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
-                                ) : (
-                                    <Download className="w-4 h-4" />
-                                )}
-                                <span>PPTX</span>
-                            </button>
-                        ) : isPptxTimeout ? (
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100">
-                                    网络超时，建议下载PDF后使用WPS转PPT格式
-                                </span>
-                            </div>
-                        ) : (
-                            <button disabled className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-400 cursor-not-allowed">
-                                <Loader2 className="w-4 h-4 animate-spin opacity-50" />
-                                <span>准备中</span>
-                            </button>
-                        )}
+                        {/* PPTX Download - 始终显示，点击弹出升级提示 */}
+                        <button 
+                            onClick={() => setShowTurboModal(true)} 
+                            className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200 relative group" 
+                            title="升级 Turbo 解锁 PPTX 导出"
+                        >
+                            <Download className="w-4 h-4" />
+                            <span>PPTX</span>
+                            <Sparkles className="w-3 h-3 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-1 -right-1" />
+                        </button>
 
                         <div className="h-6 w-px bg-slate-200 mx-2" />
 
@@ -547,6 +631,12 @@ export default function ResultView({ result, downloads, isProcessing, generation
                 documentName={documentName}
                 mandatory={pendingDownload !== null}
                 onFeedbackComplete={handleFeedbackComplete}
+            />
+
+            {/* Turbo 升级弹窗 */}
+            <TurboUpgradeModal 
+                isOpen={showTurboModal}
+                onClose={() => setShowTurboModal(false)}
             />
         </div>
     );

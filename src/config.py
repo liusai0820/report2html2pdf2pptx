@@ -100,3 +100,20 @@ SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")  # JWT 签名密钥�
 COMFYUI_ENABLED = os.getenv("COMFYUI_ENABLED", "false").lower() == "true"
 COMFYUI_HOST = os.getenv("COMFYUI_HOST", "host.docker.internal:8188") # Docker访问宿主机的默认地址
 COMFYUI_WORKFLOW_FILE = os.path.join(os.path.dirname(__file__), "workflow_api.json")
+
+# 🔐 超级管理员配置
+# 可以通过环境变量配置，多个邮箱用逗号分隔
+ADMIN_EMAILS = [e.strip() for e in os.getenv("ADMIN_EMAILS", "liusai64@gmail.com").split(",") if e.strip()]
+
+# 可用模型列表（管理员专享）
+ADMIN_MODELS = [
+    {"id": "google/gemini-3-pro-preview", "name": "Gemini 3 Pro", "tier": "pro"},
+    {"id": "anthropic/claude-sonnet-4.5", "name": "Claude Sonnet 4.5", "tier": "pro"},
+    {"id": "x-ai/grok-code-fast-1", "name": "Grok Code Fast", "tier": "pro"},
+]
+
+def is_admin(email: str) -> bool:
+    """检查用户是否是管理员"""
+    if not email:
+        return False
+    return email.lower() in [e.lower() for e in ADMIN_EMAILS]

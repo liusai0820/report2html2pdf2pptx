@@ -84,6 +84,9 @@ class GenerateRequest(BaseModel):
     skip_pptx: bool = False
     custom_instructions: Optional[str] = None  # 用户自定义 AI 指令
     bg_image_source: Optional[str] = "none"  # 背景图来源: 'none', 'unsplash', 'ai'
+    # 🔐 管理员专用字段
+    model: Optional[str] = None  # 自定义模型（需要管理员权限）
+    user_email: Optional[str] = None  # 用户邮箱（用于权限验证）
 
 class FileInfo(BaseModel):
     name: str
@@ -213,6 +216,20 @@ async def health_check():
 async def get_scenarios():
     return SCENARIOS
 
+# 🔐 管理员权限检查 API
+@app.get("/api/admin/check")
+async def check_admin_status(email: str = None):
+    """检查用户是否是管理员，并返回可用模型"""
+    if not email:
+        return {"is_admin": False, "models": []}
+    
+    is_admin = config.is_admin(email)
+    if is_admin:
+        return {
+            "is_admin": True,
+            "models": config.ADMIN_MODELS
+        }
+    return {"is_admin": False, "models": []}
 class OutputInfo(BaseModel):
     """已生成的输出信息"""
     name: str  # 目录名
@@ -765,12 +782,15 @@ async def generate_v2(req: GenerateRequest):
 import httpx
 
 class FeedbackNotification(BaseModel):
-    rating: int
+    rating: int  # 1-10分
     comment: Optional[str] = None
     user_email: Optional[str] = None
     document_name: Optional[str] = None
     generation_id: Optional[str] = None
     user_id: Optional[str] = None
+    # 新增：结构化问卷数据
+    survey_summary: Optional[str] = None  # 细项评价摘要
+    improvements: Optional[str] = None  # 改进建议（逗号分隔）
 
 @app.post("/api/notify-feedback")
 async def notify_feedback(feedback: FeedbackNotification):
@@ -887,20 +907,38 @@ async def process_feedback_background(feedback: FeedbackNotification):
             print(f"AI reply failed: {e}")
             action_log.append(f"⚠️ AI回复失败: {e}")
 
-    # 3. 发送汇总是知到 Telegram
+    # 3. 发送汇总通知到 Telegram
     if config.TELEGRAM_ENABLED:
-        # 评分表情映射
-        rating_emoji = {1: "😞", 2: "😐", 3: "🙂", 4: "😊", 5: "🤩"}
-        stars = "⭐" * feedback.rating + "☆" * (5 - feedback.rating)
+        # 评分表情映射 (1-10分)
+        if feedback.rating <= 3:
+            rating_emoji = "😞"
+            rating_label = "需改进"
+        elif feedback.rating <= 6:
+            rating_emoji = "😐"
+            rating_label = "达预期"
+        elif feedback.rating <= 8:
+            rating_emoji = "😊"
+            rating_label = "满意"
+        else:
+            rating_emoji = "🤩"
+            rating_label = "超预期"
         
         # 构建消息
         message = f"""📊 *新用户反馈*
 ━━━━━━━━━━━━━━━━━
-{stars} {rating_emoji.get(feedback.rating, "")}
+{rating_emoji} *{feedback.rating}/10 分* ({rating_label})
 
 """
+        # 问卷细项评价
+        if feedback.survey_summary:
+            message += f"📋 *细项评价:*\n{feedback.survey_summary}\n\n"
+        
+        # 改进建议
+        if feedback.improvements:
+            message += f"🔧 *希望改进:* {feedback.improvements}\n\n"
+            
         if feedback.comment:
-            message += f"💬 *评论:* {feedback.comment}\n\n"
+            message += f"💬 *详细反馈:* {feedback.comment}\n\n"
         if feedback.user_email:
             message += f"👤 *用户:* `{feedback.user_email}`\n"
         if feedback.document_name:

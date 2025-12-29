@@ -26,6 +26,14 @@ export const fetchScenarios = async () => {
     return response.json();
 };
 
+// 🔐 检查管理员状态
+export const checkAdminStatus = async (email) => {
+    if (!email) return { is_admin: false, models: [] };
+    const response = await fetch(`${API_BASE}/admin/check?email=${encodeURIComponent(email)}`);
+    if (!response.ok) return { is_admin: false, models: [] };
+    return response.json();
+};
+
 export const fetchFiles = async () => {
     const response = await fetch(`${API_BASE}/files`);
     if (!response.ok) throw new Error('Failed to fetch files');
