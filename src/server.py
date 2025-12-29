@@ -31,7 +31,7 @@ def beijing_now():
     """获取北京时间"""
     return datetime.now(BEIJING_TZ)
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
@@ -84,9 +84,6 @@ class GenerateRequest(BaseModel):
     skip_pptx: bool = False
     custom_instructions: Optional[str] = None  # 用户自定义 AI 指令
     bg_image_source: Optional[str] = "none"  # 背景图来源: 'none', 'unsplash', 'ai'
-    # 🔐 管理员专用字段
-    model: Optional[str] = None  # 自定义模型（需要管理员权限）
-    user_email: Optional[str] = None  # 用户邮箱（用于权限验证）
 
 class FileInfo(BaseModel):
     name: str
@@ -113,17 +110,9 @@ async def lifespan(app: FastAPI):
     # Initialize Scheduler
     scheduler = AsyncIOScheduler()
     # 每天 23:00 (Asia/Shanghai)
-    # ⚠️ 必须指定时区，否则 CronTrigger 默认使用 UTC
-    from pytz import timezone
-    beijing_tz = timezone('Asia/Shanghai')
-    scheduler.add_job(
-        reporter.send_daily_report, 
-        CronTrigger(hour=23, minute=0, timezone=beijing_tz),
-        id='daily_report',  # 添加固定 ID 防止重复
-        replace_existing=True  # 如果已存在则替换，防止多份
-    )
+    scheduler.add_job(reporter.send_daily_report, CronTrigger(hour=23, minute=0))
     scheduler.start()
-    print("📅 Daily report scheduler started (Target: 23:00 Asia/Shanghai)")
+    print("📅 Daily report scheduler started (Target: 23:00 Beijing Time)")
     
     yield
     
@@ -168,18 +157,90 @@ def verify_jwt_token(token: str) -> Optional[dict]:
 
 @app.middleware("http")
 async def protect_output_directory(request: Request, call_next):
-    """
-    [已暂时禁用拦截] 保护 /output 目录兼顾安全性与可用性
-    目前仅记录日志，不拦截请求，以确保前端演示功能正常。
-    """
+    """保护 /output 目录，仅允许已认证用户访问自己的文件"""
     
-    # 1.只拦截 /output 路径
+    # 只拦截 /output 路径
     if not request.url.path.startswith("/output/"):
         return await call_next(request)
     
-    # 全部放行，仅做记录 (待前端支持 token 参数后再开启)
-    # logger.info(f"Accessing output: {request.url.path}")
+    # 排除预览模板（公开访问）
+    if "/theme_previews" in request.url.path or "/previews/" in request.url.path:
+        return await call_next(request)
     
+    # 从 Authorization header 或 cookie 获取 token
+    auth_header = request.headers.get("authorization", "")
+    token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else None
+    
+    # 如果没有 header，尝试从 Cookie 获取
+    if not token:
+        token = request.cookies.get("sb-access-token") or request.cookies.get("access_token")
+    
+    # DEBUG: 记录认证信息
+    logger.info(f"[Output保护] 请求路径: {request.url.path}, Token存在: {bool(token)}")
+    
+    # 验证 token
+    user_payload = verify_jwt_token(token) if token else None
+    
+    if not user_payload:
+        logger.warning(f"[Output保护] JWT验证失败，路径: {request.url.path}")
+        return Response(
+            content="未授权访问。请登录后重试。",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    user_id = user_payload.get("sub")
+    logger.info(f"[Output保护] 用户ID: {user_id}")
+    
+    # 提取请求的输出目录名（例如：/output/xxx_20251227_123456/file.pdf）
+    path_parts = request.url.path.split("/")
+    if len(path_parts) < 3:
+        return await call_next(request)
+    
+    output_name = path_parts[2]  # 输出目录名
+    logger.info(f"[Output保护] 提取的output_name: {output_name}")
+    
+    # 验证用户是否有权限访问此输出
+    # 通过查询 generations 表检查
+    client = db.get_client()
+    if client:
+        try:
+            result = client.table("generations")\
+                .select("user_id")\
+                .eq("output_path", output_name)\
+                .execute()
+            
+            logger.info(f"[Output保护] 查询结果: {result.data}")
+            
+            if not result.data:
+                # 如果数据库中找不到记录，拒绝访问（安全第一）
+                logger.warning(f"[Output保护] 未找到记录: output_path={output_name}")
+                return Response(
+                    content=f"无法访问此文件：未找到记录。(output_path={output_name})",
+                    status_code=status.HTTP_403_FORBIDDEN
+                )
+            
+            # 检查是否匹配
+            owner_id = result.data[0].get("user_id")
+            if owner_id != user_id:
+                logger.warning(f"[Output保护] 权限不足: owner={owner_id}, requester={user_id}")
+                return Response(
+                    content="无权访问其他用户的文件。",
+                    status_code=status.HTTP_403_FORBIDDEN
+                )
+            
+            logger.info(f"[Output保护] 验证通过: {output_name}")
+        except Exception as e:
+            logger.error(f"[Output保护] 权限验证失败: {e}")
+            # 出错时默认拒绝（fail-close）
+            return Response(
+                content=f"服务器错误，无法验证权限: {str(e)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    else:
+        logger.warning("[Output保护] Supabase客户端不可用，放行请求")
+    
+    # 验证通过，放行请求
     return await call_next(request)
 
 # 挂载预览模板目录（公开）
@@ -216,20 +277,6 @@ async def health_check():
 async def get_scenarios():
     return SCENARIOS
 
-# 🔐 管理员权限检查 API
-@app.get("/api/admin/check")
-async def check_admin_status(email: str = None):
-    """检查用户是否是管理员，并返回可用模型"""
-    if not email:
-        return {"is_admin": False, "models": []}
-    
-    is_admin = config.is_admin(email)
-    if is_admin:
-        return {
-            "is_admin": True,
-            "models": config.ADMIN_MODELS
-        }
-    return {"is_admin": False, "models": []}
 class OutputInfo(BaseModel):
     """已生成的输出信息"""
     name: str  # 目录名
@@ -385,11 +432,7 @@ async def load_output(output_name: str):
     return result
 
 @app.post("/api/upload")
-async def upload_file(
-    file: UploadFile = File(...),
-    user_email: Optional[str] = Form(None),
-    user_id: Optional[str] = Form(None)
-):
+async def upload_file(file: UploadFile = File(...)):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
     
@@ -400,7 +443,7 @@ async def upload_file(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Could not save file: {e}")
     
-    # 发送 Telegram 通知 (异步，不阻塞) + 包含用户邮箱
+    # 发送 Telegram 通知 (异步，不阻塞)
     if config.TELEGRAM_ENABLED:
         try:
             file_size = file_location.stat().st_size
@@ -410,10 +453,7 @@ async def upload_file(
                 size_str = f"{file_size / 1024:.1f} KB"
             else:
                 size_str = f"{file_size / (1024 * 1024):.1f} MB"
-            
-            # 包含用户邮箱信息
-            user_info = f"\\n👤 用户: `{user_email}`" if user_email else ""
-            caption = f"📂 *新文件上传*\\n\\n📄 `{file.filename}`\\n📊 大小: {size_str}{user_info}\\n🕐 {beijing_now().strftime('%H:%M:%S')}"
+            caption = f"📂 *新文件上传*\\n\\n📄 `{file.filename}`\\n📊 大小: {size_str}\\n🕐 {beijing_now().strftime('%H:%M:%S')}"
             # 这里简单起见直接用 httpx 做一个 fire-and-forget 请求，或者用 BackgroundTasks
             # 为了避免引入 BackgroundTasks 参数修改太复杂，这里用 asyncio.create_task
             # 发送文件到 Telegram
@@ -782,15 +822,12 @@ async def generate_v2(req: GenerateRequest):
 import httpx
 
 class FeedbackNotification(BaseModel):
-    rating: int  # 1-10分
+    rating: int
     comment: Optional[str] = None
     user_email: Optional[str] = None
     document_name: Optional[str] = None
     generation_id: Optional[str] = None
     user_id: Optional[str] = None
-    # 新增：结构化问卷数据
-    survey_summary: Optional[str] = None  # 细项评价摘要
-    improvements: Optional[str] = None  # 改进建议（逗号分隔）
 
 @app.post("/api/notify-feedback")
 async def notify_feedback(feedback: FeedbackNotification):
@@ -907,38 +944,20 @@ async def process_feedback_background(feedback: FeedbackNotification):
             print(f"AI reply failed: {e}")
             action_log.append(f"⚠️ AI回复失败: {e}")
 
-    # 3. 发送汇总通知到 Telegram
+    # 3. 发送汇总是知到 Telegram
     if config.TELEGRAM_ENABLED:
-        # 评分表情映射 (1-10分)
-        if feedback.rating <= 3:
-            rating_emoji = "😞"
-            rating_label = "需改进"
-        elif feedback.rating <= 6:
-            rating_emoji = "😐"
-            rating_label = "达预期"
-        elif feedback.rating <= 8:
-            rating_emoji = "😊"
-            rating_label = "满意"
-        else:
-            rating_emoji = "🤩"
-            rating_label = "超预期"
+        # 评分表情映射
+        rating_emoji = {1: "😞", 2: "😐", 3: "🙂", 4: "😊", 5: "🤩"}
+        stars = "⭐" * feedback.rating + "☆" * (5 - feedback.rating)
         
         # 构建消息
         message = f"""📊 *新用户反馈*
 ━━━━━━━━━━━━━━━━━
-{rating_emoji} *{feedback.rating}/10 分* ({rating_label})
+{stars} {rating_emoji.get(feedback.rating, "")}
 
 """
-        # 问卷细项评价
-        if feedback.survey_summary:
-            message += f"📋 *细项评价:*\n{feedback.survey_summary}\n\n"
-        
-        # 改进建议
-        if feedback.improvements:
-            message += f"🔧 *希望改进:* {feedback.improvements}\n\n"
-            
         if feedback.comment:
-            message += f"💬 *详细反馈:* {feedback.comment}\n\n"
+            message += f"💬 *评论:* {feedback.comment}\n\n"
         if feedback.user_email:
             message += f"👤 *用户:* `{feedback.user_email}`\n"
         if feedback.document_name:
@@ -1011,42 +1030,6 @@ async def generate_ai_reply(feedback: FeedbackNotification, quota_info: str = ""
     except Exception as e:
         print(f"LLM generation failed: {e}")
         return None
-
-
-# ========== 新用户注册通知 ==========
-
-class NewUserNotification(BaseModel):
-    user_email: str
-    user_id: Optional[str] = None
-
-@app.post("/api/notify-new-user")
-async def notify_new_user(data: NewUserNotification):
-    """新用户注册时发送 Telegram 通知"""
-    if not config.TELEGRAM_ENABLED:
-        return {"status": "skipped", "message": "Telegram not configured"}
-    
-    message = f"""🎉 *新用户注册*
-━━━━━━━━━━━━━━━━━
-👤 邮箱: `{data.user_email}`
-🕐 时间: {beijing_now().strftime('%Y-%m-%d %H:%M:%S')}
-
-#NewUser #Registration"""
-    
-    try:
-        async with httpx.AsyncClient() as client:
-            await client.post(
-                f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendMessage",
-                json={
-                    "chat_id": config.TELEGRAM_CHAT_ID,
-                    "text": message,
-                    "parse_mode": "Markdown"
-                },
-                timeout=10.0
-            )
-        return {"status": "ok"}
-    except Exception as e:
-        logger.error(f"Failed to send new user notification: {e}")
-        return {"status": "error", "message": str(e)}
 
 # ========== 运行入口 ==========
 
