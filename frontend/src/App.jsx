@@ -100,7 +100,7 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
   const activeScenarioData = scenarios.find(s => s.id === selectedScenario);
 
   const handleUpload = async (file) => {
-    await uploadFile(file);
+    await uploadFile(file, user?.email, user?.id);
   };
 
   // 加载历史输出
@@ -172,7 +172,15 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
               scenario: selectedScenario,
               document_name: selectedFile.name,
               output_path: outputPath,
-              pages: event.result.pages_count || 0
+              // 配置信息
+              theme_color: customColor || activeScenarioData?.color || null,
+              font_style: config.font_style,
+              target_pages: config.target_pages,
+              content_depth: config.content_depth,
+              organization: config.organization || null,
+              // 实际生成结果
+              output_dir: event.result.output_dir || null,
+              actual_pages: event.result.pages_count || event.result.pages?.length || 0
             });
             setCurrentGenerationId(genId); // 保存生成记录 ID，用于反馈
           }

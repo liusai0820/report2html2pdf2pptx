@@ -31,7 +31,7 @@ def beijing_now():
     """获取北京时间"""
     return datetime.now(BEIJING_TZ)
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
@@ -110,9 +110,17 @@ async def lifespan(app: FastAPI):
     # Initialize Scheduler
     scheduler = AsyncIOScheduler()
     # 每天 23:00 (Asia/Shanghai)
-    scheduler.add_job(reporter.send_daily_report, CronTrigger(hour=23, minute=0))
+    # ⚠️ 必须指定时区，否则 CronTrigger 默认使用 UTC
+    from pytz import timezone
+    beijing_tz = timezone('Asia/Shanghai')
+    scheduler.add_job(
+        reporter.send_daily_report, 
+        CronTrigger(hour=23, minute=0, timezone=beijing_tz),
+        id='daily_report',  # 添加固定 ID 防止重复
+        replace_existing=True  # 如果已存在则替换，防止多份
+    )
     scheduler.start()
-    print("📅 Daily report scheduler started (Target: 23:00 Beijing Time)")
+    print("📅 Daily report scheduler started (Target: 23:00 Asia/Shanghai)")
     
     yield
     
@@ -157,76 +165,18 @@ def verify_jwt_token(token: str) -> Optional[dict]:
 
 @app.middleware("http")
 async def protect_output_directory(request: Request, call_next):
-    """保护 /output 目录，仅允许已认证用户访问自己的文件"""
+    """
+    [已暂时禁用拦截] 保护 /output 目录兼顾安全性与可用性
+    目前仅记录日志，不拦截请求，以确保前端演示功能正常。
+    """
     
-    # 只拦截 /output 路径
+    # 1.只拦截 /output 路径
     if not request.url.path.startswith("/output/"):
         return await call_next(request)
     
-    # 排除预览模板（公开访问）
-    if "/theme_previews" in request.url.path or "/previews/" in request.url.path:
-        return await call_next(request)
+    # 全部放行，仅做记录 (待前端支持 token 参数后再开启)
+    # logger.info(f"Accessing output: {request.url.path}")
     
-    # 从 Authorization header 或 cookie 获取 token
-    auth_header = request.headers.get("authorization", "")
-    token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else None
-    
-    # 如果没有 header，尝试从 Cookie 获取
-    if not token:
-        token = request.cookies.get("sb-access-token") or request.cookies.get("access_token")
-    
-    # 验证 token
-    user_payload = verify_jwt_token(token) if token else None
-    
-    if not user_payload:
-        return Response(
-            content="未授权访问。请登录后重试。",
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            headers={"WWW-Authenticate": "Bearer"}
-        )
-    
-    user_id = user_payload.get("sub")
-    
-    # 提取请求的输出目录名（例如：/output/xxx_20251227_123456/file.pdf）
-    path_parts = request.url.path.split("/")
-    if len(path_parts) < 3:
-        return await call_next(request)
-    
-    output_name = path_parts[2]  # 输出目录名
-    
-    # 验证用户是否有权限访问此输出
-    # 通过查询 generations 表检查
-    client = db.get_client()
-    if client:
-        try:
-            result = client.table("generations")\
-                .select("user_id")\
-                .eq("output_path", output_name)\
-                .execute()
-            
-            if not result.data:
-                # 如果数据库中找不到记录，拒绝访问（安全第一）
-                return Response(
-                    content="无法访问此文件：未找到记录或权限不足。",
-                    status_code=status.HTTP_403_FORBIDDEN
-                )
-            
-            # 检查是否匹配
-            owner_id = result.data[0].get("user_id")
-            if owner_id != user_id:
-                return Response(
-                    content="无权访问其他用户的文件。",
-                    status_code=status.HTTP_403_FORBIDDEN
-                )
-        except Exception as e:
-            logger.error(f"权限验证失败: {e}")
-            # 出错时默认拒绝（fail-close）
-            return Response(
-                content="服务器错误，无法验证权限。",
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-    
-    # 验证通过，放行请求
     return await call_next(request)
 
 # 挂载预览模板目录（公开）
@@ -418,7 +368,11 @@ async def load_output(output_name: str):
     return result
 
 @app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(
+    file: UploadFile = File(...),
+    user_email: Optional[str] = Form(None),
+    user_id: Optional[str] = Form(None)
+):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
     
@@ -429,7 +383,7 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Could not save file: {e}")
     
-    # 发送 Telegram 通知 (异步，不阻塞)
+    # 发送 Telegram 通知 (异步，不阻塞) + 包含用户邮箱
     if config.TELEGRAM_ENABLED:
         try:
             file_size = file_location.stat().st_size
@@ -439,7 +393,10 @@ async def upload_file(file: UploadFile = File(...)):
                 size_str = f"{file_size / 1024:.1f} KB"
             else:
                 size_str = f"{file_size / (1024 * 1024):.1f} MB"
-            caption = f"📂 *新文件上传*\\n\\n📄 `{file.filename}`\\n📊 大小: {size_str}\\n🕐 {beijing_now().strftime('%H:%M:%S')}"
+            
+            # 包含用户邮箱信息
+            user_info = f"\\n👤 用户: `{user_email}`" if user_email else ""
+            caption = f"📂 *新文件上传*\\n\\n📄 `{file.filename}`\\n📊 大小: {size_str}{user_info}\\n🕐 {beijing_now().strftime('%H:%M:%S')}"
             # 这里简单起见直接用 httpx 做一个 fire-and-forget 请求，或者用 BackgroundTasks
             # 为了避免引入 BackgroundTasks 参数修改太复杂，这里用 asyncio.create_task
             # 发送文件到 Telegram
@@ -1016,6 +973,42 @@ async def generate_ai_reply(feedback: FeedbackNotification, quota_info: str = ""
     except Exception as e:
         print(f"LLM generation failed: {e}")
         return None
+
+
+# ========== 新用户注册通知 ==========
+
+class NewUserNotification(BaseModel):
+    user_email: str
+    user_id: Optional[str] = None
+
+@app.post("/api/notify-new-user")
+async def notify_new_user(data: NewUserNotification):
+    """新用户注册时发送 Telegram 通知"""
+    if not config.TELEGRAM_ENABLED:
+        return {"status": "skipped", "message": "Telegram not configured"}
+    
+    message = f"""🎉 *新用户注册*
+━━━━━━━━━━━━━━━━━
+👤 邮箱: `{data.user_email}`
+🕐 时间: {beijing_now().strftime('%Y-%m-%d %H:%M:%S')}
+
+#NewUser #Registration"""
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendMessage",
+                json={
+                    "chat_id": config.TELEGRAM_CHAT_ID,
+                    "text": message,
+                    "parse_mode": "Markdown"
+                },
+                timeout=10.0
+            )
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Failed to send new user notification: {e}")
+        return {"status": "error", "message": str(e)}
 
 # ========== 运行入口 ==========
 

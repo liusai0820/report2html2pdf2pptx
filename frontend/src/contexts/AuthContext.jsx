@@ -86,6 +86,20 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (email, password) => {
     const data = await signUp(email, password);
+    
+    // 发送新用户注册通知到 Telegram
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8005/api';
+      await fetch(`${apiUrl}/notify-new-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_email: email, user_id: data.user?.id })
+      });
+    } catch (e) {
+      console.warn('Failed to send new user notification:', e);
+      // 不影响主注册流程
+    }
+    
     return data;
   };
 

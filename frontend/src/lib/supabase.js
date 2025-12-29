@@ -92,11 +92,11 @@ export const recordGeneration = async (userId, metadata = {}) => {
   }
   console.log('recordGeneration: Inserted generation record:', data);
   
-  // 2. Increment generations_used in profiles
+  // 2. Update profiles: increment generations_used, total_pages_generated, and user preferences
   // Fetch current value and increment (Supabase JS doesn't support raw SQL increment)
   const { data: profile, error: fetchError } = await supabase
     .from('profiles')
-    .select('generations_used')
+    .select('generations_used, total_pages_generated')
     .eq('id', userId)
     .single();
   
@@ -104,20 +104,33 @@ export const recordGeneration = async (userId, metadata = {}) => {
     console.error('Error fetching profile for increment:', fetchError);
   } else if (profile) {
     const newCount = (profile.generations_used || 0) + 1;
+    const pagesGenerated = metadata.actual_pages || 0;
+    const newTotalPages = (profile.total_pages_generated || 0) + pagesGenerated;
+    
     console.log('recordGeneration: Updating generations_used from', profile.generations_used, 'to', newCount);
+    console.log('recordGeneration: Updating total_pages_generated from', profile.total_pages_generated, 'to', newTotalPages);
+    
+    // 构建更新对象，包含用户偏好
+    const updateData = { 
+      generations_used: newCount,
+      total_pages_generated: newTotalPages,
+      updated_at: new Date().toISOString()
+    };
+    
+    // 如果有用户偏好设置，也保存到 profiles
+    if (metadata.theme_color) updateData.preferred_theme_color = metadata.theme_color;
+    if (metadata.font_style) updateData.preferred_font_style = metadata.font_style;
+    if (metadata.organization) updateData.organization = metadata.organization;
     
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ 
-        generations_used: newCount,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', userId);
     
     if (updateError) {
-      console.error('Error updating generations_used:', updateError);
+      console.error('Error updating profile:', updateError);
     } else {
-      console.log('recordGeneration: Successfully updated generations_used');
+      console.log('recordGeneration: Successfully updated profile');
     }
   }
   

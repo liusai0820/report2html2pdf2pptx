@@ -114,10 +114,47 @@ async function convertToPDF(htmlPath, pdfPath) {
     } catch (e) {
       console.log('⚠️ 字体加载等待出错，继续处理:', e.message);
     }
-    
-    // 额外等待渲染完成（确保所有样式和网络字体应用）
-    await new Promise(resolve => setTimeout(resolve, 3000));
     console.log('✓ 字体加载完成');
+    
+    // 🔥 等待 ECharts 图表渲染完成（关键修复！）
+    console.log('⏳ 等待图表渲染...');
+    try {
+      await page.waitForFunction(() => {
+        // 检查是否存在 ECharts 实例
+        if (typeof echarts === 'undefined') {
+          return true; // 页面没有使用 ECharts，直接通过
+        }
+        
+        // 获取所有图表容器
+        const chartContainers = document.querySelectorAll('[_echarts_instance_], [data-echarts]');
+        if (chartContainers.length === 0) {
+          return true; // 没有图表容器，直接通过
+        }
+        
+        // 检查每个图表是否已渲染完成
+        for (const container of chartContainers) {
+          const instance = echarts.getInstanceByDom(container);
+          if (!instance) {
+            return false; // 实例未初始化
+          }
+          // 检查图表是否正在渲染动画
+          // ECharts 渲染完成后，容器内应该有 canvas 或 svg
+          if (!container.querySelector('canvas') && !container.querySelector('svg')) {
+            return false;
+          }
+        }
+        
+        return true;
+      }, { timeout: 10000 }).catch(() => {
+        console.log('⚠️ 图表渲染检测超时，继续处理...');
+      });
+    } catch (e) {
+      console.log('⚠️ 图表渲染等待出错:', e.message);
+    }
+    console.log('✓ 图表渲染完成');
+    
+    // 额外等待确保所有动画完成（从 3秒 增加到 5秒）
+    await new Promise(resolve => setTimeout(resolve, 5000));
     
     // 确保输出目录存在
     const pdfDir = path.dirname(absolutePdfPath);

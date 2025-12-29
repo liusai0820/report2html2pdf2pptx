@@ -48,6 +48,7 @@ export default function ResultView({ result, downloads, isProcessing, generation
     // 反馈弹窗状态
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [feedbackGiven, setFeedbackGiven] = useState(false); // 本次生成是否已给过反馈
+    const [pendingDownload, setPendingDownload] = useState(null); // 'pdf' | 'pptx' | null - 等待下载的文件类型
 
     // 如果正在处理中，模拟进度
     const [progress, setProgress] = useState(0);
@@ -102,21 +103,56 @@ export default function ResultView({ result, downloads, isProcessing, generation
     // 处理 PDF 下载
     const handlePdfDownload = async () => {
         if (!downloads?.pdf) return;
+        
+        // 如果还没给过反馈，先弹出反馈框（强制模式）
+        if (!feedbackGiven) {
+            setPendingDownload('pdf');
+            setShowFeedbackModal(true);
+            return;
+        }
+        
+        // 已经给过反馈，直接下载
+        await performPdfDownload();
+    };
+    
+    // 实际执行 PDF 下载
+    const performPdfDownload = async () => {
+        if (!downloads?.pdf) return;
         setDownloadingPdf(true);
         const filename = downloads.pdf.split('/').pop();
         await forceDownload(getOutputUrl(downloads.pdf), filename);
         setDownloadingPdf(false);
+    };
+    
+    // 反馈完成后的回调
+    const handleFeedbackComplete = async () => {
+        setFeedbackGiven(true);
         
-        // PDF 下载完成后，如果还没给过反馈，弹出反馈框
-        if (!feedbackGiven) {
-            setTimeout(() => {
-                setShowFeedbackModal(true);
-            }, 500); // 稍微延迟，让下载提示先出现
+        // 如果有等待下载，执行下载
+        if (pendingDownload === 'pdf') {
+            await performPdfDownload();
+        } else if (pendingDownload === 'pptx') {
+            await performPptxDownload();
         }
+        setPendingDownload(null);
     };
 
     // 处理 PPTX 下载
     const handlePptxDownload = async () => {
+        if (!downloads?.pptx) return;
+        
+        // 如果还没给过反馈，先弹出反馈框（强制模式）
+        if (!feedbackGiven) {
+            setPendingDownload('pptx');
+            setShowFeedbackModal(true);
+            return;
+        }
+        
+        await performPptxDownload();
+    };
+    
+    // 实际执行 PPTX 下载
+    const performPptxDownload = async () => {
         if (!downloads?.pptx) return;
         setDownloadingPptx(true);
         const filename = downloads.pptx.split('/').pop();
@@ -495,17 +531,22 @@ export default function ResultView({ result, downloads, isProcessing, generation
                 }
             `}</style>
 
-            {/* 反馈弹窗 */}
+            {/* 反馈弹窗 - 首次下载时强制填写 */}
             <FeedbackModal
                 isOpen={showFeedbackModal}
                 onClose={() => {
                     setShowFeedbackModal(false);
-                    setFeedbackGiven(true); // 标记已给过反馈，避免重复弹窗
+                    // 非强制模式关闭时也标记已给过反馈
+                    if (!pendingDownload) {
+                        setFeedbackGiven(true);
+                    }
                 }}
                 generationId={generationId}
                 userId={user?.id}
                 userEmail={user?.email}
                 documentName={documentName}
+                mandatory={pendingDownload !== null}
+                onFeedbackComplete={handleFeedbackComplete}
             />
         </div>
     );

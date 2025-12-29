@@ -46,9 +46,11 @@ export const loadOutput = async (outputName) => {
     return response.json();
 };
 
-export const uploadFile = async (file) => {
+export const uploadFile = async (file, userEmail = null, userId = null) => {
     const formData = new FormData();
     formData.append('file', file);
+    if (userEmail) formData.append('user_email', userEmail);
+    if (userId) formData.append('user_id', userId);
     const response = await fetch(`${API_BASE}/upload`, {
         method: 'POST',
         body: formData,

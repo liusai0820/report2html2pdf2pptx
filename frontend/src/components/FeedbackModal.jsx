@@ -11,7 +11,7 @@ import { Star, X, Send, Loader2, MessageSquare, CheckCircle, Heart, Lightbulb } 
 import { supabase } from '../lib/supabase';
 import { getApiUrl } from '../api';
 
-export default function FeedbackModal({ isOpen, onClose, generationId, userId, userEmail, documentName }) {
+export default function FeedbackModal({ isOpen, onClose, generationId, userId, userEmail, documentName, mandatory = false, onFeedbackComplete = null }) {
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -61,13 +61,26 @@ export default function FeedbackModal({ isOpen, onClose, generationId, userId, u
       }
 
       setSubmitted(true);
-      setTimeout(() => {
-        onClose();
-        // 重置状态
-        setRating(0);
-        setComment('');
-        setSubmitted(false);
-      }, 1500);
+      
+      // 如果是强制模式，回调通知可以下载了
+      if (mandatory && onFeedbackComplete) {
+        setTimeout(() => {
+          onFeedbackComplete();
+          onClose();
+          // 重置状态
+          setRating(0);
+          setComment('');
+          setSubmitted(false);
+        }, 1000);
+      } else {
+        setTimeout(() => {
+          onClose();
+          // 重置状态
+          setRating(0);
+          setComment('');
+          setSubmitted(false);
+        }, 1500);
+      }
     } catch (err) {
       console.error('Feedback submission error:', err);
       setError('提交失败，请稍后重试');
@@ -91,7 +104,7 @@ export default function FeedbackModal({ isOpen, onClose, generationId, userId, u
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-        onClick={handleSkip}
+        onClick={mandatory ? undefined : handleSkip}  // 强制模式不允许点击背景关闭
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -112,12 +125,15 @@ export default function FeedbackModal({ isOpen, onClose, generationId, userId, u
                   <p className="text-sm text-slate-600">您的反馈是产品进步的最大动力</p>
                 </div>
               </div>
-              <button
-                onClick={handleSkip}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white/80 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              {/* 强制模式不显示关闭按钮 */}
+              {!mandatory && (
+                <button
+                  onClick={handleSkip}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white/80 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
             </div>
           </div>
 
@@ -206,16 +222,19 @@ export default function FeedbackModal({ isOpen, onClose, generationId, userId, u
           {/* Footer */}
           {!submitted && (
             <div className="px-6 pb-6 flex gap-3">
-              <button
-                onClick={handleSkip}
-                className="flex-1 py-3 px-4 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-medium transition-colors"
-              >
-                稍后再说
-              </button>
+              {/* 强制模式不显示跳过按钮 */}
+              {!mandatory && (
+                <button
+                  onClick={handleSkip}
+                  className="flex-1 py-3 px-4 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-medium transition-colors"
+                >
+                  稍后再说
+                </button>
+              )}
               <button
                 onClick={handleSubmit}
                 disabled={submitting || rating === 0}
-                className="flex-1 py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-200 disabled:shadow-none"
+                className={`${mandatory ? 'w-full' : 'flex-1'} py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-200 disabled:shadow-none`}
               >
                 {submitting ? (
                   <>
