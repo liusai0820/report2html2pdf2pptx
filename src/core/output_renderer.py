@@ -127,8 +127,17 @@ class OutputRenderer:
                         console.print(f"[green]✓[/green] Adobe Cloud PDF 生成成功!")
                         return str(final_pdf_path.resolve())
         except Exception as e:
-            console.print(f"[yellow]⚠ Adobe PDF 生成失败 (将回退到本地): {e}[/yellow]")
-            # Fallback continues below...
+            console.print(f"[red]✗ Adobe PDF 生成失败: {e}[/red]")
+            # 关键修改：在 Render 环境下，绝对不要回退到本地 Chrome，因为内存不够会直接崩溃
+            if os.getenv('RENDER') or os.getenv('render'):
+                console.print("[red]⛔️ Render 环境内存受限，已跳过本地 PDF 生成以防止崩溃。[/red]")
+                # 创建一个空的 PDF 或错误提示文件，防止后续流程报错？
+                # 不，直接返回 None 或伪造路径可能更好，但下游可能需要文件。
+                # 暂时直接 return，调用方需要处理异常。
+                return None
+            
+            console.print(f"[yellow]⚠️ 尝试回退到本地 Chrome...[/yellow]")
+            # Fallback continues below ONLY for local dev...
 
         # 2. 本地 Puppeteer 生成 (Fallback)
         console.print("[cyan]🖥 使用本地 Chrome 生成 PDF...[/cyan]")
