@@ -103,41 +103,79 @@ class OutputRenderer:
         date_str = datetime.now().strftime("%Y%m%d")
         final_pdf_path = self.output_dir / f"{doc_name}_{date_str}.pdf"
         
+        # 标志变量
+        pdf_generated = False
+
         # 1. 尝试 Adobe 服务 (Serverless, 省内存)
         try:
-            # 确保 presentation.html 存在 (它应该是合并后的完整 HTML)
+            # 确保 source_html 存在
             source_html = self.output_dir / "presentation.html"
-            if not source_html.exists():
-                # 如果没存在，可能是还没合并。这里简单尝试找一下 pages
-                pass
             
             if source_html.exists():
                 from adobe_pdf_to_pptx import PDFToPPTXConverter
                 if os.getenv('PDF_SERVICES_CLIENT_ID') and os.getenv('PDF_SERVICES_CLIENT_SECRET'):
-                    console.print("[cyan]☁️  尝试使用 Adobe Cloud 生成 PDF (Direct HTML)...[/cyan]")
+                    console.print("[cyan]☁️  尝试使用 Adobe Cloud 生成 PDF (ZIP Mode)...[/cyan]")
+                    
                     converter = PDFToPPTXConverter()
                     
-                    # 直接上传 HTML 文件 (不打包 ZIP，避免参数不兼容)
-                    # 注意：如果 HTML 引用了相对路径的本地图片，可能会丢失。
-                    # 但目前我们主要依赖 external assets 和 inline styles。
+                    # 修复：必须打包为 ZIP 且包含 index.html
+                    import zipfile
+                    zip_path = self.output_dir / "input_bundle.zip"
                     
-                    converter.convert_html_to_pdf(str(source_html), str(final_pdf_path))
+                    with zipfile.ZipFile(zip_path, 'w') as zf:
+                        # 核心修复：重命名为 index.html
+                        zf.write(source_html, arcname="index.html")
+                        
+                        # 简单的资源打包 (Optional)
+                        assets_dir = self.output_dir / "assets"
+                        if assets_dir.exists():
+                             for file in assets_dir.rglob("*"):
+                                 if file.is_file():
+                                     zf.write(file, arcname=str(file.relative_to(self.output_dir)))
+
+                    # 调用 API (使用之前定义的支持 html/zip 的方法，但在内部它会处理 zip)
+                    converter.convert_html_to_pdf(str(zip_path), str(final_pdf_path))
                     
                     if final_pdf_path.exists():
                         console.print(f"[green]✓[/green] Adobe Cloud PDF 生成成功!")
+                        try: os.remove(zip_path) 
+                        except: pass
+                        pdf_generated = True
                         return str(final_pdf_path.resolve())
         except Exception as e:
             console.print(f"[red]✗ Adobe PDF 生成失败: {e}[/red]")
-            # 关键修改：在 Render 环境下，绝对不要回退到本地 Chrome，因为内存不够会直接崩溃
-            if os.getenv('RENDER') or os.getenv('render'):
-                console.print("[red]⛔️ Render 环境内存受限，已跳过本地 PDF 生成以防止崩溃。[/red]")
-                # 创建一个空的 PDF 或错误提示文件，防止后续流程报错？
-                # 不，直接返回 None 或伪造路径可能更好，但下游可能需要文件。
-                # 暂时直接 return，调用方需要处理异常。
-                return None
+            # Fallback to next method
+        
+        # 2. 尝试 ConvertAPI (备选方案)
+        if not pdf_generated and os.getenv('CONVERTAPI_SECRET'):
+            try:
+                console.print("[cyan]☁️  尝试使用 ConvertAPI 生成 PDF...[/cyan]")
+                import convertapi
+                convertapi.api_secret = os.getenv('CONVERTAPI_SECRET')
+                
+                # ConvertAPI 支持直接上传本地文件
+                convertapi.convert('pdf', {
+                    'File': str(source_html),
+                    'ViewportWidth': 1280,
+                    'ViewportHeight': 720,
+                    'Scale': 100
+                }, from_format='html').save_files(str(final_pdf_path))
+                
+                if final_pdf_path.exists():
+                    console.print(f"[green]✓[/green] ConvertAPI PDF 生成成功!")
+                    pdf_generated = True
+                    return str(final_pdf_path.resolve())
+            except Exception as e:
+                console.print(f"[red]✗ ConvertAPI 生成失败: {e}[/red]")
+
+        # 3. 内存保护检查
+        # 如果上面都失败了，且在 Render 环境，绝对不要回退到本地 Chrome
+        if not pdf_generated and (os.getenv('RENDER') or os.getenv('render')):
+             console.print("[red]⛔️ Cloud PDF 服务均失败且 Render 环境内存受限，跳过本地生成以防崩溃。[/red]")
+             return None
             
-            console.print(f"[yellow]⚠️ 尝试回退到本地 Chrome...[/yellow]")
-            # Fallback continues below ONLY for local dev...
+        console.print(f"[yellow]⚠️ 尝试回退到本地 Chrome...[/yellow]")
+        # Fallback continues below ONLY for local dev...
 
         # 2. 本地 Puppeteer 生成 (Fallback)
         console.print("[cyan]🖥 使用本地 Chrome 生成 PDF...[/cyan]")
