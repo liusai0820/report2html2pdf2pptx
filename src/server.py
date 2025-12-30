@@ -180,9 +180,19 @@ async def protect_output_directory(request: Request, call_next):
 
 
 # 挂载预览模板目录（公开）
-previews_dir = Path("output/theme_previews")
-if previews_dir.exists():
-    app.mount("/previews", StaticFiles(directory=str(previews_dir)), name="previews")
+# 挂载预览模板目录（公开）
+# 优先使用 src/previews (源码内置)，回退到 output/theme_previews (旧逻辑)
+previews_src = Path(__file__).parent / "previews"
+previews_output = Path("output/theme_previews")
+
+if previews_src.exists():
+    app.mount("/previews", StaticFiles(directory=str(previews_src)), name="previews")
+    print(f"✓ Mounted previews from source: {previews_src}")
+elif previews_output.exists():
+    app.mount("/previews", StaticFiles(directory=str(previews_output)), name="previews")
+    print(f"✓ Mounted previews from output: {previews_output}")
+else:
+    print("⚠ No preview directory found!")
 
 # 静态文件服务（已由上面的中间件保护）
 app.mount("/output", StaticFiles(directory="output"), name="output")
