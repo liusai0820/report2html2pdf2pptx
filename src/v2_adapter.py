@@ -407,8 +407,8 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
                 try:
                     import shutil
                     if engine.output_dir.exists():
-                        shutil.rmtree(engine.output_dir)
-                        print(f"cleaned up local dir: {engine.output_dir}")
+                        # shutil.rmtree(engine.output_dir)
+                        print(f"Kept local dir for debugging: {engine.output_dir}")
                 except Exception as cleanup_err:
                     print(f"cleanup failed: {cleanup_err}")
                 
