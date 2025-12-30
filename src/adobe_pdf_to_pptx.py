@@ -23,6 +23,9 @@ from adobe.pdfservices.operation.pdfjobs.jobs.export_pdf_job import ExportPDFJob
 from adobe.pdfservices.operation.pdfjobs.params.export_pdf.export_pdf_params import ExportPDFParams
 from adobe.pdfservices.operation.pdfjobs.params.export_pdf.export_pdf_target_format import ExportPDFTargetFormat
 from adobe.pdfservices.operation.pdfjobs.result.export_pdf_result import ExportPDFResult
+from adobe.pdfservices.operation.pdfjobs.jobs.create_pdf_job import CreatePDFJob
+from adobe.pdfservices.operation.pdfjobs.params.create_pdf.create_pdf_params import CreatePDFParams
+from adobe.pdfservices.operation.pdfjobs.result.create_pdf_result import CreatePDFResult
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -108,6 +111,63 @@ class PDFToPPTXConverter:
             'port': port,
             'scheme': scheme
         }
+    
+    def convert_html_to_pdf(self, zip_path: str, output_path: Optional[str] = None) -> str:
+        """
+        将HTML包(ZIP)转换为PDF
+        
+        Args:
+            zip_path: 包含index.html的ZIP文件路径
+            output_path: 输出PDF文件路径
+            
+        Returns:
+            输出文件路径
+        """
+        try:
+            logger.info(f"📄 [CreatePDF] 开始转换: {zip_path}")
+            
+            if not os.path.exists(zip_path):
+                raise FileNotFoundError(f"文件不存在: {zip_path}")
+            
+            with open(zip_path, 'rb') as f:
+                input_stream = f.read()
+            
+            logger.info("☁️  上传ZIP到Adobe云...")
+            input_asset = self.pdf_services.upload(
+                input_stream=input_stream,
+                mime_type=PDFServicesMediaType.ZIP
+            )
+            
+            logger.info("🚀 提交CreatePDF任务...")
+            # CreatePDFJob 无需参数，默认自适应
+            create_pdf_job = CreatePDFJob(input_asset=input_asset)
+            
+            location = self.pdf_services.submit(create_pdf_job)
+            
+            logger.info("⏳ 等待渲染完成...")
+            pdf_services_response = self.pdf_services.get_job_result(
+                location,
+                CreatePDFResult
+            )
+            
+            result_asset = pdf_services_response.get_result().get_asset()
+            stream_asset = self.pdf_services.get_content(result_asset)
+            
+            if output_path is None:
+                output_path = zip_path.replace('.zip', '.pdf')
+            
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
+            logger.info(f"💾 保存PDF: {output_path}")
+            with open(output_path, "wb") as f:
+                f.write(stream_asset.get_input_stream())
+                
+            return output_path
+            
+        except Exception as e:
+            logger.error(f"✗ HTML转PDF失败: {e}")
+            raise
+
     
     def convert_pdf_to_pptx(self, pdf_path: str, output_path: Optional[str] = None) -> str:
         """

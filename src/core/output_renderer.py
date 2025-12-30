@@ -97,8 +97,58 @@ class OutputRenderer:
         return str(merged_path)
     
     def generate_pdf(self, doc_name: str = "presentation") -> str:
-        """生成 PDF"""
+        """生成 PDF (优先使用 Adobe API，失败回退到本地 Chrome)"""
         console.print(f"\n[cyan]📄 生成 PDF...[/cyan]")
+        
+        date_str = datetime.now().strftime("%Y%m%d")
+        final_pdf_path = self.output_dir / f"{doc_name}_{date_str}.pdf"
+        
+        # 1. 尝试 Adobe 服务 (Serverless, 省内存)
+        try:
+            # 确保 presentation.html 存在 (它应该是合并后的完整 HTML)
+            source_html = self.output_dir / "presentation.html"
+            if not source_html.exists():
+                # 如果没存在，可能是还没合并。这里简单尝试找一下 pages
+                pass
+            
+            if source_html.exists():
+                from adobe_pdf_to_pptx import PDFToPPTXConverter
+                if os.getenv('PDF_SERVICES_CLIENT_ID') and os.getenv('PDF_SERVICES_CLIENT_SECRET'):
+                    console.print("[cyan]☁️  尝试使用 Adobe Cloud 生成 PDF...[/cyan]")
+                    converter = PDFToPPTXConverter()
+                    
+                    # 打包 ZIP (HTML + Assets)
+                    import zipfile
+                    zip_path = self.output_dir / "input_bundle.zip"
+                    
+                    with zipfile.ZipFile(zip_path, 'w') as zf:
+                        zf.write(source_html, arcname="index.html")
+                        # 如果有本地图片资源，也需要添加。
+                        # 目前我们主要用 CSS 里的 external fonts 和 R2/Unsplash 图片，所以一个 index.html 可能够了
+                        # 如果有 pages 目录里的图片引用 (../../assets), 我们可能需要把 assets 目录也打包进去
+                        
+                        assets_dir = self.output_dir / "assets" # 假设结构
+                        if assets_dir.exists():
+                             for file in assets_dir.rglob("*"):
+                                 if file.is_file():
+                                     # arcname e.g. assets/img.png
+                                     zf.write(file, arcname=str(file.relative_to(self.output_dir)))
+
+                    # 调用 API
+                    converter.convert_html_to_pdf(str(zip_path), str(final_pdf_path))
+                    
+                    if final_pdf_path.exists():
+                        console.print(f"[green]✓[/green] Adobe Cloud PDF 生成成功!")
+                        # 清理 zip
+                        try: os.remove(zip_path) 
+                        except: pass
+                        return str(final_pdf_path.resolve())
+        except Exception as e:
+            console.print(f"[yellow]⚠ Adobe PDF 生成失败 (将回退到本地): {e}[/yellow]")
+            # Fallback continues below...
+
+        # 2. 本地 Puppeteer 生成 (Fallback)
+        console.print("[cyan]🖥 使用本地 Chrome 生成 PDF...[/cyan]")
         
         from PyPDF2 import PdfMerger
         import glob
@@ -196,20 +246,17 @@ class OutputRenderer:
             if os.path.exists(pdf_file):
                 merger.append(pdf_file)
         
-        date_str = datetime.now().strftime("%Y%m%d")
-        pdf_path = self.output_dir / f"{doc_name}_{date_str}.pdf"
-        
-        merger.write(str(pdf_path))
+        merger.write(str(final_pdf_path))
         merger.close()
         
         # 清理临时文件
         import shutil
         shutil.rmtree(temp_dir)
         
-        size_mb = pdf_path.stat().st_size / 1024 / 1024
-        console.print(f"[green]✓[/green] PDF 已生成: {pdf_path.resolve()} ({size_mb:.2f} MB)")
+        size_mb = final_pdf_path.stat().st_size / 1024 / 1024
+        console.print(f"[green]✓[/green] PDF 已生成: {final_pdf_path.resolve()} ({size_mb:.2f} MB)")
         
-        return str(pdf_path.resolve())
+        return str(final_pdf_path.resolve())
     
     def generate_pptx(self, pdf_path: str) -> str:
         """生成 PPTX"""
