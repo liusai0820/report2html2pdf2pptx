@@ -13,7 +13,7 @@ services:
     dockerfilePath: ./Dockerfile.render
     dockerContext: .
     region: singapore # 亚洲区域，离中国近
-    plan: starter # $7/月，512MB RAM，0.5 CPU
+    plan: free # 免费版 (注意：长时间无请求会自动休眠，唤醒需等待约50秒)
     # 如果需要更多资源，可以升级到:
     # plan: standard  # $25/月，2GB RAM，1 CPU
     healthCheckPath: /api/health
