@@ -114,34 +114,17 @@ class OutputRenderer:
             if source_html.exists():
                 from adobe_pdf_to_pptx import PDFToPPTXConverter
                 if os.getenv('PDF_SERVICES_CLIENT_ID') and os.getenv('PDF_SERVICES_CLIENT_SECRET'):
-                    console.print("[cyan]☁️  尝试使用 Adobe Cloud 生成 PDF...[/cyan]")
+                    console.print("[cyan]☁️  尝试使用 Adobe Cloud 生成 PDF (Direct HTML)...[/cyan]")
                     converter = PDFToPPTXConverter()
                     
-                    # 打包 ZIP (HTML + Assets)
-                    import zipfile
-                    zip_path = self.output_dir / "input_bundle.zip"
+                    # 直接上传 HTML 文件 (不打包 ZIP，避免参数不兼容)
+                    # 注意：如果 HTML 引用了相对路径的本地图片，可能会丢失。
+                    # 但目前我们主要依赖 external assets 和 inline styles。
                     
-                    with zipfile.ZipFile(zip_path, 'w') as zf:
-                        zf.write(source_html, arcname="index.html")
-                        # 如果有本地图片资源，也需要添加。
-                        # 目前我们主要用 CSS 里的 external fonts 和 R2/Unsplash 图片，所以一个 index.html 可能够了
-                        # 如果有 pages 目录里的图片引用 (../../assets), 我们可能需要把 assets 目录也打包进去
-                        
-                        assets_dir = self.output_dir / "assets" # 假设结构
-                        if assets_dir.exists():
-                             for file in assets_dir.rglob("*"):
-                                 if file.is_file():
-                                     # arcname e.g. assets/img.png
-                                     zf.write(file, arcname=str(file.relative_to(self.output_dir)))
-
-                    # 调用 API
-                    converter.convert_html_to_pdf(str(zip_path), str(final_pdf_path))
+                    converter.convert_html_to_pdf(str(source_html), str(final_pdf_path))
                     
                     if final_pdf_path.exists():
                         console.print(f"[green]✓[/green] Adobe Cloud PDF 生成成功!")
-                        # 清理 zip
-                        try: os.remove(zip_path) 
-                        except: pass
                         return str(final_pdf_path.resolve())
         except Exception as e:
             console.print(f"[yellow]⚠ Adobe PDF 生成失败 (将回退到本地): {e}[/yellow]")

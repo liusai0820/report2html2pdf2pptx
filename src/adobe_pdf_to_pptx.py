@@ -111,30 +111,38 @@ class PDFToPPTXConverter:
             'scheme': scheme
         }
     
-    def convert_html_to_pdf(self, zip_path: str, output_path: Optional[str] = None) -> str:
+    def convert_html_to_pdf(self, input_path: str, output_path: Optional[str] = None) -> str:
         """
-        将HTML包(ZIP)转换为PDF
+        将HTML文件或HTML包(ZIP)转换为PDF
         
         Args:
-            zip_path: 包含index.html的ZIP文件路径
+            input_path: .html文件或包含index.html的.zip文件路径
             output_path: 输出PDF文件路径
             
         Returns:
             输出文件路径
         """
         try:
-            logger.info(f"📄 [CreatePDF] 开始转换: {zip_path}")
+            logger.info(f"📄 [CreatePDF] 开始转换: {input_path}")
             
-            if not os.path.exists(zip_path):
-                raise FileNotFoundError(f"文件不存在: {zip_path}")
+            if not os.path.exists(input_path):
+                raise FileNotFoundError(f"文件不存在: {input_path}")
             
-            with open(zip_path, 'rb') as f:
+            file_ext = os.path.splitext(input_path.lower())[1]
+            if file_ext == '.zip':
+                mime_type = PDFServicesMediaType.ZIP
+            elif file_ext in ['.html', '.htm']:
+                mime_type = PDFServicesMediaType.HTML
+            else:
+                mime_type = PDFServicesMediaType.HTML # Default fallback
+            
+            with open(input_path, 'rb') as f:
                 input_stream = f.read()
             
-            logger.info("☁️  上传ZIP到Adobe云...")
+            logger.info(f"☁️  上传文件({file_ext})到Adobe云...")
             input_asset = self.pdf_services.upload(
                 input_stream=input_stream,
-                mime_type=PDFServicesMediaType.ZIP
+                mime_type=mime_type
             )
             
             logger.info("🚀 提交CreatePDF任务...")
