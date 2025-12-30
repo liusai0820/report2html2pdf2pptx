@@ -1,0 +1,78 @@
+# ============================================
+# AI Presentation Generator - Render 优化版
+# 针对 Render 平台的内存和 Puppeteer 优化
+# ============================================
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# 使用 Debian 国内镜像加速（可选）
+# RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
+
+# 安装 Chromium、Node.js 和依赖
+# 注意：Render 使用 AMD64 架构
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Chromium 浏览器 (比完整 Chrome 更轻量)
+    chromium \
+    # 中文字体 - 精简版（减少镜像体积）
+    fonts-noto-cjk \
+    fonts-liberation \
+    fontconfig \
+    # 文档解析工具
+    antiword \
+    # Node.js 依赖
+    curl \
+    # 调试工具（生产可移除）
+    procps \
+    && rm -rf /var/lib/apt/lists/* \
+    # 刷新字体缓存
+    && fc-cache -fv
+
+# 安装 Node.js 20.x
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# 设置 Chromium 环境变量
+ENV CHROME_BIN=/usr/bin/chromium
+ENV CHROME_PATH=/usr/bin/chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# =========================================
+# Render 平台优化：减少内存使用
+# =========================================
+# 限制 Node.js 内存使用
+ENV NODE_OPTIONS="--max-old-space-size=256"
+# Python GC 优化
+ENV PYTHONMALLOC=malloc
+# 禁用 Python 字节码缓存
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# 安装 Python 依赖
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 安装 Node.js 依赖 (Puppeteer for PDF)
+COPY package.json package-lock.json* ./
+RUN npm ci --only=production 2>/dev/null || npm install --only=production
+
+# 复制应用代码
+COPY src/ ./src/
+COPY config/ ./config/
+COPY promptv4.md ./
+COPY run.py ./
+
+# 创建目录
+RUN mkdir -p input output
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app/src
+
+# Render 使用环境变量 PORT
+EXPOSE 8005
+
+# 使用 Uvicorn 启动
+# Render 会自动设置 $PORT 环境变量，但我们的代码用 API_PORT
+CMD ["sh", "-c", "uvicorn src.server:app --host ${API_HOST:-0.0.0.0} --port ${API_PORT:-${PORT:-8005}} --workers ${UVICORN_WORKERS:-1} --timeout-keep-alive 120"]

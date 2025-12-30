@@ -205,7 +205,8 @@ class AIDesigner:
             }
         """
         prompt = self._build_outline_prompt(context)
-        response = await self._call_ai(prompt)
+        # 大纲规划开启 Reasoning，让 AI 深度思考结构
+        response = await self._call_ai(prompt, use_reasoning=True)
         return self._parse_outline(response)
     
     async def generate_page(
@@ -844,19 +845,35 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         
         return result if result else content_hint
 
-    async def _call_ai(self, prompt: str, retry_count: int = 0) -> str:
-        """调用 AI API"""
+    async def _call_ai(self, prompt: str, retry_count: int = 0, use_reasoning: bool = False) -> str:
+        """调用 AI API
+        
+        Args:
+            prompt: 用户提示词
+            retry_count: 当前重试次数
+            use_reasoning: 是否开启 Reasoning（仅对支持的模型如 gemini-3-flash-preview 生效）
+        """
         try:
+            # 构建基础请求参数
+            request_params = {
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": DESIGNER_SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": self.temperature,
+                "max_tokens": 16000,  # 增加输出长度限制，支持 80+ 页大纲
+            }
+            
+            # 如果开启 Reasoning，添加 extra_body 参数
+            if use_reasoning:
+                request_params["extra_body"] = {
+                    "reasoning": {"enabled": True}
+                }
+                console.print("[cyan]🧠 Reasoning 模式已开启，AI 正在深度思考...[/cyan]")
+            
             response = await asyncio.wait_for(
-                self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": DESIGNER_SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=self.temperature,
-                    max_tokens=16000,  # 增加输出长度限制，支持 80+ 页大纲
-                ),
+                self.client.chat.completions.create(**request_params),
                 timeout=self.timeout
             )
             
@@ -874,7 +891,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
                 wait_time = 2 * (retry_count + 1)
                 console.print(f"[yellow]⚠ 超时，{wait_time}秒后重试...[/yellow]")
                 await asyncio.sleep(wait_time)
-                return await self._call_ai(prompt, retry_count + 1)
+                return await self._call_ai(prompt, retry_count + 1, use_reasoning)
             raise
         
         except Exception as e:
@@ -882,7 +899,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
                 wait_time = 2 * (retry_count + 1)
                 console.print(f"[yellow]⚠ 失败: {str(e)[:80]}，{wait_time}秒后重试...[/yellow]")
                 await asyncio.sleep(wait_time)
-                return await self._call_ai(prompt, retry_count + 1)
+                return await self._call_ai(prompt, retry_count + 1, use_reasoning)
             raise
 
 

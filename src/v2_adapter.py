@@ -368,20 +368,82 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
                     # 确保完成后递减活跃任务计数
                     _active_pdf_tasks -= 1
                 
-        # 完成 - 无论 PPTX 是否成功都发送完成事件
-        final_result = {
-            "downloads": {
-                "html": f"/output/{engine.output_dir.name}/presentation.html",
-                "pdf": f"/output/{engine.output_dir.name}/{Path(pdf_path).name}" if pdf_path else None,
-                "pptx": f"/output/{engine.output_dir.name}/{Path(pptx_path).name}" if pptx_path else None,
-            },
-            "output_dir": engine.output_dir.name,  # 直接返回目录名，便于前端使用
-            "pages": pages_result,
-            "pages_count": len(pages_result)
-        }
+        # 完成 - 上传到 R2 云存储（如果启用）
+        from r2_storage import get_storage, upload_output_to_r2
+        
+        storage = get_storage()
+        
+        if storage.enabled:
+            yield send_event("upload", "正在上传到云存储...", 99)
+            
+            try:
+                # 上传整个输出目录到 R2
+                upload_result = upload_output_to_r2(
+                    engine.output_dir, 
+                    engine.output_dir.name
+                )
+                
+                base_url = upload_result["base_url"]
+                
+                # 构建云端 URL
+                final_result = {
+                    "downloads": {
+                        "html": f"{base_url}presentation.html",
+                        "pdf": f"{base_url}{Path(pdf_path).name}" if pdf_path else None,
+                        "pptx": f"{base_url}{Path(pptx_path).name}" if pptx_path else None,
+                    },
+                    "output_dir": engine.output_dir.name,
+                    "pages": [
+                        {**p, "url": f"{base_url}pages/page-{p['index']:02d}.html"}
+                        for p in pages_result
+                    ],
+                    "pages_count": len(pages_result),
+                    "storage": "r2"
+                }
+                
+                yield send_event("upload_complete", "云存储上传完成", 100)
+                
+                # Scheme A: 上传成功后清理本地文件以节省空间（Render 磁盘有限）
+                try:
+                    import shutil
+                    if engine.output_dir.exists():
+                        shutil.rmtree(engine.output_dir)
+                        print(f"cleaned up local dir: {engine.output_dir}")
+                except Exception as cleanup_err:
+                    print(f"cleanup failed: {cleanup_err}")
+                
+            except Exception as upload_err:
+                print(f"R2 upload failed, falling back to local: {upload_err}")
+                # 上传失败，回退到本地模式
+                final_result = {
+                    "downloads": {
+                        "html": f"/output/{engine.output_dir.name}/presentation.html",
+                        "pdf": f"/output/{engine.output_dir.name}/{Path(pdf_path).name}" if pdf_path else None,
+                        "pptx": f"/output/{engine.output_dir.name}/{Path(pptx_path).name}" if pptx_path else None,
+                    },
+                    "output_dir": engine.output_dir.name,
+                    "pages": pages_result,
+                    "pages_count": len(pages_result),
+                    "storage": "local"
+                }
+        else:
+            # R2 未启用，使用本地存储
+            final_result = {
+                "downloads": {
+                    "html": f"/output/{engine.output_dir.name}/presentation.html",
+                    "pdf": f"/output/{engine.output_dir.name}/{Path(pdf_path).name}" if pdf_path else None,
+                    "pptx": f"/output/{engine.output_dir.name}/{Path(pptx_path).name}" if pptx_path else None,
+                },
+                "output_dir": engine.output_dir.name,
+                "pages": pages_result,
+                "pages_count": len(pages_result),
+                "storage": "local"
+            }
+        
         yield send_event("done", "全部完成", 100, result=final_result)
 
     except Exception as e:
         import traceback
         traceback.print_exc()
         yield send_event("error", f"V2 引擎错误: {str(e)}", 0)
+

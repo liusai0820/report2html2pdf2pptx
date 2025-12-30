@@ -47,6 +47,7 @@ input/
 .env
 config/.env
 config/pdfservices-api-credentials.json
+.env.render  # Render 实际配置（不提交）
 
 # Node
 node_modules/

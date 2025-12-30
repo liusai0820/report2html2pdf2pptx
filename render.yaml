@@ -1,0 +1,133 @@
+# ============================================
+# Render Blueprint - AI Presentation Generator
+# 支持后端 + 前端的完整部署
+# ============================================
+
+services:
+  # =====================
+  # 后端 API 服务
+  # =====================
+  - type: web
+    name: slidecraft-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile.render
+    dockerContext: .
+    region: singapore # 亚洲区域，离中国近
+    plan: starter # $7/月，512MB RAM，0.5 CPU
+    # 如果需要更多资源，可以升级到:
+    # plan: standard  # $25/月，2GB RAM，1 CPU
+    healthCheckPath: /api/health
+    envVars:
+      # Python 环境
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PYTHONPATH
+        value: /app/src
+      - key: API_HOST
+        value: "0.0.0.0"
+      - key: API_PORT
+        value: "8005"
+      - key: UVICORN_WORKERS
+        value: "1" # Starter plan 建议单 worker
+
+      # OpenRouter API
+      - key: OPENROUTER_API_KEY
+        sync: false # 在 Render Dashboard 手动设置
+      - key: OPENROUTER_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: DEFAULT_MODEL
+        value: google/gemini-3-flash-preview
+
+      # Supabase
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+
+      # Adobe PDF Services
+      - key: PDF_SERVICES_CLIENT_ID
+        sync: false
+      - key: PDF_SERVICES_CLIENT_SECRET
+        sync: false
+
+      # Unsplash
+      - key: UNSPLASH_API_KEY
+        sync: false
+
+      # Telegram
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+
+      # SMTP
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_SSL
+        value: "true"
+
+      # 禁用 ComfyUI (Render 无 GPU)
+      - key: COMFYUI_ENABLED
+        value: "false"
+
+      # 禁用 PPTX 转换 (可选，减少资源消耗)
+      - key: DISABLE_PPTX
+        value: "true"
+
+      # 并发限制 (适配较小资源)
+      - key: MAX_CONCURRENT_REQUESTS
+        value: "2"
+      - key: MAX_CONCURRENT_PDF_TASKS
+        value: "1"
+      - key: TIMEOUT_SECONDS
+        value: "120"
+
+      # Cloudflare R2 云存储 (推荐，替代 Persistent Disk)
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        value: slidecraft
+      - key: R2_PUBLIC_URL
+        sync: false # 可选：自定义域名，如 https://cdn.yourdomain.com
+
+  # =====================
+  # 前端静态站点
+  # =====================
+  - type: web
+    name: slidecraft-frontend
+    runtime: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: ./frontend/dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      # 构建时注入 API URL (指向后端服务)
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: slidecraft-backend
+          property: host
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false

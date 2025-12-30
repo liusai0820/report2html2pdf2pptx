@@ -316,12 +316,13 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
           <Hero />
 
           <div className="space-y-5">
-            {/* 用户历史记录 */}
+            {/* 用户历史记录 (云端部署暂不支持历史记录) 
             <UserHistoryPanel
               userId={user?.id}
               onLoad={handleLoadHistory}
               isLoading={status === 'generating'}
             />
+            */}
 
             <Section title="上传文档" step="1">
               <UploadZone

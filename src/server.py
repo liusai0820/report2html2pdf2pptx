@@ -425,6 +425,26 @@ async def upload_file(file: UploadFile = File(...)):
         except:
             pass
 
+    # 异步上传到 Cloudflare R2 (备份)
+    try:
+        async def upload_to_r2_task(file_path: Path):
+            try:
+                from r2_storage import get_storage
+                storage = get_storage()
+                if storage.enabled:
+                    # 按日期分层: inputs/2024/12/30/filename.pdf
+                    from datetime import datetime
+                    now = datetime.now()
+                    key = f"inputs/{now.year}/{now.month:02d}/{now.day:02d}/{file_path.name}"
+                    storage.upload_file(file_path, key)
+                    logger.info(f"Uploaded input to R2: {key}")
+            except Exception as e:
+                logger.error(f"R2 input upload failed: {e}")
+
+        asyncio.create_task(upload_to_r2_task(file_location))
+    except Exception as e:
+        logger.error(f"Failed to start R2 upload task: {e}")
+
     return {"filename": file.filename, "status": "success"}
 
 # ========== SSE 实时进度生成 ==========
