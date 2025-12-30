@@ -419,7 +419,8 @@ export default function ResultView({ result, downloads, isProcessing, generation
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {/* PDF Download */}
+                        {/* PDF Download - 暂时隐藏，因为生成服务不稳定 */}
+                        {/* 
                         {downloads?.pdf ? (
                             <button onClick={handlePdfDownload} disabled={downloadingPdf} className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200" title="下载 PDF 文档">
                                 {downloadingPdf ? (
@@ -435,6 +436,7 @@ export default function ResultView({ result, downloads, isProcessing, generation
                                 <span>准备中</span>
                             </button>
                         )}
+                        */}
 
                         {/* PPTX Download - 始终显示，点击弹出升级提示 */}
                         <button 

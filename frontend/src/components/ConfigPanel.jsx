@@ -90,37 +90,27 @@ export default function ConfigPanel({ config, onChange }) {
                 </select>
             </div>
 
-            {/* 背景图来源 */}
+            {/* 背景图来源 - 已禁用，强制无背景图 */}
+            {/* 
             <div className="space-y-1">
                 <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1 group relative">
                     <Image className="w-2.5 h-2.5" />
-                    背景图（封面/章节）
-                    <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block w-48 p-1.5 bg-slate-800 text-white text-[9px] rounded shadow-lg z-50 normal-case font-normal leading-relaxed">
-                        为封面、章节切换页、结尾页添加精美背景图<br />
-                        <b>无</b>: 使用纯色背景<br />
-                        <b>Unsplash</b>: 高质量免费图库
-                    </div>
+                    背景图
                 </label>
                 <select
-                    value={config.bg_image_source || 'unsplash'}
+                    value={config.bg_image_source || 'none'}
                     onChange={(e) => handleChange('bg_image_source', e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-md px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-slate-400"
+                    disabled
                 >
                     <option value="none">无背景图 (纯色)</option>
-                    <option value="ai" disabled>AI 绘图 (暂不可用)</option>
-                    <option value="unsplash">在线图库 (Unsplash, 推荐)</option>
                 </select>
             </div>
+            */}
 
             {/* Flags - inline */}
             <div className="flex gap-4">
-                <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                    <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${!config.skip_pdf ? 'bg-slate-900 border-slate-900' : 'border-slate-300 bg-white'
-                        }`} onClick={() => handleChange('skip_pdf', !config.skip_pdf)}>
-                        {!config.skip_pdf && <Check className="w-2.5 h-2.5 text-white" />}
-                    </div>
-                    <span className="text-[11px] text-slate-600">生成 PDF</span>
-                </label>
+                {/* PDF 生成选项已隐藏，默认开启尝试但失败不显示 */}
                 <label className="flex items-center gap-1.5 cursor-pointer select-none">
                     <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${!config.skip_pptx ? 'bg-slate-900 border-slate-900' : 'border-slate-300 bg-white'
                         }`} onClick={() => handleChange('skip_pptx', !config.skip_pptx)}>
