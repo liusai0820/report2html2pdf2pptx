@@ -1,4 +1,3 @@
-# Vercel 前端部署配置
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
