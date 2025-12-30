@@ -24,7 +24,6 @@ from adobe.pdfservices.operation.pdfjobs.params.export_pdf.export_pdf_params imp
 from adobe.pdfservices.operation.pdfjobs.params.export_pdf.export_pdf_target_format import ExportPDFTargetFormat
 from adobe.pdfservices.operation.pdfjobs.result.export_pdf_result import ExportPDFResult
 from adobe.pdfservices.operation.pdfjobs.jobs.create_pdf_job import CreatePDFJob
-from adobe.pdfservices.operation.pdfjobs.params.create_pdf.create_pdf_params import CreatePDFParams
 from adobe.pdfservices.operation.pdfjobs.result.create_pdf_result import CreatePDFResult
 
 logging.basicConfig(level=logging.INFO)
