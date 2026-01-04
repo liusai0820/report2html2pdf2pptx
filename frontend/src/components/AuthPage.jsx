@@ -8,6 +8,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [occupation, setOccupation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -30,7 +31,10 @@ export default function AuthPage() {
         if (password.length < 6) {
           throw new Error('密码至少需要 6 个字符');
         }
-        await register(email, password);
+        if (!occupation) {
+          throw new Error('请选择您的职业身份');
+        }
+        await register(email, password, occupation);
         setSuccess('注册成功！请检查邮箱确认链接（如果启用了邮箱验证）');
         setIsLogin(true);
       }
@@ -46,7 +50,7 @@ export default function AuthPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-dot-pattern opacity-[0.03]" />
-      
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -67,21 +71,19 @@ export default function AuthPage() {
           <div className="flex border-b border-slate-100">
             <button
               onClick={() => { setIsLogin(true); setError(''); setSuccess(''); }}
-              className={`flex-1 py-4 text-sm font-medium transition-colors ${
-                isLogin 
-                  ? 'text-slate-900 border-b-2 border-slate-900' 
+              className={`flex-1 py-4 text-sm font-medium transition-colors ${isLogin
+                  ? 'text-slate-900 border-b-2 border-slate-900'
                   : 'text-slate-400 hover:text-slate-600'
-              }`}
+                }`}
             >
               登录
             </button>
             <button
               onClick={() => { setIsLogin(false); setError(''); setSuccess(''); }}
-              className={`flex-1 py-4 text-sm font-medium transition-colors ${
-                !isLogin 
-                  ? 'text-slate-900 border-b-2 border-slate-900' 
+              className={`flex-1 py-4 text-sm font-medium transition-colors ${!isLogin
+                  ? 'text-slate-900 border-b-2 border-slate-900'
                   : 'text-slate-400 hover:text-slate-600'
-              }`}
+                }`}
             >
               注册
             </button>
@@ -143,6 +145,39 @@ export default function AuthPage() {
                   minLength={6}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all"
                 />
+              </motion.div>
+            )}
+
+            {/* 职业身份 (Register only) */}
+            {!isLogin && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-1.5"
+              >
+                <label className="text-xs font-medium text-slate-600 flex items-center gap-1">
+                  <User className="w-3 h-3" />
+                  您的身份
+                  <span className="text-slate-400 font-normal">(仅用于优化产品体验)</span>
+                </label>
+                <select
+                  value={occupation}
+                  onChange={(e) => setOccupation(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all"
+                >
+                  <option value="">请选择...</option>
+                  <option value="student">大学生 / 研究生</option>
+                  <option value="teacher">教师 / 讲师</option>
+                  <option value="researcher">研究员 / 学者</option>
+                  <option value="employee">企业员工</option>
+                  <option value="manager">管理层 / 高管</option>
+                  <option value="consultant">咨询顾问</option>
+                  <option value="freelancer">自由职业</option>
+                  <option value="entrepreneur">创业者</option>
+                  <option value="government">政府 / 事业单位</option>
+                  <option value="other">其他</option>
+                </select>
               </motion.div>
             )}
 

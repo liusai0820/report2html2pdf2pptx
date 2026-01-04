@@ -13,7 +13,7 @@ services:
       - API_PORT=8005
       - PYTHONPATH=/app/src
       # Uvicorn 多 worker 配置 (充分利用 M3 Ultra 多核)
-      - UVICORN_WORKERS=4
+      - UVICORN_WORKERS=1
       # 覆盖 .env 中的 ComfyUI 地址，确保 Docker 能访问宿主机
       - COMFYUI_HOST=host.docker.internal:8188
     extra_hosts:

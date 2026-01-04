@@ -51,7 +51,7 @@ async def send_daily_report():
     if stats['feedbacks']:
         for fb in stats['feedbacks'][:8]: # 只发前5条
             star = "⭐" * int(fb['rating'])
-            comment = fb['comment'].replace("_", "\_").replace("*", "\*")
+            comment = fb['comment'].replace("_", r"\_").replace("*", r"\*")
             if len(comment) > 60:
                 comment = comment[:60] + "..."
             msg += f"• {star} {comment}\n"

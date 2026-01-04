@@ -97,213 +97,100 @@ class OutputRenderer:
         return str(merged_path)
     
     def generate_pdf(self, doc_name: str = "presentation") -> str:
-        """生成 PDF (优先使用 Adobe API，失败回退到本地 Chrome)"""
+        """生成 PDF
+        
+        策略：
+        1. Render 环境：跳过 PDF 生成，仅返回 HTML。用户需下载 HTML 在本地转换。
+        2. 本地环境：使用 Playwright 生成完美 PDF。
+        """
         console.print(f"\n[cyan]📄 生成 PDF...[/cyan]")
         
         date_str = datetime.now().strftime("%Y%m%d")
         final_pdf_path = self.output_dir / f"{doc_name}_{date_str}.pdf"
+        source_html = self.output_dir / "presentation.html"
         
-        # 标志变量
-        pdf_generated = False
+        if not source_html.exists():
+            console.print("[red]✗ presentation.html 不存在[/red]")
+            return None
 
-        # 1. 尝试 Adobe 服务 (Serverless, 省内存)
+        # 检测环境
+        is_render = os.getenv('RENDER') or os.getenv('render')
+        
+        if is_render:
+            console.print("[yellow]☁️ Render环境：跳过 PDF 生成 (请下载 HTML 在本地转换)[/yellow]")
+            return None
+
+        # --- 本地 Playwright (唯一方案) ---
         try:
-            # 确保 source_html 存在
-            source_html = self.output_dir / "presentation.html"
+            console.print("[cyan]🖥 使用 Playwright 生成 PDF (本地)...[/cyan]")
+            from playwright.sync_api import sync_playwright
             
-            if source_html.exists():
-                from adobe_pdf_to_pptx import PDFToPPTXConverter
-                if os.getenv('PDF_SERVICES_CLIENT_ID') and os.getenv('PDF_SERVICES_CLIENT_SECRET'):
-                    console.print("[cyan]☁️  尝试使用 Adobe Cloud 生成 PDF (ZIP Mode)...[/cyan]")
-                    
-                    converter = PDFToPPTXConverter()
-                    
-                    # 修复：必须打包为 ZIP 且包含 index.html
-                    import zipfile
-                    zip_path = self.output_dir / "input_bundle.zip"
-                    
-                    with zipfile.ZipFile(zip_path, 'w') as zf:
-                        # 核心修复：重命名为 index.html
-                        zf.write(source_html, arcname="index.html")
-                        
-                        # 简单的资源打包 (Optional)
-                        assets_dir = self.output_dir / "assets"
-                        if assets_dir.exists():
-                             for file in assets_dir.rglob("*"):
-                                 if file.is_file():
-                                     zf.write(file, arcname=str(file.relative_to(self.output_dir)))
-
-                    # 调用 API (使用之前定义的支持 html/zip 的方法，但在内部它会处理 zip)
-                    converter.convert_html_to_pdf(str(zip_path), str(final_pdf_path))
-                    
-                    if final_pdf_path.exists():
-                        console.print(f"[green]✓[/green] Adobe Cloud PDF 生成成功!")
-                        try: os.remove(zip_path) 
-                        except: pass
-                        pdf_generated = True
-                        return str(final_pdf_path.resolve())
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+                
+                # 加载 HTML
+                page.goto(f"file://{source_html.resolve()}", wait_until="networkidle")
+                page.wait_for_timeout(2000) # 给 ECharts 更多时间
+                
+                page.pdf(
+                    path=str(final_pdf_path),
+                    width="1280px",
+                    height="720px",
+                    print_background=True,
+                    margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
+                    scale=1
+                )
+                browser.close()
+            
+            if final_pdf_path.exists():
+                size_mb = final_pdf_path.stat().st_size / 1024 / 1024
+                console.print(f"[green]✓[/green] PDF 已生成: {final_pdf_path.name} ({size_mb:.2f} MB)")
+                # 尝试压缩 (可选)
+                self._compress_pdf(final_pdf_path)
+                return str(final_pdf_path.resolve())
+                
+        except ImportError:
+            console.print("[yellow]⚠ 未安装 Playwright，请运行: pip install playwright && playwright install chromium[/yellow]")
         except Exception as e:
-            console.print(f"[red]✗ Adobe PDF 生成失败: {e}[/red]")
-            # Fallback to next method
-        
-        # 2. 尝试 ConvertAPI (备选方案)
-        if not pdf_generated and os.getenv('CONVERTAPI_SECRET'):
-            try:
-                console.print("[cyan]☁️  尝试使用 ConvertAPI 生成 PDF...[/cyan]")
-                import convertapi
-                convertapi.api_secret = os.getenv('CONVERTAPI_SECRET')
-                
-                # ConvertAPI 支持直接上传本地文件
-                convertapi.convert('pdf', {
-                    'File': str(source_html),
-                    'ViewportWidth': 1280,
-                    'ViewportHeight': 720,
-                    'Scale': 100
-                }, from_format='html').save_files(str(final_pdf_path))
-                
-                if final_pdf_path.exists():
-                    console.print(f"[green]✓[/green] ConvertAPI PDF 生成成功!")
-                    pdf_generated = True
-                    return str(final_pdf_path.resolve())
-            except Exception as e:
-                console.print(f"[red]✗ ConvertAPI 生成失败: {e}[/red]")
+            console.print(f"[red]⚠ Playwright 失败: {e}[/red]")
 
-        # 3. 内存保护检查
-        # 如果上面都失败了，且在 Render 环境，绝对不要回退到本地 Chrome
-        if not pdf_generated and (os.getenv('RENDER') or os.getenv('render')):
-             console.print("[red]⛔️ Cloud PDF 服务均失败且 Render 环境内存受限，跳过本地生成以防崩溃。[/red]")
-             return None
-            
-        console.print(f"[yellow]⚠️ 尝试回退到本地 Chrome...[/yellow]")
-        # Fallback continues below ONLY for local dev...
+        return None
 
-        # 2. 本地 Puppeteer 生成 (Fallback)
-        console.print("[cyan]🖥 使用本地 Chrome 生成 PDF...[/cyan]")
-        
-        from PyPDF2 import PdfMerger
-        import glob
-        
-        # 临时 PDF 目录
-        temp_dir = self.output_dir / "temp_pdfs"
-        temp_dir.mkdir(exist_ok=True)
-        
-        # 获取所有页面
-        page_files = sorted(glob.glob(str(self.pages_dir / "page-*.html")))
-        if not page_files:
-            raise Exception("未找到页面文件")
-        
-        # 优先使用本地转换脚本
-        convert_script = Path(__file__).parent.parent / "convert_to_pdf_local.js"
-        if not convert_script.exists():
-            # 回退到云服务版本
-            convert_script = Path(__file__).parent.parent / "convert_to_pdf.js"
-        
-        pdf_files = []
-        failed_count = 0
-        
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            console=console
-        ) as progress:
-            task = progress.add_task("[cyan]转换页面...", total=len(page_files))
+    def _compress_pdf(self, file_path: Path):
+        """简单压缩 PDF (去除未使用的对象)"""
+        try:
+            old_size = file_path.stat().st_size / 1024 / 1024
             
-            # 并行转换 PDF
-            from concurrent.futures import ThreadPoolExecutor, as_completed
+            from PyPDF2 import PdfReader, PdfWriter
+            reader = PdfReader(str(file_path))
+            writer = PdfWriter()
             
-            def convert_single_page(page_file):
-                page_name = Path(page_file).stem
-                pdf_file = temp_dir / f"{page_name}.pdf"
+            for page in reader.pages:
+                writer.add_page(page)
                 
-                try:
-                    result = subprocess.run(
-                        ['node', str(convert_script), page_file, str(pdf_file)],
-                        capture_output=True,
-                        text=True,
-                        timeout=60
-                    )
-                    
-                    if result.returncode != 0:
-                        return (False, page_name, result.stderr)
-                    return (True, str(pdf_file), None)
-                    
-                except subprocess.TimeoutExpired:
-                    return (False, page_name, "Timeout")
-                except Exception as e:
-                    return (False, page_name, str(e))
-
-            # 根据 CPU 核心数决定并发数，但不超过 8
-            import multiprocessing
-            max_workers = min(multiprocessing.cpu_count(), 8)
+            # 压缩元数据
+            writer.add_metadata(reader.metadata)
             
-            # 保持原始顺序
-            future_to_page = {}
-            ordered_pdf_files = [None] * len(page_files)
+            temp_path = file_path.parent / f"compressed_{file_path.name}"
+            with open(temp_path, "wb") as f:
+                writer.write(f)
             
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                # 提交任务
-                for i, page_file in enumerate(page_files):
-                    future = executor.submit(convert_single_page, page_file)
-                    future_to_page[future] = i
+            new_size = temp_path.stat().st_size / 1024 / 1024
+            
+            if new_size < old_size:
+                # 只有变小了才替换
+                os.remove(file_path)
+                temp_path.rename(file_path)
+                console.print(f"[green]✓[/green] PDF 已压缩: {old_size:.2f}MB -> {new_size:.2f}MB")
+            else:
+                os.remove(temp_path)
+                console.print(f"[dim]PDF 压缩未变小 ({old_size:.2f}MB)[/dim]")
                 
-                # 处理结果
-                for future in as_completed(future_to_page):
-                    i = future_to_page[future]
-                    success, result, error = future.result()
-                    
-                    if success:
-                        ordered_pdf_files[i] = result
-                    else:
-                        failed_count += 1
-                        if failed_count <= 3:
-                            console.print(f"[red]✗ {result} 转换失败: {error}[/red]")
-                            
-                    progress.update(task, advance=1)
-            
-            # 过滤掉失败的（None）
-            pdf_files = [f for f in ordered_pdf_files if f]
-        
-        if failed_count > 0:
-            console.print(f"[yellow]⚠ {failed_count}/{len(page_files)} 页转换失败[/yellow]")
-        
-        # 合并 PDF
-        console.print(f"[cyan]🔗 合并 PDF...[/cyan]")
-        merger = PdfMerger()
-        
-        for pdf_file in pdf_files:
-            if os.path.exists(pdf_file):
-                merger.append(pdf_file)
-        
-        merger.write(str(final_pdf_path))
-        merger.close()
-        
-        # 清理临时文件
-        import shutil
-        shutil.rmtree(temp_dir)
-        
-        size_mb = final_pdf_path.stat().st_size / 1024 / 1024
-        console.print(f"[green]✓[/green] PDF 已生成: {final_pdf_path.resolve()} ({size_mb:.2f} MB)")
-        
-        return str(final_pdf_path.resolve())
+        except Exception as e:
+            console.print(f"[yellow]⚠ PDF压缩跳过: {e}[/yellow]")
     
     def generate_pptx(self, pdf_path: str) -> str:
-        """生成 PPTX"""
-        try:
-            from adobe_integration import pdf_to_pptx
-            
-            console.print(f"\n[cyan]🎯 转换 PPTX...[/cyan]")
-            
-            pptx_path = pdf_path.replace('.pdf', '.pptx')
-            result = pdf_to_pptx(pdf_path, pptx_path)
-            
-            if result and os.path.exists(result):
-                size_mb = os.path.getsize(result) / 1024 / 1024
-                console.print(f"[green]✓[/green] PPTX 已生成: {result} ({size_mb:.2f} MB)")
-                return result
-            
-        except Exception as e:
-            console.print(f"[yellow]⚠ PPTX 转换失败: {e}[/yellow]")
-        
-        return ""
+        """生成 PPTX (已禁用云端转换)"""
+        console.print("[yellow]⚠ PPTX 生成：建议使用 WPS/Office 打开生成的 PDF 进行转换，效果最佳[/yellow]")
+        return None

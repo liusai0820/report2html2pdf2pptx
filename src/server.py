@@ -38,6 +38,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import uvicorn
 
+# Admin API moved to bottom
+
+# --- Main Entry ---
 # Add src to sys.path
 src_path = Path(__file__).parent
 if str(src_path) not in sys.path:
@@ -103,11 +106,13 @@ class ProgressEvent(BaseModel):
 
 # ========== App Lifecycle ==========
 
+# 确保必要的目录存在（在 mount 之前）
+os.makedirs("input", exist_ok=True)
+os.makedirs("output", exist_ok=True)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    os.makedirs("input", exist_ok=True)
-    os.makedirs("output", exist_ok=True)
     print(f"✓ Adobe PDF Services: {'可用' if config.ADOBE_AVAILABLE else '未配置'}")
 
     # Initialize Scheduler
@@ -378,7 +383,7 @@ async def load_output(output_name: str):
     return result
 
 @app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...), user_email: str = None):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
     
@@ -399,7 +404,10 @@ async def upload_file(file: UploadFile = File(...)):
                 size_str = f"{file_size / 1024:.1f} KB"
             else:
                 size_str = f"{file_size / (1024 * 1024):.1f} MB"
-            caption = f"📂 *新文件上传*\\n\\n📄 `{file.filename}`\\n📊 大小: {size_str}\\n🕐 {beijing_now().strftime('%H:%M:%S')}"
+            
+            # 加上用户邮箱
+            user_info = f"👤 {user_email}\\n" if user_email else ""
+            caption = f"📂 *新文件上传*\\n\\n{user_info}📄 `{file.filename}`\\n📊 大小: {size_str}\\n🕐 {beijing_now().strftime('%H:%M:%S')}"
             # 这里简单起见直接用 httpx 做一个 fire-and-forget 请求，或者用 BackgroundTasks
             # 为了避免引入 BackgroundTasks 参数修改太复杂，这里用 asyncio.create_task
             # 发送文件到 Telegram
@@ -456,6 +464,79 @@ async def upload_file(file: UploadFile = File(...)):
         logger.error(f"Failed to start R2 upload task: {e}")
 
     return {"filename": file.filename, "status": "success"}
+
+# ========== 新用户注册通知 ==========
+
+OCCUPATION_LABELS = {
+    "student": "大学生/研究生",
+    "teacher": "教师/讲师",
+    "researcher": "研究员/学者",
+    "employee": "企业员工",
+    "manager": "管理层/高管",
+    "consultant": "咨询顾问",
+    "freelancer": "自由职业",
+    "entrepreneur": "创业者",
+    "government": "政府/事业单位",
+    "other": "其他"
+}
+
+class NewUserNotification(BaseModel):
+    user_email: str
+    user_id: Optional[str] = None
+    occupation: Optional[str] = None
+
+@app.post("/api/notify-new-user")
+async def notify_new_user(notification: NewUserNotification):
+    """发送新用户注册通知到 Telegram，并保存职业信息"""
+    
+    # 保存职业信息到 profiles
+    if notification.user_id and notification.occupation:
+        try:
+            from db import get_client
+            client = get_client()
+            if client:
+                client.table("profiles").update({
+                    "occupation": notification.occupation
+                }).eq("id", notification.user_id).execute()
+                logger.info(f"Saved occupation for user {notification.user_id}: {notification.occupation}")
+        except Exception as e:
+            logger.warning(f"Failed to save occupation: {e}")
+    
+    if not config.TELEGRAM_ENABLED:
+        return {"status": "skipped", "reason": "telegram not enabled"}
+    
+    try:
+        occupation_label = OCCUPATION_LABELS.get(notification.occupation, notification.occupation or "未填写")
+        
+        message = (
+            f"🎉 *新用户注册*\n\n"
+            f"👤 邮箱: `{notification.user_email}`\n"
+            f"💼 身份: {occupation_label}\n"
+            f"🕐 时间: {beijing_now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            f"#NewUser #Registration"
+        )
+        
+        import httpx
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendMessage",
+                json={
+                    "chat_id": config.TELEGRAM_CHAT_ID,
+                    "text": message,
+                    "parse_mode": "Markdown"
+                }
+            )
+            
+            if response.status_code == 200:
+                logger.info(f"New user notification sent: {notification.user_email}")
+                return {"status": "sent"}
+            else:
+                logger.warning(f"Telegram notification failed: {response.text}")
+                return {"status": "failed", "reason": response.text}
+                
+    except Exception as e:
+        logger.error(f"Failed to send new user notification: {e}")
+        return {"status": "error", "reason": str(e)}
 
 # ========== SSE 实时进度生成 ==========
 
@@ -649,6 +730,43 @@ async def generate_with_progress(req: GenerateRequest) -> AsyncGenerator[str, No
             "pages": pages_data
         }
         yield send_event("done", "全部完成", 100, result=final_result)
+        
+        # ===== 发送 HTML 到 Telegram (供本地转 PDF) =====
+        if config.TELEGRAM_ENABLED and html_path:
+            async def send_html_to_telegram():
+                try:
+                    import httpx
+                    html_file_path = Path(html_path)
+                    if html_file_path.exists():
+                        # 获取用户邮箱（如果有）
+                        user_info = f"👤 {req.user_email}\n" if hasattr(req, 'user_email') and req.user_email else ""
+                        caption = (
+                            f"📄 *生成完成*\n\n"
+                            f"{user_info}"
+                            f"📁 `{html_file_path.name}`\n"
+                            f"🕐 {beijing_now().strftime('%H:%M:%S')}\n"
+                            f"#HTML #ToPDF"
+                        )
+                        
+                        async with httpx.AsyncClient(timeout=60.0) as client:
+                            with open(html_file_path, 'rb') as f:
+                                files = {'document': (html_file_path.name, f, 'text/html')}
+                                data = {'chat_id': config.TELEGRAM_CHAT_ID, 'caption': caption, 'parse_mode': 'Markdown'}
+                                
+                                response = await client.post(
+                                    f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendDocument",
+                                    files=files,
+                                    data=data
+                                )
+                                
+                                if response.status_code == 200:
+                                    logger.info(f"HTML sent to Telegram: {html_file_path.name}")
+                                else:
+                                    logger.warning(f"Failed to send HTML to Telegram: {response.text}")
+                except Exception as e:
+                    logger.error(f"Error sending HTML to Telegram: {e}")
+            
+            asyncio.create_task(send_html_to_telegram())
         
         # ===== Done =====
         # 构建页面列表供前端预览
@@ -998,6 +1116,81 @@ async def generate_ai_reply(feedback: FeedbackNotification, quota_info: str = ""
         return None
 
 # ========== 运行入口 ==========
+
+# --- Admin API ---
+
+class UpgradeRequest(BaseModel):
+    key: str
+    user_id: str
+    plan_type: str
+    quota: int
+    validity_days: int
+
+@app.get("/api/admin/users")
+async def admin_get_users(key: str = "", limit: int = 200):
+    """获取用户列表 (需要 Access Key)"""
+    import os
+    admin_key = os.getenv("ADMIN_KEY", "123456") 
+    
+    if key != admin_key:
+        raise HTTPException(status_code=403, detail="Invalid Admin Key")
+        
+    try:
+        from db import get_all_users
+        try:
+            # 确保传递了 limit 参数，如果不需要分页可以调整逻辑
+            users = get_all_users(limit=limit)
+            return {"users": users}
+        except TypeError:
+            # 如果db.py里的get_all_users没接收limit参数，尝试不带参数调用
+            users = get_all_users()
+            return {"users": users}
+            
+    except Exception as e:
+        logger.error(f"Admin fetch users error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/admin/upgrade")
+async def admin_upgrade_user(req: UpgradeRequest):
+    """升级用户套餐"""
+    import os
+    admin_key = os.getenv("ADMIN_KEY", "123456")
+    
+    if req.key != admin_key:
+        raise HTTPException(status_code=403, detail="Invalid Admin Key")
+        
+    try:
+        from db import set_user_plan
+        success, msg = set_user_plan(req.user_id, req.plan_type, req.quota, req.validity_days)
+        if success:
+            return {"status": "success", "message": msg}
+        else:
+            raise HTTPException(status_code=500, detail=msg)
+    except Exception as e:
+        logger.error(f"Admin upgrade error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/admin/generations")
+async def admin_get_generations(key: str = "", limit: int = 50):
+    """获取生成记录列表"""
+    import os
+    admin_key = os.getenv("ADMIN_KEY", "123456")
+    
+    if key != admin_key:
+        raise HTTPException(status_code=403, detail="Invalid Admin Key")
+        
+    try:
+        from db import get_client
+        client = get_client()
+        if not client:
+            return {"generations": []}
+        
+        # 查询 admin_generations 视图
+        res = client.table("admin_generations").select("*").limit(limit).execute()
+        return {"generations": res.data or []}
+    except Exception as e:
+        logger.error(f"Admin fetch generations error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     port = int(os.getenv("API_PORT", "8005"))
