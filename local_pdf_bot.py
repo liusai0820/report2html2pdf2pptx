@@ -109,14 +109,17 @@ async def handle_document(update, context):
         await message.reply_text(f"🔄 正在转换 PDF: {file_name}...")
         pdf_path = await convert_html_to_pdf(html_path)
         
-        # 发送回 Telegram
+        # 发送回 Telegram（大文件需要更长超时）
         if SEND_PDF_BACK:
+            size_mb = pdf_path.stat().st_size / 1024 / 1024
             await message.reply_document(
                 document=open(pdf_path, 'rb'),
                 filename=pdf_path.name,
-                caption=f"✅ PDF 转换完成\n📊 大小: {pdf_path.stat().st_size / 1024 / 1024:.2f} MB"
+                caption=f"✅ PDF 转换完成\n📊 大小: {size_mb:.2f} MB",
+                read_timeout=60,
+                write_timeout=120
             )
-            logger.info(f"📤 PDF sent to Telegram: {pdf_path.name}")
+            logger.info(f"📤 PDF sent to Telegram: {pdf_path.name} ({size_mb:.2f} MB)")
         else:
             await message.reply_text(f"✅ PDF 已保存: {pdf_path}")
             
