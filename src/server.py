@@ -31,7 +31,7 @@ def beijing_now():
     """获取北京时间"""
     return datetime.now(BEIJING_TZ)
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
@@ -383,7 +383,10 @@ async def load_output(output_name: str):
     return result
 
 @app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...), user_email: str = None):
+async def upload_file(
+    file: UploadFile = File(...), 
+    user_email: str = Form(None)
+):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
     

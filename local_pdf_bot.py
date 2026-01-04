@@ -124,11 +124,11 @@ async def handle_document(update, context):
         logger.error(f"❌ Error processing {file_name}: {e}")
         await message.reply_text(f"❌ 转换失败: {e}")
 
-async def main():
+def main():
     """主函数"""
     from telegram.ext import Application, MessageHandler, filters
     
-    if TELEGRAM_BOT_TOKEN == "YOUR_BOT_TOKEN":
+    if not TELEGRAM_BOT_TOKEN or TELEGRAM_BOT_TOKEN == "YOUR_BOT_TOKEN":
         logger.error("❌ 请设置 TELEGRAM_BOT_TOKEN 环境变量")
         return
     
@@ -142,9 +142,9 @@ async def main():
     # 添加文档处理器
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     
-    # 启动轮询
+    # 启动轮询（这是个阻塞调用）
     logger.info("👂 Listening for HTML files...")
-    await app.run_polling(drop_pending_updates=True)
+    app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
