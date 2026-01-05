@@ -440,6 +440,52 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
                 "storage": "local"
             }
         
+        # ===== 发送 HTML 到 Telegram (供本地转 PDF) =====
+        if config.TELEGRAM_ENABLED and merged_path.exists():
+            async def send_html_to_telegram():
+                try:
+                    import httpx
+                    import traceback
+                    from datetime import datetime
+                    
+                    # 获取用户邮箱（如果有）
+                    user_info = f"👤 {req.user_email}\n" if hasattr(req, 'user_email') and req.user_email else ""
+                    
+                    # 北京时间
+                    from zoneinfo import ZoneInfo
+                    beijing_now = datetime.now(ZoneInfo("Asia/Shanghai"))
+                    
+                    caption = (
+                        f"📄 *生成完成*\n\n"
+                        f"{user_info}"
+                        f"📁 `{merged_path.name}`\n"
+                        f"🕐 {beijing_now.strftime('%H:%M:%S')}\n"
+                        f"#HTML #ToPDF"
+                    )
+                    
+                    print(f"Preparing to send HTML to Telegram: {merged_path}")
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        with open(merged_path, 'rb') as f:
+                            files = {'document': (merged_path.name, f, 'text/html')}
+                            data = {'chat_id': config.TELEGRAM_CHAT_ID, 'caption': caption, 'parse_mode': 'Markdown'}
+                            
+                            response = await client.post(
+                                f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendDocument",
+                                files=files,
+                                data=data
+                            )
+                            
+                            if response.status_code == 200:
+                                print(f"HTML sent to Telegram: {merged_path.name}")
+                            else:
+                                print(f"Failed to send HTML to Telegram: {response.text}")
+                except Exception as e:
+                    print(f"Error sending HTML to Telegram: {e}")
+                    import traceback
+                    traceback.print_exc()
+            
+            asyncio.create_task(send_html_to_telegram())
+        
         yield send_event("done", "全部完成", 100, result=final_result)
 
     except Exception as e:

@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI PPT - 价格方案</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0F172A;
+            --text-main: #1E293B;
+            --text-sub: #64748B;
+            --bg-page: #F8FAFC;
+            --bg-card: #FFFFFF;
+            --accent-red: #EF4444;
+            --accent-orange: #F59E0B;
+            --accent-blue: #3B82F6;
+            --border: #E2E8F0;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Animations */
+        @keyframes pulse-red {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+
+        @keyframes wage {
+
+            0%,
+            100% {
+                transform: rotate(-2deg);
+            }
+
+            50% {
+                transform: rotate(2deg);
+            }
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: linear-gradient(90deg, #FEF2F2, #FFF7ED);
+            color: #991B1B;
+            text-align: center;
+            padding: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            border-bottom: 1px solid #FECACA;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .top-bar span {
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            background: #EF4444;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* Hero */
+        .hero {
+            text-align: center;
+            padding: 60px 20px 40px;
+        }
+
+        .hero-badge {
+            background: var(--accent-orange);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 14px;
+            display: inline-block;
+            margin-bottom: 24px;
+            transform: rotate(-2deg);
+            box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.1);
+            animation: wage 3s ease-in-out infinite;
+        }
+
+        h1 {
+            font-size: 48px;
+            line-height: 1.2;
+            margin-bottom: 24px;
+            color: var(--text-main);
+            font-weight: 900;
+        }
+
+        h1 .highlight {
+            color: var(--accent-red);
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 .highlight::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            left: -4px;
+            right: -4px;
+            height: 12px;
+            background: rgba(239, 68, 68, 0.15);
+            z-index: -1;
+            transform: skewX(-10deg);
+        }
+
+        .roles {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .role-tag {
+            background: white;
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--text-sub);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .role-check {
+            color: #10B981;
+            width: 16px;
+            height: 16px;
+        }
+
+        .stats-ticker {
+            font-size: 13px;
+            color: var(--text-sub);
+            margin-bottom: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.5);
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .stats-highlight {
+            color: var(--accent-red);
+            font-weight: 700;
+            font-family: monospace;
+        }
+
+        /* Pricing Grid */
+        .pricing-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px 80px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            align-items: stretch;
+        }
+
+        @media (max-width: 1024px) {
+            .pricing-container {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 24px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .pricing-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 28px 20px;
+            position: relative;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* Specific Card Styles */
+        .card.visitor {
+            opacity: 0.8;
+            filter: grayscale(0.8);
+            transition: all 0.3s;
+        }
+
+        .card.visitor:hover {
+            opacity: 1;
+            filter: grayscale(0);
+        }
+
+        .card.deadline {
+            border: 2px solid #334155;
+            background: white;
+            z-index: 2;
+        }
+
+        .card.featured {
+            border: 2px solid var(--accent-red);
+            background: linear-gradient(to bottom, #FEF2F2 0%, #FFFFFF 20%);
+            transform: scale(1.05);
+            /* Make it pop */
+            z-index: 3;
+            box-shadow: 0 25px 50px -12px rgba(239, 68, 68, 0.25);
+        }
+
+        .card.featured:hover {
+            transform: scale(1.08) translateY(-5px);
+        }
+
+        .card.team {
+            border: 2px solid var(--accent-orange);
+            background: #FFFBEB;
+        }
+
+        /* Badges */
+        .badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            white-space: nowrap;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            letter-spacing: 0.5px;
+        }
+
+        .badge.dark {
+            background: #334155;
+            color: white;
+        }
+
+        .badge.red {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .badge.gold {
+            background: var(--accent-orange);
+            color: white;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+
+        .card-subtitle {
+            font-size: 12px;
+            color: var(--text-sub);
+            text-align: center;
+            margin-bottom: 20px;
+            min-height: 18px;
+        }
+
+        .price {
+            text-align: center;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 2px;
+            color: var(--text-main);
+        }
+
+        .currency {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-sub);
+        }
+
+        .amount {
+            font-size: 36px;
+            font-weight: 900;
+            letter-spacing: -1px;
+        }
+
+        .original-price-box {
+            text-decoration: line-through;
+            color: #94A3B8;
+            font-size: 14px;
+            margin-left: 6px;
+        }
+
+        .discount-pill {
+            background: #FEF2F2;
+            color: var(--accent-red);
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: 0 auto 20px;
+            border: 1px solid #FECACA;
+        }
+
+        .features {
+            margin-bottom: 24px;
+            flex: 1;
+            padding: 0 10px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: start;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--text-sub);
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .feature-item strong {
+            color: var(--text-main);
+        }
+
+        .check-icon {
+            width: 16px;
+            height: 16px;
+            color: #10B981;
+            flex-shrink: 0;
+            margin-top: 1px;
+            background: #ECFDF5;
+            border-radius: 50%;
+            padding: 2px;
+        }
+
+        .cross-icon {
+            width: 16px;
+            height: 16px;
+            color: #CBD5E1;
+            flex-shrink: 0;
+        }
+
+        /* Buttons */
+        .btn {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            gap: 8px;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--text-sub);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--text-main);
+            color: var(--text-main);
+        }
+
+        .btn-dark {
+            background: #1E293B;
+            color: white;
+            border: 2px solid #1E293B;
+        }
+
+        .btn-dark:hover {
+            background: #0F172A;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.2);
+        }
+
+        .btn-red {
+            background: var(--accent-red);
+            color: white;
+            border: 2px solid var(--accent-red);
+            box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);
+            animation: pulse-red 2s infinite;
+        }
+
+        .btn-red:hover {
+            background: #DC2626;
+            transform: translateY(-2px);
+        }
+
+        .btn-gold {
+            background: var(--accent-orange);
+            color: white;
+            border: 2px solid var(--accent-orange);
+        }
+
+        .btn-gold:hover {
+            background: #D97706;
+            transform: translateY(-2px);
+        }
+
+        .bottom-note {
+            text-align: center;
+            font-size: 11px;
+            color: #94A3B8;
+            margin-top: 12px;
+        }
+
+        .secure-notice {
+            text-align: center;
+            margin-top: 20px;
+            color: var(--text-sub);
+            font-size: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .secure-icon {
+            width: 14px;
+            height: 14px;
+            color: #10B981;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="top-bar">
+        ⚡️ 限时特惠结束倒计时：<span id="countdown">00:06:07</span>
+        <div style="width:1px;height:12px;background:#FECACA"></div> 329 人正在浏览
+    </div>
+
+    <div class="hero">
+        <div class="hero-badge">🚫 严禁把生命 浪费在做 PPT 上！</div>
+        <h1>
+            把生命还给<span class="highlight">更重要的小事</span>
+        </h1>
+
+        <div class="roles">
+            <span class="role-tag"><svg class="role-check" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                </svg> 学生 • 去谈场恋爱</span>
+            <span class="role-tag"><svg class="role-check" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                </svg> 打工人 • 回家陪家人</span>
+            <span class="role-tag"><svg class="role-check" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                </svg> 创业者 • 去改变世界</span>
+        </div>
+
+        <div class="stats-ticker">
+            <div>
+                🔥 累计已有 <span class="stats-highlight">2,840</span> 位用户生成了 <strong>5,129</strong> 份 PPT
+            </div>
+            <div style="font-size:12px; color:#94A3B8; margin-top:4px;">
+                刚刚 <span class="stats-highlight">张</span> 生成了 "基于大模型的毕设开题.pptx" | <span
+                    class="stats-highlight">陈老师</span> 生成了 "小学三年级科学教案.pdf"
+            </div>
+        </div>
+    </div>
+
+    <div class="pricing-container">
+
+        <!-- 1. Visitor -->
+        <div class="card visitor">
+            <h3 class="card-title">游客体验</h3>
+            <div class="card-subtitle">仅供功能体验</div>
+            <div class="price">
+                <span class="currency">¥</span>
+                <span class="amount">0</span>
+            </div>
+            <div class="discount-pill" style="opacity:0; visibility:hidden">占位</div>
+
+            <div class="features">
+                <div class="feature-item">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    生成预览草稿
+                </div>
+                <div class="feature-item" style="color:#CBD5E1">
+                    <svg class="cross-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                    </svg>
+                    无法下载源文件
+                </div>
+            </div>
+            <a href="#" class="btn btn-outline">免费试用</a>
+        </div>
+
+        <!-- 2. Deadline Savior (UPDATED via User Request) -->
+        <div class="card deadline">
+            <div class="badge dark">⚡️ 权益大升级</div>
+            <h3 class="card-title">Deadline 急救包</h3>
+            <div class="card-subtitle">解决一次燃眉之急</div>
+
+            <div class="price">
+                <span class="currency">¥</span>
+                <span class="amount">19.9</span>
+                <span class="original-price-box">¥39.9</span>
+            </div>
+            <div style="text-align: center;">
+                <span class="discount-pill">立省 50%</span>
+            </div>
+
+            <div class="features">
+                <div class="feature-item">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    <strong>1 份完整源文件</strong>
+                </div>
+                <div class="feature-item">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    含 <strong>PPTX + PDF</strong> 双格式
+                </div>
+                <div class="feature-item">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    无水印 · 可自由编辑
+                </div>
+                <div class="feature-item">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    保留所有图表与动画
+                </div>
+            </div>
+
+            <a href="#" class="btn btn-dark">
+                立即下载源文件 🚀
+            </a>
+            <div class="bottom-note">一杯奶茶钱 · 换一晚好觉</div>
+        </div>
+
+        <!-- 3. Monthly (Featured) -->
+        <div class="card featured">
+            <div class="badge red">🔥 92% 用户首选</div>
+            <h3 class="card-title" style="color:var(--accent-red)">月度汇报通关卡</h3>
+            <div class="card-subtitle">搞定本月所有任务</div>
+
+            <div class="price">
+                <span class="currency">¥</span>
+                <span class="amount" style="color:var(--accent-red)">79</span>
+                <span class="original-price-box">¥199</span>
+            </div>
+            <div style="text-align: center;">
+                <span class="discount-pill" style="background:#FEF2F2; color:#DC2626; border-color:#FECACA">限时 4 折 ·
+                    巨划算</span>
+            </div>
+
+            <div class="features">
+                <div class="feature-item">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    <strong>10 份深度生成额度</strong>
+                </div>
+                <div class="feature-item">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    含 PPTX + PDF 全套格式
+                </div>
+                <div class="feature-item">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    <strong>单份仅 ¥7.9</strong> (超值)
+                </div>
+                <div class="feature-item">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    优先生成通道 (无需排队)
+                </div>
+            </div>
+
+            <a href="#" class="btn btn-red">
+                79元 立即抢购
+            </a>
+            <div class="bottom-note" style="color:#DC2626; font-weight:500">本月最强福利</div>
+        </div>
+
+        <!-- 4. Quarterly -->
+        <div class="card team">
+            <div class="badge gold">👑 团队 / 长期必选</div>
+            <h3 class="card-title">季度共享卡</h3>
+            <div class="card-subtitle">支持多人拼团共享</div>
+
+            <div class="price">
+                <span class="currency">¥</span>
+                <span class="amount">199</span>
+                <span class="original-price-box">¥399</span>
+            </div>
+            <div style="text-align: center;">
+                <span class="discount-pill" style="background:#FFF7ED; color:#D97706; border-color:#FED7AA">半价特惠 ·
+                    长期有效</span>
+            </div>
+
+            <div class="features">
+                <div class="feature-item">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    <strong>30 份超大额度</strong>
+                </div>
+                <div class="feature-item">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    有效期长达 <strong>90 天</strong>
+                </div>
+                <div class="feature-item">
+                    <svg class="check-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                    支持多账号共享使用
+                </div>
+            </div>
+
+            <a href="#" class="btn btn-gold">
+                ¥199 购买季卡
+            </a>
+            <div class="bottom-note" style="color:#B45309">均价 ¥6.6 · 便宜到哭</div>
+        </div>
+
+    </div>
+
+    <div class="secure-notice">
+        <span><svg class="secure-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg> 银行级支付安全</span>
+        <span>⚡️ 支付成功后自动开始下载</span>
+        <span>🛡️ 7天无理由售后保障</span>
+    </div>
+
+    <!-- Script for countdown -->
+    <script>
+        // Simple countdown logic
+        let minutes = 6;
+        let seconds = 7;
+        let milliseconds = 329;
+
+        const el = document.getElementById('countdown');
+
+        setInterval(() => {
+            milliseconds -= 100;
+            if (milliseconds < 0) {
+                milliseconds = 900;
+                seconds--;
+            }
+            if (seconds < 0) {
+                seconds = 59;
+                minutes--;
+            }
+            if (minutes < 0) {
+                minutes = 6; // Loop back
+            }
+
+            el.innerText = `00:0${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
+        }, 100);
+    </script>
+</body>
+
+</html>
