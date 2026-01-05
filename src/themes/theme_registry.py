@@ -257,7 +257,134 @@ ACADEMIC_THEME = Theme(
 
 
 # ============================================================
-# 主题 5: 创意/营销类 (Creative)
+# 主题 5: 大学生开题报告类 (Thesis Proposal)
+# ============================================================
+THESIS_PROPOSAL_THEME = Theme(
+    metadata=ThemeMetadata(
+        id="thesis_proposal",
+        name="开题报告风格",
+        description="专为大学生开题答辩设计，简洁清晰，强调逻辑与规范",
+        category="academic",  # Group under academic category
+        tags=["开题", "答辩", "论文", "大学生", "教育"],
+    ),
+    colors=ColorPalette(
+        primary="#1E3A8A",           # 学术深蓝 (Royal Blue)
+        primary_light="#3B82F6",     # 亮蓝
+        primary_dark="#172554",      # 深蓝
+        accent="#F59E0B",            # 琥珀金 - 重点
+        text_primary="#1F2937",      # 深灰
+        text_secondary="#4B5563",    # 中灰
+        text_light="#9CA3AF",        # 浅灰
+        background="#FFFFFF",        # 白底
+        background_alt="#F3F4F6",    # 浅灰底
+        border="#E5E7EB",            # 边框
+    ),
+    typography=Typography(
+        font_family='"Microsoft YaHei", "微软雅黑", "Heiti SC", sans-serif',  # PPT 首选无衬线字体，清晰易读
+        size_cover_title=48,
+        size_page_title=36,
+        size_section_title=48,
+        size_heading=24,
+        size_body=20,
+        size_small=16,
+    ),
+    layout=Layout(
+        padding_horizontal=60,
+        padding_vertical=40,
+        gap_large=60,
+    ),
+    chart=ChartConfig(
+        colors=["#1E3A8A", "#3B82F6", "#F59E0B", "#10B981", "#6366F1"],
+    ),
+    custom_css="""
+/* 开题报告特有样式 */
+.section-slide {
+    background: linear-gradient(135deg, #1E3A8A 0%, #172554 100%);
+}
+.brand-line {
+    background: #1E3A8A;
+}
+/* 封面页优化 - 左侧边栏风格 */
+.cover-slide {
+    padding-left: 140px !important; /* 让出左侧边栏空间 */
+    position: relative;
+    overflow: hidden;
+}
+.cover-slide::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 60px;
+    background: linear-gradient(180deg, #1E3A8A 0%, #1E40AF 100%);
+    z-index: 1;
+}
+.cover-slide::after {
+    /* 右上角装饰圆 */
+    content: "";
+    position: absolute;
+    top: -100px;
+    right: -50px;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(59,130,246,0.05) 0%, rgba(255,255,255,0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+/* 封面徽章 */
+.cover-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #F59E0B;
+}
+.cover-badge::before {
+    content: "U";
+    width: 32px;
+    height: 32px;
+    background: #1E3A8A;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-family: serif;
+    font-size: 18px;
+}
+/* 封面信息网格 */
+.cover-info-grid {
+    margin-top: 60px;
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 20px 60px;
+    max-width: 800px;
+}
+.cover-footer-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.cover-label {
+    font-size: 14px;
+    color: #9CA3AF;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.cover-value {
+    font-size: 20px;
+    color: #1F2937;
+    font-weight: 600;
+}
+"""
+)
+
+
+# ============================================================
+# 主题 6: 创意/营销类 (Creative)
 # ============================================================
 CREATIVE_THEME = Theme(
     metadata=ThemeMetadata(
@@ -411,6 +538,7 @@ THEME_REGISTRY: Dict[str, Theme] = {
     "annual_review": ANNUAL_REVIEW_THEME,
     "company_intro": COMPANY_INTRO_THEME,
     "academic": ACADEMIC_THEME,
+    "thesis_proposal": THESIS_PROPOSAL_THEME,
     "creative": CREATIVE_THEME,
     "government": GOVERNMENT_THEME,
 }
@@ -465,7 +593,7 @@ THEME_CATEGORIES = {
     "academic": {
         "name": "学术研究类",
         "description": "适用于学术报告、论文答辩、研究分享等场合",
-        "themes": ["academic"]
+        "themes": ["academic", "thesis_proposal"]
     },
     "creative": {
         "name": "创意营销类",

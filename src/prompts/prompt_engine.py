@@ -303,6 +303,14 @@ CONTENT|核心问题：产品同质化严重，价格战不可持续|毛利率�
         default_date = datetime.now().strftime("%Y年%m月")
         date = self.user_config.get("date", default_date)
         
+    def _generate_cover_prompt(self, title: str) -> str:
+        """生成封面页提示词"""
+        org = self.user_config.get("organization", "汇报单位")
+        doc_type = self.user_config.get("doc_type", "专项研究报告")
+        # 动态获取当前日期作为默认值
+        default_date = datetime.now().strftime("%Y年%m月")
+        date = self.user_config.get("date", default_date)
+        
         return f"""
 # 封面页生成
 
@@ -314,26 +322,46 @@ CONTENT|核心问题：产品同质化严重，价格战不可持续|毛利率�
 ## 内容
 - 文档类型：{doc_type}
 - 主标题：{title}
-- 副标题：汇报材料
 - 汇报单位：{org}
 - 日期：{date}
 
 ## HTML 结构
 ```html
 <div class="slide-container cover-slide">
-    <div class="cover-top">
-        <div class="brand-line"></div>
-        <div class="doc-type">{doc_type}</div>
-        <h1 class="main-title">{title}</h1>
-        <h2 class="sub-title">汇报材料</h2>
-    </div>
-    <div class="cover-middle"></div>
-    <div class="cover-bottom">
-        <div class="footer-row">
-            <div class="footer-item">汇报单位：{org}</div>
+    <!-- 装饰元素 -->
+    <div class="left-bar"></div>
+    <div class="top-deco"></div>
+    
+    <!-- 内容区域 -->
+    <div class="content-wrapper">
+        <div class="header-area">
+            <div class="cover-badge">
+                <span class="badge-text">{doc_type}</span>
+            </div>
         </div>
-        <div class="footer-row">
-            <div class="footer-item">日期：{date}</div>
+
+        <div class="main-title">
+            {title}
+        </div>
+        
+        <div class="sub-title">
+            汇报材料
+        </div>
+
+        <div class="cover-info-grid">
+            <div class="cover-footer-item">
+                <span class="cover-label">汇报单位 / Organization</span>
+                <span class="cover-value">{org}</span>
+            </div>
+            <div class="cover-footer-item">
+                <span class="cover-label">日期 / Date</span>
+                <span class="cover-value">{date}</span>
+            </div>
+            <!-- 可选预留位 -->
+            <div class="cover-footer-item">
+                <span class="cover-label">汇报人 / Speaker</span>
+                <span class="cover-value">SlideCraft AI</span>
+            </div>
         </div>
     </div>
 </div>
@@ -815,6 +843,43 @@ HTML 结构：
 - 至少2个成功案例
 - 核心团队介绍
 - 明确的联系方式和合作邀请
+""",
+
+            "thesis_proposal": """
+## 🎓 开题报告专属设计指南
+
+### 版式选择优先级
+1. **[Timeline]** - 必须用于"进度安排"和"技术路线"
+   - 研究阶段划分（准备、实施、总结）
+   - 技术实施步骤（输入→处理→输出）
+   - 关键时间节点
+
+2. **[Comparison]** - 用于"文献综述"和"现状分析"
+   - 国内 vs 国外研究
+   - 现有方法不足 vs 本文改进
+   - 理论意义 vs 实践意义
+
+3. **[Three Columns]** - 用于"研究内容"框架
+   - 模块一、模块二、模块三
+   - 理论层、方法层、应用层
+
+### 视觉风格要求
+- **配色**：学术蓝/深蓝为主，稳重去噪
+- **版式**：逻辑结构图优先，文字列表次之
+- **字体**：微软雅黑等无衬线字体，清晰易读
+- **留白**：适中，不要太挤，方便答辩时快速浏览
+
+### 内容表达规范
+- **标题**：直接说重点，如"研究内容：基于XXX的YYY系统设计"
+- **Gap**：文献综述页必须明确指出"研究空白"
+- **创新**：创新点页使用 [Key Metrics] 或 [Three Columns] 强调 2-3 点
+- **方法**：方法论页尽量用流程图或步骤图
+
+### 必须包含 ✅
+- [Timeline] 进度安排页
+- [Comparison] 国内外现状对比
+- [Three Columns] 创新点列举
+- 至少 1 页明确的 "研究技术路线" (可用Timeline或自定义图示)
 """,
 
             "academic": """

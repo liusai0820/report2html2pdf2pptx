@@ -429,10 +429,10 @@ class DesignSystem:
             "accent": "#00D4FF",           # 青色强调
         },
         ScenarioType.ACADEMIC: {
-            "primary": "#2C3E50",          # 深灰学术（与 academic.html 一致）
-            "primary_light": "#3498DB",
-            "primary_dark": "#1A252F",
-            "accent": "#27AE60",           # 绿色强调
+            "primary": "#1E3A8A",          # 学术深蓝 (与 thesis_proposal.html 一致)
+            "primary_light": "#3B82F6",
+            "primary_dark": "#1E40AF",
+            "accent": "#F59E0B",           # 琥珀金强调
         },
         ScenarioType.CREATIVE: {
             "primary": "#6C5CE7",          # 紫色创意（与 creative.html 一致）

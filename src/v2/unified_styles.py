@@ -401,37 +401,117 @@ ul, ol, li,
 
 .slide-cover {{
     justify-content: center;
+    align-items: flex-start; /* 左对齐 */
+    text-align: left;
+    padding-left: 140px !important; /* 让出左侧边栏空间 */
+}}
+
+/* 左侧装饰栏 */
+.left-bar {{
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 60px;
+    background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark, #001a33) 100%);
+    z-index: 10;
+}}
+
+/* 顶部装饰圆 */
+.top-deco {{
+    position: absolute;
+    top: -100px;
+    right: -50px;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(59,130,246,0.05) 0%, rgba(255,255,255,0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}}
+
+/* 封面内容容器 */
+.cover-content {{
+    width: 100%;
+    padding-top: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    z-index: 5;
+}}
+
+/* 封面徽章 */
+.cover-badge {{
+    display: inline-flex;
     align-items: center;
-    text-align: center;
+    gap: 12px;
+    padding: 8px 0;
+    margin-bottom: 30px;
+    border-bottom: 2px solid var(--accent);
+}}
+
+.badge-text {{
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: 1px;
+    text-transform: uppercase;
 }}
 
 .cover-title {{
-    font-size: 48px;
+    font-size: 56px;
     font-weight: 700;
     color: var(--text-primary);
-    line-height: 1.35;
-    max-width: 1000px;
+    line-height: 1.25;
+    max-width: 900px;
+    margin-bottom: 24px;
     word-break: keep-all;
-    letter-spacing: 0.12em;    /* 大标题需要更宽松的字间距 */
+    letter-spacing: -0.02em;
 }}
 
 .cover-subtitle {{
-    font-size: 20px;
+    font-size: 24px;
     color: var(--text-secondary);
-    margin-top: 16px;
-    letter-spacing: 0.1em;
+    margin-top: 0;
+    margin-bottom: 40px;
+    padding-left: 20px;
+    border-left: 4px solid var(--primary-light);
+    letter-spacing: 0.05em;
+    line-height: 1.5;
+}}
+
+/* 封面信息网格 */
+.cover-info-grid {{
+    margin-top: 60px;
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 20px 60px;
+    max-width: 800px;
+}}
+
+.cover-footer-item {{
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}}
+
+.cover-label {{
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.8;
+}}
+
+.cover-value {{
+    font-size: 20px;
+    color: var(--text-primary);
+    font-weight: 600;
 }}
 
 .cover-meta {{
-    position: absolute;
-    bottom: 60px;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: space-between;
-    padding: 0 60px;
-    font-size: 14px;
-    color: var(--text-light);
+    /* 兼容旧逻辑，隐藏备用 */
+    display: none;
 }}
 
 /* ============================================

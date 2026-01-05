@@ -207,6 +207,7 @@ app.mount("/output", StaticFiles(directory="output"), name="output")
 SCENARIOS = [
     {"id": "consulting", "name": "咨询研究/汇报", "desc": "政府汇报、咨询报告、研究课题"},
     {"id": "annual_review", "name": "年终述职/总结", "desc": "年终总结、工作汇报、述职报告"},
+    {"id": "thesis_proposal", "name": "大学生开题报告", "desc": "毕业论文开题、答辩汇报"},
     {"id": "company_intro", "name": "公司/项目介绍", "desc": "公司介绍、项目路演、产品发布"},
     {"id": "academic", "name": "学术研究/答辩", "desc": "学术报告、论文答辩、研究分享"},
     {"id": "creative", "name": "创意/营销", "desc": "品牌推广、营销方案、创意提案"},
@@ -751,6 +752,7 @@ async def generate_with_progress(req: GenerateRequest) -> AsyncGenerator[str, No
                             f"#HTML #ToPDF"
                         )
                         
+                        logger.info(f"Preparing to send HTML to Telegram: {html_file_path}")
                         async with httpx.AsyncClient(timeout=60.0) as client:
                             with open(html_file_path, 'rb') as f:
                                 files = {'document': (html_file_path.name, f, 'text/html')}
@@ -766,23 +768,52 @@ async def generate_with_progress(req: GenerateRequest) -> AsyncGenerator[str, No
                                     logger.info(f"HTML sent to Telegram: {html_file_path.name}")
                                 else:
                                     logger.warning(f"Failed to send HTML to Telegram: {response.text}")
+                    else:
+                        logger.error(f"HTML file not found for Telegram: {html_path}")
                 except Exception as e:
                     logger.error(f"Error sending HTML to Telegram: {e}")
+                    traceback.print_exc()
             
             asyncio.create_task(send_html_to_telegram())
+
+# Debug Endpoint for Telegram
+@app.post("/api/debug/telegram")
+async def debug_telegram(test_email: str = "test@example.com"):
+    """测试 Telegram 发送功能"""
+    if not config.TELEGRAM_ENABLED:
+        return {"status": "error", "message": "Telegram not enabled"}
+    
+    try:
+        import httpx
+        # create a dummy file
+        dummy_path = Path("test_telegram.html")
+        dummy_path.write_text("<h1>Test Telegram</h1><p>If you see this, it works.</p>")
         
-        # ===== Done =====
-        # 构建页面列表供前端预览
-        pages_data = []
-        base_url_path = f"/output/{doc_name}_{timestamp}/pages"
+        caption = f"🧪 *Test Message*\n👤 {test_email}\n🕐 {beijing_now().strftime('%H:%M:%S')}"
         
-        for i, page_info in enumerate(outline):
-            pages_data.append({
-                "index": i + 1,
-                "title": page_info.get("title", f"Page {i+1}"),
-                "type": page_info.get("type", "CONTENT"),
-                "url": f"{base_url_path}/page-{i+1:02d}.html"
-            })
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            with open(dummy_path, 'rb') as f:
+                files = {'document': ('test.html', f, 'text/html')}
+                data = {'chat_id': config.TELEGRAM_CHAT_ID, 'caption': caption, 'parse_mode': 'Markdown'}
+                
+                response = await client.post(
+                    f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendDocument",
+                    files=files,
+                    data=data
+                )
+                
+                result = {
+                    "status_code": response.status_code,
+                    "response": response.text,
+                    "bot_token_prefix": config.TELEGRAM_BOT_TOKEN[:5] + "...",
+                    "chat_id": config.TELEGRAM_CHAT_ID
+                }
+                
+        dummy_path.unlink(missing_ok=True)
+        return result
+        
+    except Exception as e:
+        return {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
             
         final_result = {
             "downloads": result,

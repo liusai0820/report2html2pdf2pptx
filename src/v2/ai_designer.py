@@ -499,9 +499,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         
         # 判断是否使用背景图
         if bg_image_url:
-            # 有背景图时：直接返回完整的 HTML 模板（不需要 AI 生成，避免 base64 导致 token 溢出）
-            # 注意：这里返回的是最终 HTML，不是 prompt！
-            # 用特殊标记让调用方知道这是直接返回的 HTML
+            # 有背景图时：直接返回完整的 HTML 模板
             return f"""__DIRECT_HTML__
 <div style="width: 1280px; height: 720px; background: url('{bg_image_url}') center/cover no-repeat; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px; box-sizing: border-box; font-family: {font_family}; position: relative; overflow: hidden;">
     <!-- 暗色蒙版 - 让文字更可读 -->
@@ -523,38 +521,40 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 </div>
 """
         else:
-            # 无背景图：使用纯色背景 + 主题色装饰
-            return f"""
-# 封面页设计
-
-## 封面信息
-- 主标题：{page_info.title}
-- 汇报单位：{context.organization}
-- 日期：{current_date}
-
-## 设计要求
-
-- 纯白背景
-- **使用主题色 {colors['primary']} 进行装饰**（如顶部/底部装饰条，或标题强调）
-- 主标题居中，48px，深色文字
-- 底部左右分布：单位和日期
-
-## 输出
-
-直接输出 HTML，不要任何解释：
-
-<div style="width: 1280px; height: 720px; background: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px; box-sizing: border-box; font-family: {font_family}; position: relative; overflow: hidden;">
-    <!-- 顶部装饰条 -->
-    <div style="position: absolute; top: 0; left: 0; right: 0; height: 16px; background: {colors['primary']};"></div>
+            # 无背景图：使用新的高级版式 (CSS Class based)
+            # 直接返回 HTML，确保样式与 Preview 一致
+            return f"""__DIRECT_HTML__
+<div class="slide slide-cover">
+    <!-- 装饰元素 -->
+    <div class="left-bar"></div>
+    <div class="top-deco"></div>
     
-    <h1 style="font-size: 48px; font-weight: 700; color: {colors['text_primary']}; text-align: center; margin: 0; max-width: 900px; line-height: 1.3;">{page_info.title}</h1>
-    
-    <!-- 装饰线 -->
-    <div style="width: 80px; height: 6px; background: {colors['primary']}; margin: 32px 0;"></div>
-    
-    <div style="position: absolute; bottom: 60px; left: 60px; right: 60px; display: flex; justify-content: space-between; font-size: 14px; color: {colors['text_secondary']};">
-        <span>汇报单位：{context.organization}</span>
-        <span>{current_date}</span>
+    <!-- 内容区域 -->
+    <div class="cover-content">
+        <div class="cover-badge">
+            <span class="badge-text">汇报材料</span>
+        </div>
+
+        <h1 class="cover-title">{page_info.title}</h1>
+        
+        <div class="cover-subtitle">
+            {context.scenario.upper() if context.scenario else "PRESENTATION"}
+        </div>
+
+        <div class="cover-info-grid">
+            <div class="cover-footer-item">
+                <span class="cover-label">汇报单位 / Organization</span>
+                <span class="cover-value">{context.organization}</span>
+            </div>
+            <div class="cover-footer-item">
+                <span class="cover-label">日期 / Date</span>
+                <span class="cover-value">{current_date}</span>
+            </div>
+            <div class="cover-footer-item">
+                <span class="cover-label">汇报人 / Speaker</span>
+                <span class="cover-value">SlideCraft AI</span>
+            </div>
+        </div>
     </div>
 </div>
 """
