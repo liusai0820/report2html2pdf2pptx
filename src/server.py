@@ -775,6 +775,11 @@ async def generate_with_progress(req: GenerateRequest) -> AsyncGenerator[str, No
                     traceback.print_exc()
             
             asyncio.create_task(send_html_to_telegram())
+            
+    except Exception as e:
+        logger.error(f"Generation error: {e}")
+        traceback.print_exc()
+        yield send_event("error", f"生成出错: {str(e)}", 0)
 
 # Debug Endpoint for Telegram
 @app.post("/api/debug/telegram")
@@ -814,17 +819,6 @@ async def debug_telegram(test_email: str = "test@example.com"):
         
     except Exception as e:
         return {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
-            
-        final_result = {
-            "downloads": result,
-            "pages": pages_data
-        }
-        
-        yield send_event("done", "生成完成!", 100, result=final_result)
-        
-    except Exception as e:
-        traceback.print_exc()
-        yield send_event("error", f"生成失败: {str(e)[:200]}", 0)
 
 def _complete_outline(outline, context):
     """补全大纲"""
