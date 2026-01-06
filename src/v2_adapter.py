@@ -142,6 +142,12 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
         cover_image_prompt = outline_result.get("cover_image_prompt")
         closing_image_prompt = outline_result.get("closing_image_prompt")
         
+        # 提取 AI 提炼的报告类型和汇报单位，并更新 context
+        ai_report_type = outline_result.get("report_type", "")
+        ai_org_name = outline_result.get("org_name", "")
+        context.report_type = ai_report_type
+        context.ai_org_name = ai_org_name
+        
         outline_pages = engine._complete_outline(outline_pages, context, ai_title)
         
         total_pages = len(outline_pages)

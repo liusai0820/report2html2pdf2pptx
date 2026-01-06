@@ -45,13 +45,15 @@ class GenerationContext:
     """生成上下文"""
     document_content: str           # 原始文档内容
     document_name: str              # 文档名称
-    organization: str               # 汇报单位
+    organization: str               # 汇报单位（用户填写的，作为 fallback）
     scenario: str                   # 场景类型
     design_system: DesignSystem     # 设计系统
     target_pages: int = 25          # 目标页数
     content_depth: str = "normal"   # 内容深度
     custom_instructions: str = ""   # 用户自定义指令
     bg_image_source: str = "none"   # 背景图来源: 'none', 'unsplash', 'ai'
+    report_type: str = ""           # AI 提炼的报告类型（如"产业研究报告"）
+    ai_org_name: str = ""           # AI 提炼的汇报单位（优先于 organization）
 
 
 # ============================================================================
@@ -121,6 +123,7 @@ DESIGNER_SYSTEM_PROMPT = """
 - ✘ 内容超出 1280px 宽度（已在画布约束中强调）
 - ✘ **禁止使用以下字体**：'PingFang SC', 'Microsoft YaHei', 'Heiti SC', 'SimHei', 'SimSun'（这些字体在服务器上不可用！）
 - ✘ **禁止自定义 font-family**：必须使用 prompt 中提供的字体族，不要自己编造
+- ✘ **禁止使用 Markdown 语法**：不要使用 `**加粗**`、`*斜体*`、`__下划线__` 等 Markdown 语法！必须使用 HTML 标签如 `<strong>`、`<em>`
 
 ## ✅ 允许使用
 
@@ -239,8 +242,9 @@ class AIDesigner:
             html = prompt.replace("__DIRECT_HTML__", "").strip()
             return self._clean_html(html)
         
-        # 正常流程：调用 AI 生成 HTML
-        return await self._call_ai(prompt)
+        # 正常流程：调用 AI 生成 HTML，并清理 Markdown 语法
+        html = await self._call_ai(prompt)
+        return self._clean_html(html)
     
     async def _get_background_image(self, context: GenerationContext, page_info: PageInfo, custom_prompt: Optional[str] = None) -> Optional[str]:
         """获取页面背景图 - 仅用于封面和结尾页"""
@@ -375,38 +379,39 @@ class AIDesigner:
 **必须严格按照以下顺序输出每一行（不要包含 markdown 代码块标记）：**
 
 1. `TITLE|干净的演示文稿标题`
-2. `COVER_IMG|封面图Prompt（核心：使用“视觉隐喻”物体，真实摄影风格，与主题强相关）`
-3. `CLOSING_IMG|封底图Prompt（与封面呼应，真实摄影风格）`
-4. `SECTION|...` (章节1)
-5. `CONTENT|...`
+2. `REPORT_TYPE|报告类型标签`（2-8个字，如"产业研究报告"、"年度述职报告"、"项目可行性分析"）
+3. `ORG_NAME|汇报单位名称`（从内容中提取，如"哈尔滨工业大学"、"某某科技有限公司"）
+4. `COVER_IMG|封面图Prompt`
+5. `CLOSING_IMG|封底图Prompt`
+6. `SECTION|...` (章节)
+7. `CONTENT|...`
 ...
 
 **格式说明**：
 - `TITLE`：提取的核心标题
-- `COVER_IMG`：**极其重要**！生成给 ComfyUI 的提示词。
-  - **核心策略**：**Symbolic Realism (象征写实主义)**。不要生成抽象的 AI 概念图，而是寻找**现实中存在的物体**来隐喻主题。
-  - **隐喻指南**：
-    - *战略/博弈/选择*：围棋/国际象棋特写(Chess board)、指南针(Compass)、岔路口(Fork road)、船舵(Helm)。
-    - *科技/研发*：显微镜下视角(Microscope)、芯片晶圆微距(Silicon Wafer)、实验室玻璃器皿(Glassware)、服务器机房光效(Server room)。
-    - *全球/宏观*：地球地平线(Earth horizon)、飞机舷窗视角(Airplane window)、集装箱码头(Shipping port)、桥梁(Bridge)。
-    - *增长/希望*：破土而出的嫩芽(Sprout)、清晨的第一缕阳光(Morning sun)、登山者的背影。
-    - *商务/合作*：精致的钢笔与记事本、握手特写、会议室一角。
-  - **风格要求**：**微距摄影 (Macro Photography)**、**浅景深 (Depth of Field/Bokeh)**、**电影级布光 (Cinematic Lighting)**。确保画面干净，有留白。
-  - **禁止**：Sci-fi, Cyberpunk, 3D Render, Cartoon, Building facade (除非主题是房地产), Text.
-  - **示例**："close - up shot of a vintage compass on an old map, shallow depth of field, warm cinematic lighting, photorealistic, 8k, meaning of strategy"
-- `CLOSING_IMG`：封底图提示词，风格同上。
+- `REPORT_TYPE`：**根据内容智能提炼**的报告类型标签，2-8个字。示例：
+  - 产业研究报告、行业深度分析、战略规划方案
+  - 年度述职报告、季度工作总结、项目进展汇报
+  - 开题报告、毕业论文答辩、学术研究汇报
+  - 如果无法确定，输出空：`REPORT_TYPE|`
+- `ORG_NAME`：**从文档内容中提取**的汇报单位/作者单位。优先级：
+  1. 文档中明确提到的机构名称
+  2. 作者所属单位
+  3. 如果用户提供了汇报单位，使用用户提供的：{context.organization}
+  4. 如果都找不到，输出空：`ORG_NAME|`
+- `COVER_IMG`：封面图 ComfyUI 提示词（Symbolic Realism 风格，微距摄影）
+- `CLOSING_IMG`：封底图提示词
 
 **示例**：
-TITLE|全球自动驾驶产业格局
+TITLE|全球自动驾驶产业格局深度研究
+REPORT_TYPE|产业研究报告
+ORG_NAME|前瞻产业研究院
 COVER_IMG|view from driver's seat inside a modern car, hands on steering wheel, motion blur city road ahead, realistic photography, evening, 4k, no text
 CLOSING_IMG|empty highway road marking leading to infinity, sunset horizon, cinematic lighting, conceptual, realistic, no text
 SECTION|第一部分 产业现状|
-SECTION|第一部分 产业现状|
-CONTENT|战新产业占比突破 40%，产业结构持续优化|2023年数据：战新产业产值达500亿，占比从35%提升至42%；传统产业比重下降
-CONTENT|头部企业集中度高，前三名占据 65% 份额|A公司280亿(32%)、B公司180亿(21%)、C公司100亿(12%)；中小企业生存空间受挤压
+CONTENT|战新产业占比突破 40%，产业结构持续优化|2023年数据
 SECTION|第二部分 核心问题|
-CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.1%，低于全市平均3.5%；龙头企业研发投入占比逐年下降
-```
+CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.1%
 
 请开始规划（严格遵循格式）：
 """
@@ -415,6 +420,8 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         """解析大纲响应"""
         lines = response.strip().split('\n')
         title = "未命名演示文稿"
+        report_type = ""  # AI 提炼的报告类型
+        org_name = ""     # AI 提炼的汇报单位
         cover_prompt = ""
         closing_prompt = ""
         pages = []
@@ -437,6 +444,10 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
             
             if type_ == "TITLE":
                 title = content
+            elif type_ == "REPORT_TYPE":
+                report_type = content
+            elif type_ == "ORG_NAME":
+                org_name = content
             elif type_ == "COVER_IMG":
                 cover_prompt = content
             elif type_ == "CLOSING_IMG":
@@ -459,6 +470,8 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
                 
         return {
             "title": title,
+            "report_type": report_type,
+            "org_name": org_name,
             "cover_image_prompt": cover_prompt,
             "closing_image_prompt": closing_prompt,
             "pages": pages
@@ -521,8 +534,19 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 </div>
 """
         else:
-            # 无背景图：使用新的高级版式 (CSS Class based)
-            # 直接返回 HTML，确保样式与 Preview 一致
+            # 无背景图：使用简洁的高级版式
+            # 使用 AI 提炼的报告类型和汇报单位，如果没有则使用备选
+            report_type_text = context.report_type if context.report_type else ""
+            org_text = context.ai_org_name if context.ai_org_name else context.organization
+            
+            # 报告类型徽章（如果有的话）
+            badge_html = ""
+            if report_type_text:
+                badge_html = f'''
+        <div class="cover-badge">
+            <span class="badge-text">{report_type_text}</span>
+        </div>'''
+            
             return f"""__DIRECT_HTML__
 <div class="slide slide-cover">
     <!-- 装饰元素 -->
@@ -530,29 +554,18 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
     <div class="top-deco"></div>
     
     <!-- 内容区域 -->
-    <div class="cover-content">
-        <div class="cover-badge">
-            <span class="badge-text">汇报材料</span>
-        </div>
+    <div class="cover-content">{badge_html}
 
         <h1 class="cover-title">{page_info.title}</h1>
-        
-        <div class="cover-subtitle">
-            {context.scenario.upper() if context.scenario else "PRESENTATION"}
-        </div>
 
         <div class="cover-info-grid">
             <div class="cover-footer-item">
-                <span class="cover-label">汇报单位 / Organization</span>
-                <span class="cover-value">{context.organization}</span>
+                <span class="cover-label">汇报单位</span>
+                <span class="cover-value">{org_text}</span>
             </div>
             <div class="cover-footer-item">
-                <span class="cover-label">日期 / Date</span>
+                <span class="cover-label">日期</span>
                 <span class="cover-value">{current_date}</span>
-            </div>
-            <div class="cover-footer-item">
-                <span class="cover-label">汇报人 / Speaker</span>
-                <span class="cover-value">SlideCraft AI</span>
             </div>
         </div>
     </div>
@@ -634,8 +647,11 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
     ) -> str:
         """封底页 Prompt - 内联样式，支持背景图"""
         
+        # 使用 AI 提炼的汇报单位，如果没有则使用用户填写的
+        org_text = context.ai_org_name if context.ai_org_name else context.organization
+        
         if bg_image_url:
-            # 有背景图：直接返回完整的 HTML 模板（不需要 AI 生成，避免 base64 导致 token 溢出）
+            # 有背景图：直接返回完整的 HTML 模板
             return f"""__DIRECT_HTML__
 <div style="width: 1280px; height: 720px; background: url('{bg_image_url}') center/cover no-repeat; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: {font_family}; position: relative;">
     <!-- 蒙版 -->
@@ -645,26 +661,13 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
     <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center;">
         <div style="font-size: 72px; font-weight: 700; color: #ffffff; margin-bottom: 32px; letter-spacing: 8px; text-shadow: 0 2px 20px rgba(0,0,0,0.3);">谢谢</div>
         <div style="width: 80px; height: 4px; background: rgba(255,255,255,0.7); margin-bottom: 32px; border-radius: 2px;"></div>
-        <div style="font-size: 20px; color: rgba(255,255,255,0.9);">{context.organization}</div>
+        <div style="font-size: 20px; color: rgba(255,255,255,0.9);">{org_text}</div>
     </div>
 </div>
 """
         else:
-            # 无背景图：纯白背景 + 主题色装饰
-            return f"""
-# 封底页设计
-
-## 设计要求
-
-- 纯白背景
-- 居中显示"谢谢" 48px，主色 {colors['primary']}
-- 下方显示汇报单位
-- **必须包含主题色装饰**（如底部色条）
-
-## 输出
-
-直接输出 HTML，不要任何解释：
-
+            # 无背景图：直接返回 HTML 模板
+            return f"""__DIRECT_HTML__
 <div style="width: 1280px; height: 720px; background: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: {font_family}; position: relative;">
     <!-- 顶部装饰 -->
     <div style="position: absolute; top: 0; left: 0; right: 0; height: 8px; background: {colors['primary']}; opacity: 0.6;"></div>
@@ -673,7 +676,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
     
     <div style="width: 60px; height: 4px; background: {colors['text_secondary']}; margin-bottom: 32px; opacity: 0.3;"></div>
     
-    <div style="font-size: 18px; color: {colors['text_secondary']};">{context.organization}</div>
+    <div style="font-size: 18px; color: {colors['text_secondary']};">{org_text}</div>
     
     <!-- 底部装饰 -->
     <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 24px; background: {colors['primary']};"></div>
