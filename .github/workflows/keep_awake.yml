@@ -14,7 +14,7 @@ jobs:
       - name: Ping Backend
         run: |
           # 请将下方链接替换为您真实的 Render 后端地址
-          URL="https://slidecraft-backend.onrender.com/api/health"
+          URL="https://slidecraft-backend-0i5x.onrender.com/api/health"
           echo "Pinging $URL..."
           curl -s -f $URL || echo "Ping failed (maybe app is starting up or URL is wrong)"
 
