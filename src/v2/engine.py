@@ -168,8 +168,13 @@ class PresentationEngine:
                 "url": f"/output/{self.output_dir.name}/pages/page-{i+1:02d}.html"
             })
             
-        # 合并所有页面
-        merged_path = self.output_dir / "presentation.html"
+        # 合并所有页面 - 使用文档名作为文件名
+        safe_filename = self._clean_document_title(document_name)
+        # 去除可能导致文件名问题的字符
+        safe_filename = "".join(c for c in safe_filename if c.isalnum() or c in (' ', '-', '_', '（', '）', '(', ')')).strip()
+        if not safe_filename:
+            safe_filename = "presentation"
+        merged_path = self.output_dir / f"{safe_filename}.html"
         merged_html = self._merge_all_pages(pages_html, ds)
         merged_path.write_text(merged_html, encoding='utf-8')
         
