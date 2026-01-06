@@ -27,6 +27,19 @@ def fix_html_fonts(content):
     content = re.sub(r'font-weight:\s*800', 'font-weight: 700', content)
     content = re.sub(r'font-weight:\s*900', 'font-weight: 700', content)
     
+    # 强制注入 16:9 横向尺寸 CSS (放在 </head> 之前)
+    style_injection = """
+    <style>
+        @page { size: 1280px 720px; margin: 0; }
+        body { margin: 0; width: 1280px; height: 720px; overflow: hidden; }
+        .slide { width: 1280px; height: 720px; }
+    </style>
+    """
+    if "</head>" in content:
+        content = content.replace("</head>", f"{style_injection}</head>")
+    else:
+        content += style_injection
+        
     return content
 
 def convert_html_to_pdf(html_path, pdf_path):

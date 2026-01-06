@@ -476,23 +476,51 @@ const Admin = () => {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                             <thead>
                                 <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
-                                    {['用户', '文档名称', '页数', '场景', '生成时间'].map((h, i) => (
+                                    {['用户', '职业', '文档名称', '页数', '场景', '生成时间'].map((h, i) => (
                                         <th key={i} style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, fontSize: '11px', color: '#64748B' }}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
-                                {generations.sort((a, b) => new Date(b['生成时间(北京)'] || b.created_at) - new Date(a['生成时间(北京)'] || a.created_at)).map((gen, idx) => (
-                                    <tr key={gen.id || idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                                        <td style={{ padding: '14px 16px' }}>{gen['用户邮箱'] || gen.email || '—'}</td>
-                                        <td style={{ padding: '14px 16px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gen['文档名'] || gen.document_name || '—'}</td>
-                                        <td style={{ padding: '14px 16px', fontFamily: 'monospace' }}>{gen['页数'] || gen.actual_pages || '—'}</td>
-                                        <td style={{ padding: '14px 16px', color: '#64748B' }}>{gen['场景'] || gen.scenario || '—'}</td>
-                                        <td style={{ padding: '14px 16px', color: '#94A3B8', fontSize: '12px', whiteSpace: 'nowrap' }}>
-                                            {gen['生成时间(北京)'] ? new Date(gen['生成时间(北京)']).toLocaleString('zh-CN') : '—'}
-                                        </td>
-                                    </tr>
-                                ))}
+                                {generations.sort((a, b) => new Date(b['生成时间(北京)'] || b.created_at) - new Date(a['生成时间(北京)'] || a.created_at)).map((gen, idx) => {
+                                    // 场景标签映射
+                                    const scenarioLabels = {
+                                        'annual_review': '年度报告', 'company_intro': '公司介绍', 'government': '政府公文',
+                                        'consulting': '咨询报告', 'bid_proposal': '投标方案', 'thesis_proposal': '论文答辩',
+                                        'party_building': '党建工作', 'corporate_training': '企业培训', 'tech_report': '技术报告'
+                                    };
+                                    const scenario = scenarioLabels[gen.scenario] || gen.scenario || gen['场景'] || '—';
+
+                                    // 职业标签映射
+                                    const occupationLabels = {
+                                        student: '学生', teacher: '教师', researcher: '研究员',
+                                        employee: '员工', manager: '高管', consultant: '顾问',
+                                        freelancer: '自由职业', entrepreneur: '创业者', government: '政府', other: '其他'
+                                    };
+                                    const occupation = occupationLabels[gen.occupation] || gen.occupation || '—';
+
+                                    // 时间转换为北京时间显示
+                                    const formatBeijingTime = (dateStr) => {
+                                        if (!dateStr) return '—';
+                                        const date = new Date(dateStr);
+                                        // 如果是 UTC 时间，加 8 小时转北京时间
+                                        const beijingDate = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+                                        return beijingDate.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+                                    };
+
+                                    return (
+                                        <tr key={gen.id || idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                                            <td style={{ padding: '14px 16px' }}>{gen['用户邮箱'] || gen.email || '—'}</td>
+                                            <td style={{ padding: '14px 16px', color: '#64748B', fontSize: '12px' }}>{occupation}</td>
+                                            <td style={{ padding: '14px 16px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gen['文档名'] || gen.document_name || '—'}</td>
+                                            <td style={{ padding: '14px 16px', fontFamily: 'monospace' }}>{gen['页数'] || gen.actual_pages || '—'}</td>
+                                            <td style={{ padding: '14px 16px', color: '#64748B' }}>{scenario}</td>
+                                            <td style={{ padding: '14px 16px', color: '#94A3B8', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                                                {formatBeijingTime(gen['生成时间(北京)'] || gen.created_at)}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                         <div style={{ padding: '14px 16px', borderTop: '1px solid #E2E8F0', fontSize: '12px', color: '#94A3B8' }}>

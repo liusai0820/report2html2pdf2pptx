@@ -75,3 +75,6 @@ notification_poster*.png
 dev_*.sh
 docs/
 
+
+# Local PDF Bot output
+pdfs/

@@ -1,153 +1,161 @@
 #!/usr/bin/env python3
-"""
-本地 Telegram Bot 监听器 - 自动下载 HTML 并转换为 PDF
-
-使用方法:
-1. 确保 config/.env 包含 TELEGRAM_BOT_TOKEN 和 TELEGRAM_CHAT_ID
-2. 安装依赖: pip install python-telegram-bot playwright python-dotenv
-3. 安装浏览器: playwright install chromium
-4. 运行: python3 local_pdf_bot.py
-
-收到 HTML 文件后会自动:
-1. 下载到 ./downloads/ 目录
-2. 使用 Playwright 转换为 PDF
-3. 将 PDF 发送回 Telegram
-"""
-
 import os
 import sys
 import asyncio
 import logging
 from pathlib import Path
-from datetime import datetime
+from dotenv import load_dotenv
+from telethon import TelegramClient, events
+from telethon.tl.types import DocumentAttributeFilename
 
-# 加载 .env 文件
-script_dir = Path(__file__).parent
-env_path = script_dir / "config" / ".env"
-if env_path.exists():
-    from dotenv import load_dotenv
-    load_dotenv(env_path)
-    print(f"✓ Loaded config from: {env_path}")
-
-# ========== 配置 ==========
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-
-DOWNLOAD_DIR = script_dir / "downloads"
-PDF_OUTPUT_DIR = script_dir / "pdfs"
-SEND_PDF_BACK = True  # 转换后是否发送回 Telegram
-
-# ========== 初始化 ==========
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# 配置日志
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO,
+    handlers=[
+        logging.FileHandler("logs/pdf_bot.log"),
+        logging.StreamHandler()
+    ]
+)
 logger = logging.getLogger(__name__)
 
-DOWNLOAD_DIR.mkdir(exist_ok=True)
-PDF_OUTPUT_DIR.mkdir(exist_ok=True)
+# 加载配置
+load_dotenv(Path(__file__).parent / "config/.env")
+
+API_ID = os.getenv("TELEGRAM_API_ID")
+API_HASH = os.getenv("TELEGRAM_API_HASH")
+CHAT_ID = int(os.getenv("TELEGRAM_CHAT_ID", "0"))
+
+if not API_ID or not API_HASH:
+    logger.error("❌ API_ID or API_HASH missing in config/.env")
+    sys.exit(1)
+
+# 会话文件路径
+SESSION_FILE = Path(__file__).parent / "config/userbot.session"
+
+# 初始化客户端
+# 注意：这里会生成 userbot.session 文件保存登录状态
+client = TelegramClient(str(SESSION_FILE), int(API_ID), API_HASH)
 
 async def convert_html_to_pdf(html_path: Path) -> Path:
-    """使用 Playwright 将 HTML 转换为 PDF"""
-    from playwright.async_api import async_playwright
+    """调用外部脚本将 HTML 转换为 PDF"""
+    import subprocess
     
-    pdf_path = PDF_OUTPUT_DIR / f"{html_path.stem}_{datetime.now().strftime('%H%M%S')}.pdf"
+    script_path = Path(__file__).parent / "scripts" / "single_html_to_pdf.py"
+    pdf_path = html_path.with_suffix(".pdf")
     
-    logger.info(f"🔄 Converting: {html_path.name} -> {pdf_path.name}")
-    
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
-        
-        # 加载 HTML
-        await page.goto(f"file://{html_path.resolve()}", wait_until="networkidle")
-        await page.wait_for_timeout(2000)  # 等待图表渲染
-        
-        # 生成 PDF
-        await page.pdf(
-            path=str(pdf_path),
-            width="1280px",
-            height="720px",
-            print_background=True,
-            margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
-            scale=1
-        )
-        await browser.close()
-    
-    size_mb = pdf_path.stat().st_size / 1024 / 1024
-    logger.info(f"✅ PDF generated: {pdf_path.name} ({size_mb:.2f} MB)")
-    
-    return pdf_path
-
-async def handle_document(update, context):
-    """处理收到的文档"""
-    from telegram import Update
-    from telegram.ext import ContextTypes
-    
-    message = update.message
-    document = message.document
-    chat_id = str(message.chat_id)
-    
-    # 安全检查：只允许指定的 chat_id
-    if TELEGRAM_CHAT_ID and chat_id != TELEGRAM_CHAT_ID:
-        logger.warning(f"⚠️ Unauthorized access from chat_id: {chat_id}")
-        return
-    
-    # 只处理 HTML 文件
-    file_name = document.file_name or ""
-    if not file_name.endswith(".html"):
-        logger.info(f"📄 Skipping non-HTML file: {file_name}")
-        return
-    
-    logger.info(f"📥 Received HTML: {file_name}")
+    logger.info(f"🔄 Converting {html_path.name} using external script...")
     
     try:
+        # 调用外部脚本
+        # python3 scripts/single_html_to_pdf.py <input> <output>
+        process = await asyncio.create_subprocess_exec(
+            sys.executable,
+            str(script_path),
+            str(html_path),
+            str(pdf_path),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode != 0:
+            logger.error(f"Script error: {stderr.decode()}")
+            raise Exception(f"PDF conversion script failed: {stderr.decode()}")
+            
+        logger.info(f"Script output: {stdout.decode()}")
+        logger.info(f"✅ PDF generated: {pdf_path.name}")
+        
+        return pdf_path
+        
+    except Exception as e:
+        logger.error(f"Conversion error: {e}")
+        raise e
+
+@client.on(events.NewMessage(chats=CHAT_ID))
+async def handler(event):
+    """监听群组消息"""
+    try:
+        # 必须包含文件
+        if not event.message.file:
+            return
+
+        # 获取文件名 (Telethon 处理文件属性的方式)
+        file_name = None
+        if event.message.document and event.message.document.attributes:
+            for attr in event.message.document.attributes:
+                if isinstance(attr, DocumentAttributeFilename):
+                    file_name = attr.file_name
+                    break
+        
+        if not file_name or not file_name.endswith(".html"):
+            return
+
+        logger.info(f"📥 Received HTML: {file_name}")
+        
         # 下载文件
-        file = await context.bot.get_file(document.file_id)
-        html_path = DOWNLOAD_DIR / file_name
-        await file.download_to_drive(str(html_path))
-        logger.info(f"💾 Downloaded: {html_path}")
+        temp_dir = Path(__file__).parent / "pdfs" / "temp"
+        temp_dir.mkdir(parents=True, exist_ok=True)
         
-        # 转换为 PDF
-        await message.reply_text(f"🔄 正在转换 PDF: {file_name}...")
-        pdf_path = await convert_html_to_pdf(html_path)
+        # 下载路径
+        download_path = await event.message.download_media(file=temp_dir / file_name)
+        download_path = Path(download_path)
         
-        # 发送回 Telegram（大文件需要更长超时）
-        if SEND_PDF_BACK:
-            size_mb = pdf_path.stat().st_size / 1024 / 1024
-            await message.reply_document(
-                document=open(pdf_path, 'rb'),
-                filename=pdf_path.name,
-                caption=f"✅ PDF 转换完成\n📊 大小: {size_mb:.2f} MB",
-                read_timeout=60,
-                write_timeout=120
+        # 发送"处理中"提示 (userbot 可以回复任何人)
+        status_msg = await event.reply("🔄 收到 HTML，正在本地转换 PDF...")
+        
+        try:
+            # 转换 PDF
+            pdf_path = await convert_html_to_pdf(download_path)
+            
+            # 发回 PDF
+            # Telethon send_file 支持 progress_callback，这里暂不需要
+            await client.send_file(
+                event.chat_id,
+                pdf_path,
+                caption=f"✅ **转换完成**\n📄 `{pdf_path.name}`\n#HTMLToPDF",
+                reply_to=event.message.id
             )
-            logger.info(f"📤 PDF sent to Telegram: {pdf_path.name} ({size_mb:.2f} MB)")
-        else:
-            await message.reply_text(f"✅ PDF 已保存: {pdf_path}")
+            
+            # 删除处理中提示
+            await status_msg.delete()
+            
+            # 清理 HTML 文件
+            os.remove(download_path)
+            
+        except Exception as e:
+            logger.error(f"❌ Conversion failed: {e}")
+            await status_msg.edit(f"❌ 转换失败: {str(e)}")
             
     except Exception as e:
-        logger.error(f"❌ Error processing {file_name}: {e}")
-        await message.reply_text(f"❌ 转换失败: {e}")
+        logger.error(f"Error handling message: {e}")
 
-def main():
-    """主函数"""
-    from telegram.ext import Application, MessageHandler, filters
+async def main():
+    logger.info("🚀 SlideCraft Userbot starting...")
     
-    if not TELEGRAM_BOT_TOKEN or TELEGRAM_BOT_TOKEN == "YOUR_BOT_TOKEN":
-        logger.error("❌ 请设置 TELEGRAM_BOT_TOKEN 环境变量")
-        return
+    # 这里会尝试连接，如果没登录会提示输入手机号
+    # 在非交互式环境中，如果 session 文件不存在，这一步会失败
+    await client.start()
     
-    logger.info("🚀 Starting Local PDF Bot...")
-    logger.info(f"📁 Download directory: {DOWNLOAD_DIR.resolve()}")
-    logger.info(f"📁 PDF output directory: {PDF_OUTPUT_DIR.resolve()}")
+    me = await client.get_me()
+    logger.info(f"✅ Logged in as: {me.first_name} (@{me.username})")
     
-    # 创建 Application
-    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    # 确保加入群组/能够访问群组
+    try:
+        chat = await client.get_entity(CHAT_ID)
+        logger.info(f"🎧 Listening on chat: {chat.title} (ID: {CHAT_ID})")
+    except ValueError:
+        logger.error(f"❌ Cannot access chat ID {CHAT_ID}. Make sure you have joined the group.")
     
-    # 添加文档处理器
-    app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
-    
-    # 启动轮询（这是个阻塞调用）
-    logger.info("👂 Listening for HTML files...")
-    app.run_polling(drop_pending_updates=True)
+    await client.run_until_disconnected()
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    # 停止旧的 bot 进程 (如果有)
+    # 注意：手动运行时不要自杀，交由外部管理
+    # os.system("pkill -f local_pdf_bot || true")
+    
+    try:
+        client.loop.run_until_complete(main())
+    except KeyboardInterrupt:
+        logger.info("👋 Userbot stopped.")
