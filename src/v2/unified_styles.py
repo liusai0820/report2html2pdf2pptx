@@ -463,9 +463,10 @@ ul, ol, li,
     font-weight: 700;
     color: var(--text-primary);
     line-height: 1.25;
-    max-width: 900px;
+    max-width: 950px;             /* 稍微增加最大宽度 */
     margin-bottom: 24px;
-    word-break: keep-all;
+    word-wrap: break-word;        /* 允许长单词换行 */
+    overflow-wrap: break-word;    /* 标准属性 */
     letter-spacing: -0.02em;
 }}
 
@@ -482,11 +483,11 @@ ul, ol, li,
 
 /* 封面信息网格 */
 .cover-info-grid {{
-    margin-top: 60px;
+    margin-top: 140px;            /* 大幅增加顶部间距，使其靠下 */
     display: grid;
     grid-template-columns: auto auto;
-    gap: 20px 60px;
-    max-width: 800px;
+    gap: 20px 80px;               /* 增加列间距 */
+    max-width: 900px;
 }}
 
 .cover-footer-item {{
