@@ -124,20 +124,35 @@ DESIGNER_SYSTEM_PROMPT = """
 - ✘ **禁止使用以下字体**：'PingFang SC', 'Microsoft YaHei', 'Heiti SC', 'SimHei', 'SimSun'（这些字体在服务器上不可用！）
 - ✘ **禁止自定义 font-family**：必须使用 prompt 中提供的字体族，不要自己编造
 - ✘ **禁止使用 Markdown 语法**：不要使用 `**加粗**`、`*斜体*`、`__下划线__` 等 Markdown 语法！必须使用 HTML 标签如 `<strong>`、`<em>`
+- ✘ **禁止添加"底部预留空间" div**：`padding-bottom: 80px` 已经处理了，不要再加 `height: 80px` 的空 div！
+- ✘ **⚠️ 严禁使用廉价的红/绿对比色块！** 这是典型的 AI 俗套设计：
+  - ❌ 浅红色背景 (#fef2f2, #fee2e2, rgba(254,242,242,...))
+  - ❌ 浅绿色背景 (#f0fdf4, #dcfce7, rgba(240,253,244,...))
+  - ❌ 红色文字 + 绿色文字对比（"信号灯"配色）
+  - ❌ 任何红/绿并列的"好/坏""优/劣"对比设计
 
-## ✅ 允许使用
+## ✅ 颜色规范（严格遵守！）
 
-- 卡片背景色 (#f5f7fa)
-- 简单边框 (1px solid #e5e7eb)
-- 数据强调色
-- 简单的箭头符号 (↑ ↓ →)
+**背景色只能使用**：
+- 白色 #ffffff
+- 中性浅灰 #f5f7fa 或 #f3f4f6
+- 主题色 + 高透明度（如 rgba(26,54,93,0.05)）
 
-## 📊 图表支持（ECharts）
+**强调色只能使用**：
+- 主题色（如 #1A365D）
+- 主题色的浅色变体
+- ⚠️ **禁止使用红色和绿色作为对比色**
 
-当内容包含数据趋势、对比时，可以生成 ECharts 图表：
+**边框只能使用**：
+- 浅灰色 #e5e7eb
+- 虚线 (dashed) 用于流程连接
+
+## 📊 图表支持（ECharts - 鼓励使用！）
+
+**当内容包含数据时，优先用 ECharts 图表呈现**，比纯文字更有说服力！
 
 ```html
-<div style="width: 100%; max-width: 800px; height: 280px;" id="chart_唯一ID"></div>
+<div style="width: 100%; max-width: 800px; height: 250px;" id="chart_唯一ID"></div>
 <script>
 (function() {
     var chart = echarts.init(document.getElementById('chart_唯一ID'));
@@ -153,10 +168,12 @@ DESIGNER_SYSTEM_PROMPT = """
 </script>
 ```
 
-**图表注意事项**：
-- 图表容器必须设置 `max-width`，防止溢出
-- 使用 `grid: { containLabel: true }` 确保标签在图表内
-- 图表高度不超过 280px
+**图表使用指南**：
+- ✅ **积极使用图表** - 有数据就放图表
+- ✅ 图表高度建议 200px ~ 280px
+- ✅ 图表容器必须设置 `max-width`，防止溢出
+- ⚠️ 图表数据必须来自原始文档（不能编造）
+- ⚠️ 极端情况下（剩余空间不足 150px），才考虑不放图表
 
 ## ✅ 输出要求
 
@@ -367,12 +384,36 @@ class AIDesigner:
   - ❌ "市场规模分析"（主题式，太空洞）
   - ✅ "市场规模 5 年翻倍，年复合增长率达 23%"（结论式，有信息量）
 
-### 5. 内容扩充
-如果原始文档内容不够丰富，你 **可以并且应该** 基于你的专业知识进行扩充：
-- 补充行业背景知识
-- 添加相关数据和案例
-- 提供深度分析和洞察
-- 给出战略建议和行动计划
+### 5. 内容扩充（⚠️ 严格限制）
+
+如果原始文档内容不够丰富，你 **可以** 基于专业知识补充**文字性内容**：
+- ✅ 补充行业背景知识和趋势分析
+- ✅ 解释专业概念和术语
+- ✅ 提供框架性分析和逻辑推理
+- ✅ 给出定性的建议和行动方向
+
+**⚠️ 严禁编造数据！这是最高优先级的禁令！**
+- ❌ **绝对禁止编造任何具体数字**（如 "98.5%"、"同比增长 35%"、"4.9/5.0 评分"）
+- ❌ **禁止捏造统计数据**（如 "市场规模 XX 亿"、"渗透率达 XX%"）
+- ❌ **禁止虚构案例数据**（如 "销售额增长 X 倍"、"客户满意度 XX%"）
+- 如果页面需要数据支撑但原文没有，使用定性描述代替：
+  - ❌ "客户满意度达 98.5%" → ✅ "客户满意度持续提升"
+  - ❌ "效率提升 35%" → ✅ "效率显著提升"
+  - ❌ "市场规模 500 亿" → ✅ "市场规模快速增长"
+
+### 6. 无数据时的视觉化策略
+
+当原始文档缺乏具体数据时，使用以下**概念可视化**手段增强页面吸引力（不是编造数据！）：
+
+**✅ 推荐使用**：
+- **流程图/时间轴** - 用 HTML 盒子 + 箭头(→)展示步骤、阶段、发展历程
+- **对比布局** - 左右对比（现状 vs 目标、问题 vs 方案、挑战 vs 对策）
+- **金字塔/层级图** - 展示优先级、重要性层级
+- **矩阵/象限** - 分类对比（如重要/紧急四象限）
+- **关键词大字突出** - 核心概念用 36px+ 字体，配合小字解释
+- **卡片网格** - 将要点用等大卡片呈现，视觉均衡
+- **引言/金句框** - 用引号和浅色背景突出核心观点
+- **序号标记** - 用 CSS 圆形/方形作为视觉锚点
 
 ## 输出格式
 
@@ -586,24 +627,31 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 ## 设计要求
 
 - 纯白背景
-- 标题"目录" 32px
+- 标题"目录 / CONTENTS" 32px
 - 每个章节一行：序号 + 标题
 - 序号用主色 {colors['primary']}
 - 分割线用浅灰色
+- 可以用左右两栏布局（如果章节超过5个）
+
+## ⚠️ 禁止事项
+
+- ❌ **禁止添加任何概括性文字、引言或总结！**
+- ❌ 不要添加类似"本报告旨在..."、"本文档主要介绍..."的描述
+- ❌ 目录页只放目录，不放其他任何内容！
 
 ## 输出
 
-直接输出 HTML，不要任何解释：
+直接输出 HTML，只包含标题和章节列表，不要任何额外文字：
 
 <div style="width: 1280px; height: 720px; background: #ffffff; padding: 60px; box-sizing: border-box; font-family: {font_family};">
-    <h1 style="font-size: 32px; font-weight: 700; color: {colors['text_primary']}; margin: 0 0 40px 0;">目录</h1>
+    <h1 style="font-size: 32px; font-weight: 700; color: {colors['text_primary']}; margin: 0 0 40px 0;">目录 / CONTENTS</h1>
     <div style="display: flex; flex-direction: column; gap: 20px;">
         <!-- 每个章节一行 -->
         <div style="display: flex; align-items: center; gap: 24px; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb;">
             <span style="font-size: 24px; font-weight: 700; color: {colors['primary']}; min-width: 40px;">01</span>
             <span style="font-size: 20px; color: {colors['text_primary']};">章节标题</span>
         </div>
-        <!-- 以此类推 -->
+        <!-- 以此类推，只放章节，不放其他内容！ -->
     </div>
 </div>
 """
@@ -731,6 +779,74 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 2. **禁止侧边装饰色块** - 不要卡片左侧彩色竖条
 3. **禁止 Emoji 和图标** - 不要任何 emoji
 4. **禁止内容触及底部** - 底部有页码保留区
+5. **⚠️ 严禁编造数据！** - 所有数字必须来自上面的"参考素材"
+   - 不要凭空编造任何具体数字（如"98.5%"、"增长35%"）
+   - 如果素材中没有数据支撑，使用定性描述（如"显著提升"、"大幅增长"）
+6. **⚠️ 禁止添加"底部预留空间" div！** - `padding-bottom: 80px` 已经处理了底部空间，不要再添加任何 `height: 80px` 的空 div！
+
+## 无数据时的视觉化策略（重要！用代码绘制！）
+
+当"参考素材"缺乏具体数据时，**必须使用 CSS 绘制视觉元素**来增强页面，不要只放纯文字！
+
+### 流程图模板（横向，用 flexbox 绘制）
+```html
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 30px; background: #f5f7fa; border-radius: 8px;">
+    <div style="text-align: center; flex: 1;">
+        <div style="font-size: 14px; color: #6b7280;">阶段一</div>
+        <div style="font-size: 20px; font-weight: 700; color: #1A365D; margin-top: 8px;">核心概念</div>
+    </div>
+    <div style="color: #cbd5e1; font-size: 24px; padding: 0 15px;">→</div>
+    <div style="text-align: center; flex: 1;">
+        <div style="font-size: 14px; color: #6b7280;">阶段二</div>
+        <div style="font-size: 20px; font-weight: 700; color: #1A365D; margin-top: 8px;">下一步</div>
+    </div>
+    <div style="color: #cbd5e1; font-size: 24px; padding: 0 15px;">→</div>
+    <div style="text-align: center; flex: 1;">
+        <div style="font-size: 14px; color: #6b7280;">阶段三</div>
+        <div style="font-size: 20px; font-weight: 700; color: #1A365D; margin-top: 8px;">最终目标</div>
+    </div>
+</div>
+```
+
+### 对比布局模板（左右两栏）
+```html
+<div style="display: flex; gap: 40px;">
+    <div style="flex: 1; padding: 30px; border: 1px solid #e5e7eb; border-radius: 8px;">
+        <div style="font-size: 18px; font-weight: 700; color: #1A365D; margin-bottom: 20px;">现状/问题</div>
+        <p style="color: #4b5563; line-height: 1.6;">描述当前状态或挑战...</p>
+    </div>
+    <div style="display: flex; align-items: center; color: #cbd5e1; font-size: 32px;">→</div>
+    <div style="flex: 1; padding: 30px; background: #f5f7fa; border-radius: 8px;">
+        <div style="font-size: 18px; font-weight: 700; color: #1A365D; margin-bottom: 20px;">目标/方案</div>
+        <p style="color: #4b5563; line-height: 1.6;">描述目标状态或解决方案...</p>
+    </div>
+</div>
+```
+
+### 时间轴模板（CSS 绘制的圆点和线条）
+```html
+<div style="display: flex; align-items: flex-start; justify-content: space-between; position: relative; padding-top: 40px;">
+    <!-- 连接线 -->
+    <div style="position: absolute; top: 48px; left: 10%; right: 10%; height: 2px; background: #e5e7eb;"></div>
+    <!-- 节点1 -->
+    <div style="text-align: center; flex: 1; position: relative;">
+        <div style="width: 16px; height: 16px; background: #1A365D; border-radius: 50%; margin: 0 auto 15px;"></div>
+        <div style="font-size: 14px; color: #6b7280;">2024</div>
+        <div style="font-size: 16px; font-weight: 600; color: #1A365D; margin-top: 5px;">里程碑一</div>
+    </div>
+    <!-- 更多节点... -->
+</div>
+```
+
+### 关键词大字模板
+```html
+<div style="text-align: center; padding: 40px;">
+    <div style="font-size: 48px; font-weight: 700; color: #1A365D; margin-bottom: 15px;">核心概念词</div>
+    <div style="font-size: 18px; color: #6b7280; max-width: 600px; margin: 0 auto;">对这个概念的简短解释说明</div>
+</div>
+```
+
+⚠️ **优先使用以上 CSS 模板绘制视觉元素，不要只放纯文字列表！**
 {f'''
 ## 用户特别要求
 
@@ -769,21 +885,36 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 
 **重要**：内容区不要填满，底部要有明显留白！
 
-## 颜色
+## 颜色（严格限制！）
 
+**主题色**：
 - 主色：{colors['primary']}
-- 成功色：{colors['success']}（增长 ↑）
-- 危险色：{colors['danger']}（下降 ↓）
 - 主文字：{colors['text_primary']}
 - 次文字：{colors['text_secondary']}
-- 卡片背景：#f5f7fa
 
-## 图表（可选）
+**背景色只能用**：
+- 白色 #ffffff
+- 浅灰 #f5f7fa
+- ⚠️ **禁止浅红色 (#fef2f2, #fee2e2)、浅绿色 (#f0fdf4, #dcfce7)！** 这是廉价 AI 设计
 
-如果内容包含数据趋势，可以生成 ECharts（高度不超过 250px）：
+**特殊场景才用**：
+- 成功色 {colors['success']}（仅用于真实的增长数据 ↑）
+- 危险色 {colors['danger']}（仅用于真实的下降数据 ↓）
+- ⚠️ **禁止红绿对比的"优劣对比"设计！**
+
+## 图表（鼓励使用！）
+
+**当"参考素材"中有数据时，优先使用 ECharts 图表来呈现**，图表比纯文字更有说服力！
+
+📊 **图表使用指南**：
+- ✅ **积极使用图表** - 有数据就放图表，视觉效果更好
+- ✅ 图表高度建议 200px ~ 250px，保证可读性
+- ✅ 数据必须来自参考素材（不能编造）
+- ⚠️ 如果页面内容已经很满，图表可以适当缩小到 180px
+- ⚠️ 极端情况下（剩余空间不足 150px），才考虑不放图表
 
 ```html
-<div style="width: 100%; max-width: calc(100% - 120px); height: 250px;" id="chart_page{page_info.page_num}"></div>
+<div style="width: 100%; max-width: calc(100% - 120px); height: 220px;" id="chart_page{page_info.page_num}"></div>
 <script>
 (function() {{
     var chart = echarts.init(document.getElementById('chart_page{page_info.page_num}'));
@@ -801,7 +932,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
 
 ## 输出
 
-直接输出完整 HTML：
+直接输出完整 HTML（注意：`padding-bottom: 80px` 已经预留了底部空间，**不要再添加额外的底部 div**！）：
 
 <div style="width: 1280px; height: 720px; background: #ffffff; padding: 50px 60px 80px; box-sizing: border-box; font-family: {font_family}; display: flex; flex-direction: column; overflow: hidden;">
     <!-- 标题区 -->
@@ -810,10 +941,12 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         <p style="font-size: 16px; color: {colors['text_secondary']}; margin: 8px 0 0 0;">副标题/引导语</p>
     </div>
     
-    <!-- 内容区 - 注意不要超出，底部有 80px 保留区 -->
+    <!-- 内容区 - 直接放内容，不要添加任何 "底部预留" 的 div！ -->
     <div style="flex: 1; display: flex; gap: 32px; overflow: hidden; max-width: 100%;">
         <!-- 你的创意内容 -->
     </div>
+    
+    <!-- ⚠️ 不要在这里添加任何 "底部预留空间" 的 div！padding-bottom: 80px 已经处理了！ -->
 </div>
 """
 
@@ -977,5 +1110,53 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
             "font-family: 'AR PL UKai CN', 'Noto Serif CJK SC', serif",
             html
         )
+        
+        # ============================================
+        # 移除 AI 可能错误添加的 "底部预留空间" div
+        # 因为外层容器已经有 padding-bottom: 80px，不需要额外的 div
+        # ============================================
+        # 匹配类似: <!-- 底部预留空间 -->\n    <div style="height: 80px; ..."></div>
+        html = re.sub(
+            r'<!--\s*底部预留空间\s*-->\s*<div[^>]*height:\s*80px[^>]*>\s*</div>',
+            '',
+            html,
+            flags=re.IGNORECASE
+        )
+        # 也匹配没有注释的情况
+        html = re.sub(
+            r'<div\s+style="height:\s*80px;\s*flex-shrink:\s*0;?">\s*</div>',
+            '',
+            html,
+            flags=re.IGNORECASE
+        )
+        
+        # ============================================
+        # 替换廉价的红/绿背景色为中性灰
+        # 这些是典型的 AI 俗套设计
+        # ============================================
+        cheap_color_replacements = [
+            # 浅红色背景 -> 中性浅灰
+            (r'background:\s*#fef2f2', 'background: #f5f7fa'),
+            (r'background:\s*#fee2e2', 'background: #f5f7fa'),
+            (r'background:\s*#fecaca', 'background: #f5f7fa'),
+            (r'background-color:\s*#fef2f2', 'background-color: #f5f7fa'),
+            (r'background-color:\s*#fee2e2', 'background-color: #f5f7fa'),
+            # 浅绿色背景 -> 中性浅灰
+            (r'background:\s*#f0fdf4', 'background: #f5f7fa'),
+            (r'background:\s*#dcfce7', 'background: #f5f7fa'),
+            (r'background:\s*#bbf7d0', 'background: #f5f7fa'),
+            (r'background-color:\s*#f0fdf4', 'background-color: #f5f7fa'),
+            (r'background-color:\s*#dcfce7', 'background-color: #f5f7fa'),
+            # 红色文字 -> 主题色（保留 ef4444 用于真正的危险/下降指示）
+            (r'color:\s*#dc2626', 'color: #1A365D'),
+            (r'color:\s*#b91c1c', 'color: #1A365D'),
+            # 绿色文字 -> 主题色（保留 10b981 用于真正的成功/上升指示）
+            (r'color:\s*#16a34a', 'color: #1A365D'),
+            (r'color:\s*#15803d', 'color: #1A365D'),
+            (r'color:\s*#22c55e', 'color: #1A365D'),
+        ]
+        
+        for pattern, replacement in cheap_color_replacements:
+            html = re.sub(pattern, replacement, html, flags=re.IGNORECASE)
         
         return html.strip()
