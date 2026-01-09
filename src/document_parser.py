@@ -186,11 +186,14 @@ class DocumentParser:
                         continue
                     
                     # 根据样式转换为Markdown
-                    if para.style.name.startswith('Heading 1'):
+                    # 先检查 style 是否存在，避免 NoneType 错误
+                    style_name = para.style.name if para.style else ''
+                    
+                    if style_name.startswith('Heading 1'):
                         markdown_content.append(f'# {text}')
-                    elif para.style.name.startswith('Heading 2'):
+                    elif style_name.startswith('Heading 2'):
                         markdown_content.append(f'## {text}')
-                    elif para.style.name.startswith('Heading 3'):
+                    elif style_name.startswith('Heading 3'):
                         markdown_content.append(f'### {text}')
                     elif para.runs and len(para.runs) > 0 and para.runs[0].bold:
                         markdown_content.append(f'**{text}**')
@@ -262,7 +265,8 @@ class DocumentParser:
                 continue
             
             # 检测标题（通常是加粗或使用标题样式）
-            if para.style.name.startswith('Heading') or (para.runs and para.runs[0].bold):
+            style_name = para.style.name if para.style else ''
+            if style_name.startswith('Heading') or (para.runs and para.runs[0].bold):
                 # 如果有当前页面，保存它
                 if current_page:
                     pages.append(current_page)
