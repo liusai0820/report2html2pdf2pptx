@@ -11,8 +11,8 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, MonitorPlay, LayoutGrid, PanelLeft, ChevronLeft, ChevronRight, X, Loader2, ZoomIn, ZoomOut, Sparkles, Zap } from 'lucide-react';
-import { getOutputUrl } from '../api';
+import { Download, MonitorPlay, LayoutGrid, PanelLeft, ChevronLeft, ChevronRight, X, Loader2, ZoomIn, ZoomOut, Sparkles, Zap, Mic } from 'lucide-react';
+import { getOutputUrl, generateSpeechScript } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import FeedbackModal from './FeedbackModal';
 
@@ -22,12 +22,12 @@ const TurboUpgradeModal = ({ isOpen, onClose }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
-            <div 
+            <div
                 className="relative bg-white rounded-none shadow-2xl max-w-md w-full overflow-hidden"
                 style={{ fontFamily: '"Inter", "Noto Sans SC", sans-serif' }}
             >
                 {/* 关闭按钮 */}
-                <button 
+                <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-slate-400 hover:text-slate-900 transition-colors z-10"
                 >
@@ -82,7 +82,7 @@ const TurboUpgradeModal = ({ isOpen, onClose }) => {
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-green-500 rounded-sm flex items-center justify-center flex-shrink-0">
                                 <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/>
+                                    <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z" />
                                 </svg>
                             </div>
                             <div className="flex-1">
@@ -94,7 +94,7 @@ const TurboUpgradeModal = ({ isOpen, onClose }) => {
                             添加微信备注「Turbo」，了解升级详情
                         </p>
                     </div>
-                    <button 
+                    <button
                         onClick={onClose}
                         className="block w-full py-3 text-slate-500 hover:text-slate-900 text-center text-xs font-light transition-colors"
                     >
@@ -137,14 +137,20 @@ export default function ResultView({ result, downloads, isProcessing, generation
     const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [downloadingPptx, setDownloadingPptx] = useState(false);
     const [gridColumns, setGridColumns] = useState(4); // 网格列数控制 (1-6)
-    
+
     // 反馈弹窗状态
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [feedbackGiven, setFeedbackGiven] = useState(false); // 本次生成是否已给过反馈
     const [pendingDownload, setPendingDownload] = useState(null); // 'pdf' | 'pptx' | null - 等待下载的文件类型
-    
+
     // Turbo 升级弹窗状态
     const [showTurboModal, setShowTurboModal] = useState(false);
+
+    // 演讲稿状态
+    const [showSpeechModal, setShowSpeechModal] = useState(false);
+    const [speechContent, setSpeechContent] = useState('');
+    const [speechLoading, setSpeechLoading] = useState(false);
+    const [speechError, setSpeechError] = useState(null);
 
     // 如果正在处理中，模拟进度
     const [progress, setProgress] = useState(0);
@@ -162,14 +168,14 @@ export default function ResultView({ result, downloads, isProcessing, generation
     // PPTX 生成超时检测
     const [isPptxTimeout, setIsPptxTimeout] = useState(false);
     const prevPdfRef = React.useRef(downloads?.pdf);
-    
+
     useEffect(() => {
         let timeoutTimer;
-        
+
         // 检测是否切换了文档（PDF 路径变了）
         const pdfChanged = prevPdfRef.current !== downloads?.pdf;
         prevPdfRef.current = downloads?.pdf;
-        
+
         if (downloads?.pptx) {
             // 如果 PPTX 有了，清除超时状态
             setIsPptxTimeout(false);
@@ -199,18 +205,18 @@ export default function ResultView({ result, downloads, isProcessing, generation
     // 处理 PDF 下载
     const handlePdfDownload = async () => {
         if (!downloads?.pdf) return;
-        
+
         // 如果还没给过反馈，先弹出反馈框（强制模式）
         if (!feedbackGiven) {
             setPendingDownload('pdf');
             setShowFeedbackModal(true);
             return;
         }
-        
+
         // 已经给过反馈，直接下载
         await performPdfDownload();
     };
-    
+
     // 实际执行 PDF 下载
     const performPdfDownload = async () => {
         if (!downloads?.pdf) return;
@@ -219,11 +225,11 @@ export default function ResultView({ result, downloads, isProcessing, generation
         await forceDownload(getOutputUrl(downloads.pdf), filename);
         setDownloadingPdf(false);
     };
-    
+
     // 反馈完成后的回调
     const handleFeedbackComplete = async () => {
         setFeedbackGiven(true);
-        
+
         // 如果有等待下载，执行下载
         if (pendingDownload === 'pdf') {
             await performPdfDownload();
@@ -236,17 +242,17 @@ export default function ResultView({ result, downloads, isProcessing, generation
     // 处理 PPTX 下载
     const handlePptxDownload = async () => {
         if (!downloads?.pptx) return;
-        
+
         // 如果还没给过反馈，先弹出反馈框（强制模式）
         if (!feedbackGiven) {
             setPendingDownload('pptx');
             setShowFeedbackModal(true);
             return;
         }
-        
+
         await performPptxDownload();
     };
-    
+
     // 实际执行 PPTX 下载
     const performPptxDownload = async () => {
         if (!downloads?.pptx) return;
@@ -439,14 +445,40 @@ export default function ResultView({ result, downloads, isProcessing, generation
                         */}
 
                         {/* PPTX Download - 始终显示，点击弹出升级提示 */}
-                        <button 
-                            onClick={() => setShowTurboModal(true)} 
-                            className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200 relative group" 
+                        <button
+                            onClick={() => setShowTurboModal(true)}
+                            className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200 relative group"
                             title="升级 Turbo 解锁 PPTX 导出"
                         >
                             <Download className="w-4 h-4" />
                             <span>PPTX</span>
                             <Sparkles className="w-3 h-3 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-1 -right-1" />
+                        </button>
+
+                        {/* 生成演讲稿按钮 */}
+                        <button
+                            onClick={async () => {
+                                setShowSpeechModal(true);
+                                setSpeechLoading(true);
+                                setSpeechError(null);
+                                setSpeechContent('');
+                                try {
+                                    // 从 result 中获取 output_name
+                                    const outputName = result?.output_name || result?.html?.match(/output\/([^\/]+)/)?.[1];
+                                    if (!outputName) throw new Error('无法获取演示文稿 ID');
+                                    const data = await generateSpeechScript(outputName);
+                                    setSpeechContent(data.script);
+                                } catch (err) {
+                                    setSpeechError(err.message);
+                                } finally {
+                                    setSpeechLoading(false);
+                                }
+                            }}
+                            className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                            title="生成演讲口播稿"
+                        >
+                            <Mic className="w-4 h-4" />
+                            <span>演讲稿</span>
                         </button>
 
                         <div className="h-6 w-px bg-slate-200 mx-2" />
@@ -636,10 +668,83 @@ export default function ResultView({ result, downloads, isProcessing, generation
             />
 
             {/* Turbo 升级弹窗 */}
-            <TurboUpgradeModal 
+            <TurboUpgradeModal
                 isOpen={showTurboModal}
                 onClose={() => setShowTurboModal(false)}
             />
+
+            {/* 演讲稿弹窗 */}
+            {showSpeechModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)' }}>
+                    <div className="bg-white w-[800px] max-w-[90%] h-[80vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                                    <Mic className="w-4 h-4 text-indigo-600" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-slate-800">演讲口播稿</h3>
+                            </div>
+                            <button
+                                onClick={() => setShowSpeechModal(false)}
+                                className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5 text-slate-500" />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {speechLoading ? (
+                                <div className="flex flex-col items-center justify-center h-full text-slate-500">
+                                    <div className="w-10 h-10 border-3 border-slate-200 border-t-indigo-600 rounded-full animate-spin mb-4" style={{ borderWidth: '3px' }}></div>
+                                    <p className="text-base">AI 正在阅读幻灯片并撰写演讲稿...</p>
+                                    <p className="text-sm text-slate-400 mt-1">预计需要 15-30 秒</p>
+                                </div>
+                            ) : speechError ? (
+                                <div className="flex flex-col items-center justify-center h-full text-red-500">
+                                    <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
+                                        <X className="w-6 h-6" />
+                                    </div>
+                                    <p className="font-medium">生成失败</p>
+                                    <p className="text-sm mt-1">{speechError}</p>
+                                </div>
+                            ) : (
+                                <div
+                                    className="prose prose-slate max-w-none text-base leading-relaxed"
+                                    style={{ fontFamily: "'PingFang SC', 'Noto Sans SC', system-ui, sans-serif", whiteSpace: 'pre-wrap' }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: speechContent
+                                            .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-6 mb-3 text-slate-800">$1</h1>')
+                                            .replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-4 mb-2 text-slate-700">$1</h2>')
+                                            .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
+                                    }}
+                                />
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-3 bg-slate-50">
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(speechContent);
+                                    // 可选：显示复制成功提示
+                                }}
+                                disabled={!speechContent || speechLoading}
+                                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                复制全文
+                            </button>
+                            <button
+                                onClick={() => setShowSpeechModal(false)}
+                                className="px-4 py-2 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors"
+                            >
+                                关闭
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

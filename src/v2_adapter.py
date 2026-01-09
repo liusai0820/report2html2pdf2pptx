@@ -134,9 +134,17 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
             content_depth=req.content_depth,
             custom_instructions=req.custom_instructions or "",  # 用户自定义指令
             bg_image_source=getattr(req, 'bg_image_source', 'none'),  # 背景图来源
-            images=doc_images if doc_images else None  # 文档中提取的图片
+            images=doc_images if doc_images else None,  # 文档中提取的图片
+            image_descriptions=None  # 将在下一步填充
         )
         validator = SlideValidator(ds)
+        
+        # 【新增】图片预解析阶段 - 提取每张图片的完整文字内容
+        if doc_images and len(doc_images) > 0:
+            yield send_event("analyzing_images", f"正在解析 {len(doc_images)} 张图片内容...", 5)
+            image_descriptions = await engine.designer.analyze_images(doc_images)
+            context.image_descriptions = image_descriptions
+            yield send_event("images_analyzed", f"图片内容解析完成", 8)
         
         # 生成大纲
         yield send_event("outline", "AI 设计师正在规划大纲...", 10)
@@ -295,7 +303,34 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
             "pages": pages_result
         }
         yield send_event("preview_ready", "预览就绪", 90, result=preview_data)
-        
+
+        # 【新增】保存元数据 metadata.json (用于演讲稿生成等后续任务)
+        try:
+            metadata = {
+                "document_name": req.document_name,
+                "scenario": req.scenario,
+                "organization": req.organization,
+                "theme_color": req.theme_color,
+                "font_style": req.font_style,
+                "target_pages": req.target_pages,
+                "content_depth": req.content_depth,
+                "created_at": timestamp,
+                # 保存大纲页面结构 (包含标题和核心内容)
+                "pages": outline_pages,
+                # 保存 AI 提炼的信息
+                "report_type": getattr(context, 'report_type', ''),
+                "ai_org_name": getattr(context, 'ai_org_name', ''),
+            }
+            # 如果文档内容不是特别大，也可以选择性保存摘要或全部，这里暂时不存 content，
+            # 依靠 document_name 去 input 目录回溯读取 (节省空间)
+
+            metadata_path = engine.output_dir / "metadata.json"
+            import json
+            metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding='utf-8')
+            print(f"Metadata saved: {metadata_path}")
+        except Exception as e:
+            print(f"Failed to save metadata: {e}")
+
         # 如果需要 PDF (调用 v1 的 renderer)
         pdf_path = None
         pptx_path = None
@@ -381,64 +416,44 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
                     # 确保完成后递减活跃任务计数
                     _active_pdf_tasks -= 1
                 
-        # 完成 - 上传到 R2 云存储（如果启用）
+        # 完成 - 上传到 R2 云存储（如果启用）- 改为后台异步上传，避免阻塞
         from r2_storage import get_storage, upload_output_to_r2
         
         storage = get_storage()
         
         if storage.enabled:
-            yield send_event("upload", "正在上传到云存储...", 99)
+            # 先返回本地 URL，让用户可以立即预览
+            # R2 上传在后台异步进行，不阻塞 SSE 流
+            yield send_event("upload", "正在后台上传到云存储（不影响预览）...", 99)
             
-            try:
-                # 上传整个输出目录到 R2
-                upload_result = upload_output_to_r2(
-                    engine.output_dir, 
-                    engine.output_dir.name
-                )
-                
-                base_url = upload_result["base_url"]
-                
-                # 构建云端 URL
-                final_result = {
-                    "downloads": {
-                        "html": f"{base_url}presentation.html",
-                        "pdf": f"{base_url}{Path(pdf_path).name}" if pdf_path else None,
-                        "pptx": f"{base_url}{Path(pptx_path).name}" if pptx_path else None,
-                    },
-                    "output_dir": engine.output_dir.name,
-                    "pages": [
-                        {**p, "url": f"{base_url}pages/page-{p['index']:02d}.html"}
-                        for p in pages_result
-                    ],
-                    "pages_count": len(pages_result),
-                    "storage": "r2"
-                }
-                
-                yield send_event("upload_complete", "云存储上传完成", 100)
-                
-                # Scheme A: 上传成功后清理本地文件以节省空间（Render 磁盘有限）
+            # 启动后台上传任务（不等待）
+            async def background_upload():
                 try:
-                    import shutil
-                    if engine.output_dir.exists():
-                        # shutil.rmtree(engine.output_dir)
-                        print(f"Kept local dir for debugging: {engine.output_dir}")
-                except Exception as cleanup_err:
-                    print(f"cleanup failed: {cleanup_err}")
-                
-            except Exception as upload_err:
-                print(f"R2 upload failed, falling back to local: {upload_err}")
-                # 上传失败，回退到本地模式
-                final_result = {
-                    "downloads": {
-                        "html": f"/output/{engine.output_dir.name}/presentation.html",
-                        "pdf": f"/output/{engine.output_dir.name}/{Path(pdf_path).name}" if pdf_path else None,
-                        "pptx": f"/output/{engine.output_dir.name}/{Path(pptx_path).name}" if pptx_path else None,
-                    },
-                    "output_dir": engine.output_dir.name,
-                    "pages": pages_result,
-                    "pages_count": len(pages_result),
-                    "storage": "local"
-                }
+                    upload_result = await asyncio.to_thread(
+                        upload_output_to_r2,
+                        engine.output_dir, 
+                        engine.output_dir.name
+                    )
+                    print(f"✓ R2 上传完成: {upload_result.get('base_url', 'unknown')}")
+                except Exception as e:
+                    print(f"✗ R2 上传失败（本地文件仍可用）: {e}")
+            
+            asyncio.create_task(background_upload())
+            
+            # 立即构建本地 URL 返回（不等待上传）
+            final_result = {
+                "downloads": {
+                    "html": f"/output/{engine.output_dir.name}/presentation.html",
+                    "pdf": f"/output/{engine.output_dir.name}/{Path(pdf_path).name}" if pdf_path else None,
+                    "pptx": f"/output/{engine.output_dir.name}/{Path(pptx_path).name}" if pptx_path else None,
+                },
+                "output_dir": engine.output_dir.name,
+                "pages": pages_result,
+                "pages_count": len(pages_result),
+                "storage": "local_with_async_r2"  # 标记为本地+异步上传模式
+            }
+            
+            yield send_event("upload_started", "云上传已在后台启动", 100)
         else:
             # R2 未启用，使用本地存储
             final_result = {

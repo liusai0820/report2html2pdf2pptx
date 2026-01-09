@@ -55,6 +55,7 @@ class GenerationContext:
     report_type: str = ""           # AI 提炼的报告类型（如"产业研究报告"）
     ai_org_name: str = ""           # AI 提炼的汇报单位（优先于 organization）
     images: List[Dict] = None       # 文档中提取的图片列表 (base64 格式)
+    image_descriptions: List[str] = None  # 预解析的图片内容描述（每张图片的详细文字提取）
 
 
 # ============================================================================
@@ -62,125 +63,43 @@ class GenerationContext:
 # ============================================================================
 
 DESIGNER_SYSTEM_PROMPT = """
-# 你是一位世界级的演示文稿视觉设计师
+# Role: Senior Information Designer (Swiss Style) & Data Analyst (McKinsey)
 
-## ⚠️ 画布约束（最高优先级！必须严格遵守！）
+## 🗣️ LANGUAGE (Dominant: Chinese)
+- **Output Language**: Simplified Chinese (简体中文).
+- **Translation**: Translate ALL structural terms (e.g., "Strategy", "Overview", "Timeline") into professional Chinese business terminology.
+- **Exceptions**: Keep specific English proper nouns (e.g., "AI", "SaaS", "GDP") if they are standard industry terms.
+- **NO Bilingual Redundancy**:
+   - ❌ NO English subtitles/translations below Chinese titles (e.g., "战略\nStrategy").
+   - ❌ NO English parentheticals (e.g., "转化率 (Conversion Rate)" -> "转化率").
+   - ❌ NO "Chinese Title | English Title".
+   - **Rule**: If it's in Chinese, DO NOT add English translation.
 
-**画布尺寸**：1280 × 720 像素（固定，不可改变）
+## 🎯 DESIGN PHILOSOPHY (High Information Density)
+1. **Pyramid Principle (SCQA)**: ONE key message per slide. Title is the Conclusion.
+2. **Swiss International Style**: Mathematical grids (Bento Box), asymmetric balance, high contrast typography.
+3. **Defensive CSS Layout**:
+   - Use `flexbox` or `grid` for EVERYTHING.
+   - `* { box-sizing: border-box; min-width: 0; min-height: 0; }` (Prevent overflow).
+   - Images: `object-fit: contain; max-width: 100%; max-height: 100%;`.
+   - Containers: `overflow: hidden;` is MANDATORY.
+   - **Global**: `::-webkit-scrollbar { display: none; }` (No scrollbars allowed).
+4. **Data Visualization**: "A chart is worth 1000 words." Use ECharts for ALL data.
 
-**布局分区**：
-```
-┌─────────────────────────────────────────────┐
-│                 顶部边距 50px                 │
-├─────────────────────────────────────────────┤
-│  左边距    [标题区] 高度约 80px      右边距   │
-│   60px    ─────────────────────────   60px  │
-│           [内容区] 最大高度 480px            │
-│           ⚠️ 内容不要填满，留有余地          │
-│           ─────────────────────────          │
-│           [底部保留区 80px] ← 禁止放内容！    │
-└─────────────────────────────────────────────┘
-```
+## 🛡️ CANVAS LAWS (Immutable)
+- **Dimensions**: 1280px × 720px (Fixed).
+- **Safe Zone**: Padding 60px. **Bottom 80px is RESERVED (No Content).**
+- **Typography**: Use var(--font-family). NO custom fonts. NO Markdown.
+- **Colors**: Professional Palette only. NO "Traffic Light" (Red/Green) combinations.
+- **Unified Header (Content Pages)**: Title MUST be top-left (32px). Section pages use Centered layout.
 
-**硬性规则**：
-1. ✘ **严禁内容进入底部 80px 区域**（预留给页码）
-2. ✘ **严禁内容超出 1280px 宽度**
-3. ✘ **严禁图表溢出容器**（图表必须设置 max-width）
-4. ✔ 所有容器必须添加 `overflow: hidden`
-
-## 🎯 核心使命
-
-将信息转化为**有说服力的视觉故事**。每一页都应该：
-1. **信息充实** - 内容丰富，有实质性信息
-2. **视觉清晰** - 层次分明，重点突出
-3. **样式统一** - 使用一致的设计语言
-
-## 🎨 设计原则
-
-### 内容精炼 (Less is More)
-- 严禁使用超过 3 行的长段落
-- 使用短句、关键词，列表项控制在 2 行以内
-- 标题要完整表达整页的核心思想
-
-### 视觉优先
-- 能用图不用表，能用表不用字
-- 使用“大数字”作为视觉锚点
-- 重要概念使用卡片封装
-
-### 布局自由
-你可以自由使用：
-- 左右两栏布局
-- 三卡片网格
-- 列表 + 说明
-- 表格对比
-
-## 🚫 禁止事项
-
-- ✘ 卡片左侧彩色竖条装饰
-- ✘ 任何 Emoji 和 Unicode 图标（会导致 PPTX 乱码）
-- ✘ 底部结论框 / "So What" 总结
-- ✘ Footer 页脚（不要添加 "STRATEGIC RESEARCH REPORT"、页码、"CONFIDENTIAL" 等）
-- ✘ 内容进入底部 80px 区域（已在画布约束中强调）
-- ✘ 内容超出 1280px 宽度（已在画布约束中强调）
-- ✘ **禁止使用以下字体**：'PingFang SC', 'Microsoft YaHei', 'Heiti SC', 'SimHei', 'SimSun'（这些字体在服务器上不可用！）
-- ✘ **禁止自定义 font-family**：必须使用 prompt 中提供的字体族，不要自己编造
-- ✘ **禁止使用 Markdown 语法**：不要使用 `**加粗**`、`*斜体*`、`__下划线__` 等 Markdown 语法！必须使用 HTML 标签如 `<strong>`、`<em>`
-- ✘ **禁止添加"底部预留空间" div**：`padding-bottom: 80px` 已经处理了，不要再加 `height: 80px` 的空 div！
-- ✘ **⚠️ 严禁使用廉价的红/绿对比色块！** 这是典型的 AI 俗套设计：
-  - ❌ 浅红色背景 (#fef2f2, #fee2e2, rgba(254,242,242,...))
-  - ❌ 浅绿色背景 (#f0fdf4, #dcfce7, rgba(240,253,244,...))
-  - ❌ 红色文字 + 绿色文字对比（"信号灯"配色）
-  - ❌ 任何红/绿并列的"好/坏""优/劣"对比设计
-
-## ✅ 颜色规范（严格遵守！）
-
-**背景色只能使用**：
-- 白色 #ffffff
-- 中性浅灰 #f5f7fa 或 #f3f4f6
-- 主题色 + 高透明度（如 rgba(26,54,93,0.05)）
-
-**强调色只能使用**：
-- 主题色（如 #1A365D）
-- 主题色的浅色变体
-- ⚠️ **禁止使用红色和绿色作为对比色**
-
-**边框只能使用**：
-- 浅灰色 #e5e7eb
-- 虚线 (dashed) 用于流程连接
-
-## 📊 图表支持（ECharts - 鼓励使用！）
-
-**当内容包含数据时，优先用 ECharts 图表呈现**，比纯文字更有说服力！
-
-```html
-<div style="width: 100%; max-width: 800px; height: 250px;" id="chart_唯一ID"></div>
-<script>
-(function() {
-    var chart = echarts.init(document.getElementById('chart_唯一ID'));
-    chart.setOption({
-        animation: false,
-        color: ['主题色'],
-        grid: { top: 30, bottom: 30, left: 50, right: 20, containLabel: true },
-        xAxis: { type: 'category', data: ['数据标签'] },
-        yAxis: { type: 'value' },
-        series: [{ data: [数据值], type: 'bar' 或 'line' }]
-    });
-})();
-</script>
-```
-
-**图表使用指南**：
-- ✅ **积极使用图表** - 有数据就放图表
-- ✅ 图表高度建议 200px ~ 280px
-- ✅ 图表容器必须设置 `max-width`，防止溢出
-- ⚠️ 图表数据必须来自原始文档（不能编造）
-- ⚠️ 极端情况下（剩余空间不足 150px），才考虑不放图表
-
-## ✅ 输出要求
-
-1. 使用内联样式 (style 属性)
-2. 字体使用 var(--font-family) 或指定的字体族
-3. 直接输出 HTML，不要任何解释
+## 🚫 STRICT BANS
+- NO Scrollbars (Static Page).
+- NO Overflow (Content MUST fit 590px height).
+- **NO Footers / Page Numbers / Confidential marks** (Leave bottom 80px empty).
+- NO Emoji/Unicode icons.
+- NO Gradients/Shadows (Flat Design only).
+- NO "Bottom Spacer" divs.
 """
 
 
@@ -205,6 +124,71 @@ class AIDesigner:
         self.temperature = temperature
         self.timeout = timeout
         self.max_retries = max_retries
+    
+    async def analyze_images(self, images: List[Dict]) -> List[str]:
+        """
+        【图片预解析阶段】- 提取每张图片的完整文字和结构信息
+        
+        这是关键步骤：确保图片中的所有文字、数据、关系都被精确提取，
+        而不是让 AI 在后续步骤中"看"图片然后遗忘细节。
+        
+        使用并行调用加速处理。
+        
+        Args:
+            images: 图片列表 [{'data_url': '...', 'content_type': '...'}]
+            
+        Returns:
+            每张图片的完整内容描述列表
+        """
+        if not images:
+            return []
+        
+        console.print(f"[cyan]🔍 并行解析 {len(images)} 张图片内容...[/cyan]")
+
+        prompt = """
+# TASK: Visual Semantic Extraction (OCR + Structural Analysis)
+
+## TARGET
+Convert image pixels into a structured "Digital Twin" text format for HTML reconstruction.
+
+## REQUIREMENTS
+1. **OCR Precision**: Extract ALL visible text. Don't summarize.
+2. **Structure Detection**: Identify the layout pattern (Matrix, Flow, Hierarchy, Quadrant).
+3. **Data Integrity**: Preserve exact numbers, units, and labels.
+4. **Entity Recognition**: List specific proper nouns (Companies, Products, Locations).
+
+## OUTPUT TEMPLATE
+```
+[TYPE]: {Visual Pattern Name, e.g., 2x2 Matrix, Flowchart, Bar Chart}
+[TITLE]: {Main Heading}
+[SUBTITLE]: {Subheading or Context}
+[CONTENT_TREE]:
+- {Group/Section Name}:
+  - {Item 1}
+  - {Item 2}
+[DATA_POINTS]:
+- {Label}: {Value} (if chart/graph)
+[ENTITIES]: {Comma-separated list of specific names found}
+[VISUAL_CUES]: {Color coding, Arrows, Layout relationships}
+```
+"""
+
+        async def analyze_single_image(i: int, img: Dict) -> str:
+            """分析单张图片"""
+            try:
+                response = await self._call_ai(prompt, images=[img])
+                console.print(f"[green]   ✓ 图片 {i+1} 解析完成[/green]")
+                return response
+            except Exception as e:
+                console.print(f"[yellow]   ⚠️ 图片 {i+1} 解析失败: {e}[/yellow]")
+                return f"[图片 {i+1} 解析失败]"
+        
+        # 并行调用 AI 解析所有图片
+        tasks = [analyze_single_image(i, img) for i, img in enumerate(images)]
+        descriptions = await asyncio.gather(*tasks)
+        
+        console.print(f"[green]✓ 全部 {len(images)} 张图片并行解析完成[/green]")
+        return list(descriptions)
     
     async def generate_outline(
         self,
@@ -261,8 +245,21 @@ class AIDesigner:
             html = prompt.replace("__DIRECT_HTML__", "").strip()
             return self._clean_html(html)
         
-        # 正常流程：调用 AI 生成 HTML，并清理 Markdown 语法
-        html = await self._call_ai(prompt)
+        # 【方案 C】描述 + 图片双保险
+        # prompt 中已包含预解析的图片描述，同时发送原图供 AI 验证
+        images_to_pass = None
+        if page_info.type == "CONTENT" and context.images and len(context.images) > 0:
+            image_indices = getattr(page_info, 'image_indices', None) or page_info.__dict__.get('image_indices', [])
+            if image_indices:
+                images_to_pass = []
+                for idx in image_indices:
+                    if 0 <= idx < len(context.images):
+                        images_to_pass.append(context.images[idx])
+                if images_to_pass:
+                    console.print(f"[cyan]📷 页面 {page_info.page_num}：描述+图片双保险（{len(images_to_pass)} 张图）[/cyan]")
+        
+        # 调用 AI：prompt 包含描述，images 包含原图
+        html = await self._call_ai(prompt, images=images_to_pass)
         return self._clean_html(html)
     
     async def _get_background_image(self, context: GenerationContext, page_info: PageInfo, custom_prompt: Optional[str] = None) -> Optional[str]:
@@ -299,176 +296,99 @@ class AIDesigner:
             return None
     
     def _build_outline_prompt(self, context: GenerationContext) -> str:
-        """构建大纲生成 Prompt"""
-        
-        # 用户自定义指令（如果有的话）
-        custom_section = ""
+        """构建大纲生成 Prompt - High Density"""
+
+        # User Custom Instructions
+        custom_block = ""
         if context.custom_instructions and context.custom_instructions.strip():
-            custom_section = f"""
-## ⚠️ 用户特别要求（最高优先级！）
-
-用户提供了以下特别要求，**你必须严格遵循**：
-
-```
+            custom_block = f"""
+## 👤 USER OVERRIDE (Top Priority)
 {context.custom_instructions}
-```
-
-**提示**：如果用户要求深入、全面、更多内容等，你可以根据需要突破目标页数限制。内容质量和用户满意度优先。
 """
-        
-        # 根据内容深度决定页数指导
-        depth_guidance = {
-            "brief": "精简版，只保留核心观点",
-            "normal": "标准版，平衡内容和篇幅",
-            "detailed": "深入版，充分展开论述，可适当增加页数"
+
+        # Image Context
+        img_context = ""
+        if context.images:
+            img_desc = ""
+            # 如果有预解析的图片描述，提取前200字作为摘要
+            if context.image_descriptions:
+                img_desc = "\n".join([f"- Image {i+1}: {d[:100]}..." for i, d in enumerate(context.image_descriptions)])
+
+            img_context = f"""
+## 📷 VISUAL ASSETS ({len(context.images)} Images)
+The user provided images. You MUST include them in the outline using `[IMG:1,2]` tags in CONTENT lines.
+{img_desc}
+"""
+
+        depth_map = {
+            "brief": "Executive Summary (High Level)",
+            "normal": "Standard Consulting Report",
+            "detailed": "Deep Dive Research (Comprehensive)"
         }
-        depth_hint = depth_guidance.get(context.content_depth, depth_guidance["normal"])
-        
-        # 图片说明（如果有的话）
-        image_section = ""
-        if context.images and len(context.images) > 0:
-            image_section = f"""
-### 📷 文档附图（共 {len(context.images)} 张）
+        style = depth_map.get(context.content_depth, "Standard Consulting Report")
 
-⚠️ **请仔细分析附带的图片**，这些图片来自原始文档：
-- 图片可能包含重要的数据图表、框架图、流程图等
-- 请从图片中提取关键信息，整合到大纲规划中
-- 图表中的数据是可信的原始数据，可以在正文页中引用
-"""
-        
         return f"""
-# 大纲规划任务
+# TASK: Architect a {style} Presentation Structure
 
-你是一位 **Cathy Wood 级别的顶级分析师** 和 **麦肯锡级别的战略顾问**。
-请根据以下文档内容，规划一份 **专业、深入、有洞察力** 的演示文稿大纲。
+## 🗣️ LANGUAGE: Simplified Chinese (简体中文)
+**ALL output must be in Chinese**, except for specific English proper nouns (e.g., AI, SaaS).
+**Strict Rule**: NO bilingual titles. NO "中文 (English)". NO "Title | 标题". If a term has a Chinese equivalent, use Chinese ONLY.
 
-## 输入信息
-
-### 文档内容
+## 📄 INPUT CONTEXT
+**Doc Name**: {context.document_name}
+**Org**: {context.organization}
+**Target**: ~{context.target_pages} Pages
+**Content**:
 ```
 {context.document_content[:50000]}
 ```
-{image_section}
-### 项目信息
-- 文档名称：{context.document_name}
-- 汇报单位：{context.organization}
-- 场景类型：{context.scenario}
-- 目标页数：约 {context.target_pages} 页（{depth_hint}）
-- 内容深度：{context.content_depth}
-{custom_section}
+{custom_block}
+{img_context}
 
-## 🎯 核心目标
+## 🧠 STRUCTURING LOGIC (McKinsey/Bain Style)
 
-你的任务是生成一份 **收费级别** 的专业报告大纲：
-- **像券商研究报告** 那样细致全面
-- **像麦肯锡战略报告** 那样有框架有洞察
-- **每一页都要有信息量**，绝不注水
+1.  **Pyramid Principle**:
+    - Top-down structure.
+    - Title = Core Message (Conclusion), NOT Topic.
+    - Example: ✅ "营收同比增长20%" vs ❌ "营收分析".
 
-## ⚠️ 页数硬性要求（必须遵守！）
+2.  **Narrative Arc (SCQA)**:
+    - **S**ituation (现状)
+    - **C**omplication (问题/机会)
+    - **Q**uestion (挑战)
+    - **A**nswer (方案/路线图)
 
-**你必须生成 {context.target_pages} 页左右的大纲！**
+3.  **MECE**: Ensure sections are Mutually Exclusive, Collectively Exhaustive.
 
-- 最少不能低于 {int(context.target_pages * 0.9)} 页
-- 如果原始内容不够，你必须扩充内容来达到页数要求
-- 不要自作主张减少页数，用户已经明确选择了 {context.target_pages} 页
-- 每个章节可以有多个 CONTENT 页，确保总页数达标
+4.  **Content Density**:
+    - **No Fluff**. Every page must deliver value.
+    - If source is thin, **Synthesize** using domain knowledge (Trends, Frameworks, Best Practices).
+    - **Strict Ban**: DO NOT hallucinate specific numbers. Use qualitative terms (High Growth, Significant Share) if data is missing.
 
-## 规划原则
+## 📐 OUTPUT FORMAT (Strict Line-by-Line)
 
-### 1. 金字塔结构
-- 整体遵循"总-分-总"的逻辑
-- 每个章节有明确的核心观点
-- 从宏观到微观，层层递进
+1. `TITLE|...` (Professional Title in Chinese)
+2. `REPORT_TYPE|...` (e.g., 战略规划, 行业分析)
+3. `ORG_NAME|...` (Extracted or inferred)
+4. `COVER_IMG|...` (ComfyUI Prompt: Realistic, Cinematic, No Text)
+5. `CLOSING_IMG|...` (ComfyUI Prompt: Abstract, Hopeful)
+6. `SECTION|...`
+7. `CONTENT|Title (Message)|Details [IMG:x]`
 
-### 2. 内容深度
-- 每页只讲一个核心观点
-- 复杂内容要拆分成多页（宁多勿少）
-- 数据密集的内容单独成页
-- **如果内容丰富，不要压缩，该用多少页就用多少页**
+**Example**:
+TITLE|2025数字化转型战略规划
+REPORT_TYPE|战略规划报告
+ORG_NAME|某某科技集团
+COVER_IMG|futuristic office with holographic data interface, cinematic lighting
+CLOSING_IMG|sunrise over smart city skyline, hopeful atmosphere
+SECTION|01 市场格局|Context
+CONTENT|AI在各行业应用加速渗透|关键驱动力：效率、创新 [IMG:1]
+SECTION|02 核心挑战|Problem
+CONTENT|传统架构限制了业务敏捷性|技术债务分析
 
-### 3. 故事节奏
-- 开篇要抓人（背景/痛点/机遇）
-- 中间要实在（分析/数据/洞察）
-- 结尾要有力（结论/建议/行动）
+**Constraint**: Target ~{context.target_pages} pages.
 
-### 4. 标题即结论
-- 标题不是主题，是这一页的核心观点
-- 读完标题就知道这页要说什么
-- 例如：
-  - ❌ "市场规模分析"（主题式，太空洞）
-  - ✅ "市场规模 5 年翻倍，年复合增长率达 23%"（结论式，有信息量）
-
-### 5. 内容扩充（⚠️ 严格限制）
-
-如果原始文档内容不够丰富，你 **可以** 基于专业知识补充**文字性内容**：
-- ✅ 补充行业背景知识和趋势分析
-- ✅ 解释专业概念和术语
-- ✅ 提供框架性分析和逻辑推理
-- ✅ 给出定性的建议和行动方向
-
-**⚠️ 严禁编造数据！这是最高优先级的禁令！**
-- ❌ **绝对禁止编造任何具体数字**（如 "98.5%"、"同比增长 35%"、"4.9/5.0 评分"）
-- ❌ **禁止捏造统计数据**（如 "市场规模 XX 亿"、"渗透率达 XX%"）
-- ❌ **禁止虚构案例数据**（如 "销售额增长 X 倍"、"客户满意度 XX%"）
-- 如果页面需要数据支撑但原文没有，使用定性描述代替：
-  - ❌ "客户满意度达 98.5%" → ✅ "客户满意度持续提升"
-  - ❌ "效率提升 35%" → ✅ "效率显著提升"
-  - ❌ "市场规模 500 亿" → ✅ "市场规模快速增长"
-
-### 6. 无数据时的视觉化策略
-
-当原始文档缺乏具体数据时，使用以下**概念可视化**手段增强页面吸引力（不是编造数据！）：
-
-**✅ 推荐使用**：
-- **流程图/时间轴** - 用 HTML 盒子 + 箭头(→)展示步骤、阶段、发展历程
-- **对比布局** - 左右对比（现状 vs 目标、问题 vs 方案、挑战 vs 对策）
-- **金字塔/层级图** - 展示优先级、重要性层级
-- **矩阵/象限** - 分类对比（如重要/紧急四象限）
-- **关键词大字突出** - 核心概念用 36px+ 字体，配合小字解释
-- **卡片网格** - 将要点用等大卡片呈现，视觉均衡
-- **引言/金句框** - 用引号和浅色背景突出核心观点
-- **序号标记** - 用 CSS 圆形/方形作为视觉锚点
-
-## 输出格式
-
-**必须严格按照以下顺序输出每一行（不要包含 markdown 代码块标记）：**
-
-1. `TITLE|干净的演示文稿标题`
-2. `REPORT_TYPE|报告类型标签`（2-8个字，如"产业研究报告"、"年度述职报告"、"项目可行性分析"）
-3. `ORG_NAME|汇报单位名称`（从内容中提取，如"哈尔滨工业大学"、"某某科技有限公司"）
-4. `COVER_IMG|封面图Prompt`
-5. `CLOSING_IMG|封底图Prompt`
-6. `SECTION|...` (章节)
-7. `CONTENT|...`
-...
-
-**格式说明**：
-- `TITLE`：提取的核心标题
-- `REPORT_TYPE`：**根据内容智能提炼**的报告类型标签，2-8个字。示例：
-  - 产业研究报告、行业深度分析、战略规划方案
-  - 年度述职报告、季度工作总结、项目进展汇报
-  - 开题报告、毕业论文答辩、学术研究汇报
-  - 如果无法确定，输出空：`REPORT_TYPE|`
-- `ORG_NAME`：**从文档内容中提取**的汇报单位/作者单位。优先级：
-  1. 文档中明确提到的机构名称
-  2. 作者所属单位
-  3. 如果用户提供了汇报单位，使用用户提供的：{context.organization}
-  4. 如果都找不到，输出空：`ORG_NAME|`
-- `COVER_IMG`：封面图 ComfyUI 提示词（Symbolic Realism 风格，微距摄影）
-- `CLOSING_IMG`：封底图提示词
-
-**示例**：
-TITLE|全球自动驾驶产业格局深度研究
-REPORT_TYPE|产业研究报告
-ORG_NAME|前瞻产业研究院
-COVER_IMG|view from driver's seat inside a modern car, hands on steering wheel, motion blur city road ahead, realistic photography, evening, 4k, no text
-CLOSING_IMG|empty highway road marking leading to infinity, sunset horizon, cinematic lighting, conceptual, realistic, no text
-SECTION|第一部分 产业现状|
-CONTENT|战新产业占比突破 40%，产业结构持续优化|2023年数据
-SECTION|第二部分 核心问题|
-CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.1%
-
-请开始规划（严格遵循格式）：
+Begin Architecture:
 """
     
     def _parse_outline(self, response: str) -> Dict[str, Any]:
@@ -516,11 +436,23 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
                     "section_num": current_section_num
                 })
             elif type_ == "CONTENT":
+                # 从 extra 中提取图片索引标记 [IMG:1,2,3]
+                image_indices = []
+                content_text = extra
+                import re
+                img_match = re.search(r'\[IMG:([0-9,]+)\]', extra)
+                if img_match:
+                    # 提取图片索引并从 extra 中移除标记
+                    indices_str = img_match.group(1)
+                    image_indices = [int(i.strip()) - 1 for i in indices_str.split(',') if i.strip().isdigit()]  # 转为 0-indexed
+                    content_text = re.sub(r'\[IMG:[0-9,]+\]\s*', '', extra).strip()
+                
                 pages.append({
                     "type": "CONTENT",
                     "title": content,
-                    "content": extra,
-                    "section_num": current_section_num
+                    "content": content_text,
+                    "section_num": current_section_num,
+                    "image_indices": image_indices  # 该页需要的图片索引列表
                 })
                 
         return {
@@ -631,75 +563,64 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         self, context: GenerationContext, page_info: PageInfo,
         design_prompt: str, colors: Dict[str, str], font_family: str
     ) -> str:
-        """目录页 Prompt - 内联样式"""
+        """目录页 Prompt - High Density"""
         return f"""
-# 目录页设计
+# TASK: Design Agenda Slide
 
-## 章节列表
+## INPUT
 {page_info.content}
 
-## 设计要求
+## SPECS (Swiss Style)
+- **Background**: White #ffffff.
+- **Typography**: Sans-serif. Title 32px.
+- **Layout**: List or 2-Column Grid (if >5 items).
+- **Safety**: `overflow: hidden`.
+- **Language**: Chinese Only (No "CONTENTS").
 
-- 纯白背景
-- 标题"目录 / CONTENTS" 32px
-- 每个章节一行：序号 + 标题
-- 序号用主色 {colors['primary']}
-- 分割线用浅灰色
-- 可以用左右两栏布局（如果章节超过5个）
+## 🚫 BANS
+- NO Intro/Outro text. ONLY the list.
 
-## ⚠️ 禁止事项
-
-- ❌ **禁止添加任何概括性文字、引言或总结！**
-- ❌ 不要添加类似"本报告旨在..."、"本文档主要介绍..."的描述
-- ❌ 目录页只放目录，不放其他任何内容！
-
-## 输出
-
-直接输出 HTML，只包含标题和章节列表，不要任何额外文字：
-
-<div style="width: 1280px; height: 720px; background: #ffffff; padding: 60px; box-sizing: border-box; font-family: {font_family};">
-    <h1 style="font-size: 32px; font-weight: 700; color: {colors['text_primary']}; margin: 0 0 40px 0;">目录 / CONTENTS</h1>
+## OUTPUT (HTML Only)
+```html
+<div style="width: 1280px; height: 720px; background: #ffffff; padding: 60px; box-sizing: border-box; font-family: {font_family}; overflow: hidden;">
+    <h1 style="font-size: 32px; font-weight: 700; color: {colors['text_primary']}; margin: 0 0 40px 0;">目录</h1>
     <div style="display: flex; flex-direction: column; gap: 20px;">
-        <!-- 每个章节一行 -->
         <div style="display: flex; align-items: center; gap: 24px; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb;">
             <span style="font-size: 24px; font-weight: 700; color: {colors['primary']}; min-width: 40px;">01</span>
             <span style="font-size: 20px; color: {colors['text_primary']};">章节标题</span>
         </div>
-        <!-- 以此类推，只放章节，不放其他内容！ -->
     </div>
 </div>
+```
 """
 
     def _build_section_prompt(
         self, context: GenerationContext, page_info: PageInfo,
         design_prompt: str, colors: Dict[str, str], font_family: str
     ) -> str:
-        """章节页 Prompt - 纯色背景（不使用背景图以节省 API 消耗）"""
+        """章节页 Prompt - High Density (Centered Transition)"""
         section_num = page_info.section_num if page_info.section_num > 0 else 1
-        
+
         return f"""
-# 章节过场页设计
+# TASK: Design Section Transition Slide
 
-## 章节信息
-- 章节序号：0{section_num}
-- 章节标题：{page_info.title}
+## INPUT
+- Num: 0{section_num}
+- Title: {page_info.title}
 
-## 设计要求
+## SPECS
+- **Background**: {colors['primary']} (Solid).
+- **Alignment**: Center/Center (Transition Style).
+- **Safety**: `overflow: hidden`.
 
-- 主色背景 {colors['primary']}
-- 序号 72px，白色，细体
-- 标题 36px，白色，粗体
-- 居中显示
-
-## 输出
-
-直接输出 HTML，不要任何解释：
-
-<div style="width: 1280px; height: 720px; background: {colors['primary']}; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: {font_family};">
+## OUTPUT (HTML Only)
+```html
+<div style="width: 1280px; height: 720px; background: {colors['primary']}; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: {font_family}; overflow: hidden;">
     <div style="font-size: 72px; font-weight: 300; color: rgba(255,255,255,0.3); margin-bottom: 16px;">0{section_num}</div>
-    <div style="width: 40px; height: 2px; background: rgba(255,255,255,0.5); margin-bottom: 24px;"></div>
-    <h1 style="font-size: 36px; font-weight: 700; color: #ffffff; margin: 0;">{page_info.title}</h1>
+    <div style="width: 60px; height: 4px; background: rgba(255,255,255,0.5); margin-bottom: 32px;"></div>
+    <h1 style="font-size: 48px; font-weight: 700; color: #ffffff; margin: 0; text-align: center; max-width: 800px; line-height: 1.2;">{page_info.title}</h1>
 </div>
+```
 """
 
     def _build_closing_prompt(
@@ -708,17 +629,17 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         bg_image_url: str = None
     ) -> str:
         """封底页 Prompt - 内联样式，支持背景图"""
-        
+
         # 使用 AI 提炼的汇报单位，如果没有则使用用户填写的
         org_text = context.ai_org_name if context.ai_org_name else context.organization
-        
+
         if bg_image_url:
             # 有背景图：直接返回完整的 HTML 模板
             return f"""__DIRECT_HTML__
-<div style="width: 1280px; height: 720px; background: url('{bg_image_url}') center/cover no-repeat; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: {font_family}; position: relative;">
+<div style="width: 1280px; height: 720px; background: url('{bg_image_url}') center/cover no-repeat; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: {font_family}; position: relative; overflow: hidden;">
     <!-- 蒙版 -->
     <div style="position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.4) 100%);"></div>
-    
+
     <!-- 内容 -->
     <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center;">
         <div style="font-size: 72px; font-weight: 700; color: #ffffff; margin-bottom: 32px; letter-spacing: 8px; text-shadow: 0 2px 20px rgba(0,0,0,0.3);">谢谢</div>
@@ -730,16 +651,16 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         else:
             # 无背景图：直接返回 HTML 模板
             return f"""__DIRECT_HTML__
-<div style="width: 1280px; height: 720px; background: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: {font_family}; position: relative;">
+<div style="width: 1280px; height: 720px; background: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: {font_family}; position: relative; overflow: hidden;">
     <!-- 顶部装饰 -->
     <div style="position: absolute; top: 0; left: 0; right: 0; height: 8px; background: {colors['primary']}; opacity: 0.6;"></div>
 
     <div style="font-size: 64px; font-weight: 700; color: {colors['primary']}; margin-bottom: 32px; letter-spacing: 4px;">谢谢</div>
-    
+
     <div style="width: 60px; height: 4px; background: {colors['text_secondary']}; margin-bottom: 32px; opacity: 0.3;"></div>
-    
+
     <div style="font-size: 18px; color: {colors['text_secondary']};">{org_text}</div>
-    
+
     <!-- 底部装饰 -->
     <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 24px; background: {colors['primary']};"></div>
 </div>
@@ -749,219 +670,111 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         self, context: GenerationContext, page_info: PageInfo,
         design_prompt: str, colors: Dict[str, str], font_family: str
     ) -> str:
-        """正文页 Prompt - 内容丰富 + 内联样式"""
-        
+        """正文页 Prompt - High Density + Defensive CSS"""
+
         # 提取相关的原始素材
         source_material = self._extract_relevant_content(
-            context.document_content, 
-            page_info.title, 
+            context.document_content,
+            page_info.title,
             page_info.content
         )
-        
-        return f"""
-# 正文页设计（第 {page_info.page_num}/{page_info.total_pages} 页）
 
-## 页面信息
+        # 图片说明 logic
+        image_instruction = ""
+        image_indices = getattr(page_info, 'image_indices', None) or page_info.__dict__.get('image_indices', [])
+        if image_indices and context.image_descriptions and len(context.image_descriptions) > 0:
+            related_descriptions = []
+            for idx in image_indices:
+                if 0 <= idx < len(context.image_descriptions):
+                    related_descriptions.append(f"### Image {idx+1} Content:\n{context.image_descriptions[idx]}")
 
-### 标题（这是核心观点，要有信息量）
-{page_info.title}
+            if related_descriptions:
+                all_descriptions = "\n\n".join(related_descriptions)
+                image_instruction = f"""
+## 📷 VISUAL REFERENCES (Must Visualize)
+The user provided images for this slide. Use their content:
+{all_descriptions}
+**Visualization Rule**: Don't just copy text. Create a "Digital Twin" of the image structure (Matrix, Process, Hierarchy) using HTML/CSS.
+"""
 
-### 副标题/引导语（补充说明标题）
-{page_info.content}
-
-### 参考素材
-```
-{source_material}
-```
-
-## 设计目标
-
-1. **内容核心化**：只保留最有价值的信息，**删除所有废话**。
-2. **视觉化**：能用图表/数字/卡片展示的，绝不写长段文字。
-3. **防止拥挤**：内容区域必须留有 30% 以上的空白呼吸感。
-
-## 内容处理规则
-
-- **列表项**：每项不超过 2 行，超过必须精简。
-- **段落**：正文段落不超过 3 行，超过必须拆分或删减。
-- **关键词**：重点词汇加粗。
-- **数字**：重要数据放大显示。
-
-## 禁止事项（重要！）
-
-1. **禁止长篇大论** - 严禁堆砌文字
-2. **禁止侧边装饰色块** - 不要卡片左侧彩色竖条
-3. **禁止 Emoji 和图标** - 不要任何 emoji
-4. **禁止内容触及底部** - 底部有页码保留区
-5. **⚠️ 严禁编造数据！** - 所有数字必须来自上面的"参考素材"
-   - 不要凭空编造任何具体数字（如"98.5%"、"增长35%"）
-   - 如果素材中没有数据支撑，使用定性描述（如"显著提升"、"大幅增长"）
-6. **⚠️ 禁止添加"底部预留空间" div！** - `padding-bottom: 80px` 已经处理了底部空间，不要再添加任何 `height: 80px` 的空 div！
-
-## 无数据时的视觉化策略（重要！用代码绘制！）
-
-当"参考素材"缺乏具体数据时，**必须使用 CSS 绘制视觉元素**来增强页面，不要只放纯文字！
-
-### 流程图模板（横向，用 flexbox 绘制）
-```html
-<div style="display: flex; align-items: center; justify-content: space-between; padding: 30px; background: #f5f7fa; border-radius: 8px;">
-    <div style="text-align: center; flex: 1;">
-        <div style="font-size: 14px; color: #6b7280;">阶段一</div>
-        <div style="font-size: 20px; font-weight: 700; color: #1A365D; margin-top: 8px;">核心概念</div>
-    </div>
-    <div style="color: #cbd5e1; font-size: 24px; padding: 0 15px;">→</div>
-    <div style="text-align: center; flex: 1;">
-        <div style="font-size: 14px; color: #6b7280;">阶段二</div>
-        <div style="font-size: 20px; font-weight: 700; color: #1A365D; margin-top: 8px;">下一步</div>
-    </div>
-    <div style="color: #cbd5e1; font-size: 24px; padding: 0 15px;">→</div>
-    <div style="text-align: center; flex: 1;">
-        <div style="font-size: 14px; color: #6b7280;">阶段三</div>
-        <div style="font-size: 20px; font-weight: 700; color: #1A365D; margin-top: 8px;">最终目标</div>
-    </div>
-</div>
-```
-
-### 对比布局模板（左右两栏）
-```html
-<div style="display: flex; gap: 40px;">
-    <div style="flex: 1; padding: 30px; border: 1px solid #e5e7eb; border-radius: 8px;">
-        <div style="font-size: 18px; font-weight: 700; color: #1A365D; margin-bottom: 20px;">现状/问题</div>
-        <p style="color: #4b5563; line-height: 1.6;">描述当前状态或挑战...</p>
-    </div>
-    <div style="display: flex; align-items: center; color: #cbd5e1; font-size: 32px;">→</div>
-    <div style="flex: 1; padding: 30px; background: #f5f7fa; border-radius: 8px;">
-        <div style="font-size: 18px; font-weight: 700; color: #1A365D; margin-bottom: 20px;">目标/方案</div>
-        <p style="color: #4b5563; line-height: 1.6;">描述目标状态或解决方案...</p>
-    </div>
-</div>
-```
-
-### 时间轴模板（CSS 绘制的圆点和线条）
-```html
-<div style="display: flex; align-items: flex-start; justify-content: space-between; position: relative; padding-top: 40px;">
-    <!-- 连接线 -->
-    <div style="position: absolute; top: 48px; left: 10%; right: 10%; height: 2px; background: #e5e7eb;"></div>
-    <!-- 节点1 -->
-    <div style="text-align: center; flex: 1; position: relative;">
-        <div style="width: 16px; height: 16px; background: #1A365D; border-radius: 50%; margin: 0 auto 15px;"></div>
-        <div style="font-size: 14px; color: #6b7280;">2024</div>
-        <div style="font-size: 16px; font-weight: 600; color: #1A365D; margin-top: 5px;">里程碑一</div>
-    </div>
-    <!-- 更多节点... -->
-</div>
-```
-
-### 关键词大字模板
-```html
-<div style="text-align: center; padding: 40px;">
-    <div style="font-size: 48px; font-weight: 700; color: #1A365D; margin-bottom: 15px;">核心概念词</div>
-    <div style="font-size: 18px; color: #6b7280; max-width: 600px; margin: 0 auto;">对这个概念的简短解释说明</div>
-</div>
-```
-
-⚠️ **优先使用以上 CSS 模板绘制视觉元素，不要只放纯文字列表！**
-{f'''
-## 用户特别要求
-
-用户提供了以下风格/内容偏好，请在设计时参考：
-
-```
-{context.custom_instructions}
-```
-
-请在遵守上述设计规范的前提下，尽量满足用户的要求。
-''' if context.custom_instructions and context.custom_instructions.strip() else ''}
-
-## 布局规范（严格遵守！）
-
-**画布尺寸**：1280 × 720 像素
-
-**空间分配**：
-- 顶部边距：50px
-- 左右边距：60px
-- **底部保留区：80px**（用于页码和留白，内容不可进入！）
-
-**可用内容高度**：720 - 50 - 80 = **590px**
-
-```
-┌──────────────────────────────────────┐  ← 顶部 50px
-│  [标题区] ~80px                       │
-│  ────────────────────────────────    │
-│                                      │
-│  [内容区] 最大高度约 480px            │
-│  内容不要太多，留有余地               │
-│                                      │
-│  ════════════════════════════════    │  ← 内容停止线
-│  [底部保留区 80px - 页码/留白]        │  ← ⚠️ 不可放内容！
-└──────────────────────────────────────┘
-```
-
-**重要**：内容区不要填满，底部要有明显留白！
-
-## 颜色（严格限制！）
-
-**主题色**：
-- 主色：{colors['primary']}
-- 主文字：{colors['text_primary']}
-- 次文字：{colors['text_secondary']}
-
-**背景色只能用**：
-- 白色 #ffffff
-- 浅灰 #f5f7fa
-- ⚠️ **禁止浅红色 (#fef2f2, #fee2e2)、浅绿色 (#f0fdf4, #dcfce7)！** 这是廉价 AI 设计
-
-**特殊场景才用**：
-- 成功色 {colors['success']}（仅用于真实的增长数据 ↑）
-- 危险色 {colors['danger']}（仅用于真实的下降数据 ↓）
-- ⚠️ **禁止红绿对比的"优劣对比"设计！**
-
-## 图表（鼓励使用！）
-
-**当"参考素材"中有数据时，优先使用 ECharts 图表来呈现**，图表比纯文字更有说服力！
-
-📊 **图表使用指南**：
-- ✅ **积极使用图表** - 有数据就放图表，视觉效果更好
-- ✅ 图表高度建议 200px ~ 250px，保证可读性
-- ✅ 数据必须来自参考素材（不能编造）
-- ⚠️ 如果页面内容已经很满，图表可以适当缩小到 180px
-- ⚠️ 极端情况下（剩余空间不足 150px），才考虑不放图表
-
-```html
-<div style="width: 100%; max-width: calc(100% - 120px); height: 220px;" id="chart_page{page_info.page_num}"></div>
+        # ECharts Template (Compressed)
+        echarts_template = f"""
+<div style="width: 100%; height: 250px;" id="chart_page{page_info.page_num}"></div>
 <script>
 (function() {{
     var chart = echarts.init(document.getElementById('chart_page{page_info.page_num}'));
     chart.setOption({{
         animation: false,
-        color: ['{colors["primary"]}', '{colors["accent"]}'],
-        grid: {{ top: 30, bottom: 25, left: 45, right: 15, containLabel: true }},
-        xAxis: {{ type: 'category', data: ['标签'] }},
+        color: ['{colors["primary"]}', '{colors.get("accent", "#4A90D9")}', '#7FB3E8'],
+        grid: {{ top: 30, bottom: 30, left: 50, right: 20, containLabel: true }},
+        xAxis: {{ type: 'category', data: ['X'] }},
         yAxis: {{ type: 'value' }},
-        series: [{{ data: [数值], type: 'bar' }}]
+        series: [{{ data: [100], type: 'bar' }}]
     }});
 }})();
 </script>
+"""
+
+        return f"""
+# TASK: Design Content Slide {page_info.page_num}/{page_info.total_pages}
+
+## 📄 INPUT DATA
+**Title (Conclusion)**: {page_info.title}
+**Subtitle**: {page_info.content}
+**Source Material**:
+```
+{source_material}
+```
+{image_instruction}
+
+## 🎨 DESIGN SPECS (Swiss Style)
+
+**1. Layout Physics (Defensive CSS)**
+- **Container**: Flexbox (Row or Column).
+- **Growth**: `flex: 1` to fill remaining space.
+- **Safety**: `overflow: hidden` on ALL cards is MANDATORY.
+- **Images**: `object-fit: contain` always.
+- **Typography**: No walls of text. Use Cards, Grids, or big numbers.
+
+**2. Visual Hierarchy**
+- **Title**: {colors['text_primary']} (Bold)
+- **Highlights**: {colors['primary']}
+
+**3. Data Visualization (Preferred)**
+If data exists, use ECharts:
+```html
+{echarts_template}
 ```
 
-## 输出
+**4. Concept Visualization (No Data)**
+Use CSS Shapes for:
+- **Process**: Flex row with arrows (→).
+- **Comparison**: Split view (Left vs Right).
+- **Grid**: Equal-height cards.
 
-直接输出完整 HTML（注意：`padding-bottom: 80px` 已经预留了底部空间，**不要再添加额外的底部 div**！）：
+{f'''
+## 👤 USER OVERRIDE
+{context.custom_instructions}
+''' if context.custom_instructions and context.custom_instructions.strip() else ''}
 
+## 🚀 OUTPUT (HTML Only)
+**Canvas**: 1280x720. **Padding**: 50px 60px 80px.
+**Bottom 80px**: RESERVED (Do not touch).
+
+```html
 <div style="width: 1280px; height: 720px; background: #ffffff; padding: 50px 60px 80px; box-sizing: border-box; font-family: {font_family}; display: flex; flex-direction: column; overflow: hidden;">
-    <!-- 标题区 -->
-    <div style="margin-bottom: 24px; flex-shrink: 0; max-width: 100%;">
-        <h1 style="font-size: 32px; font-weight: 700; color: {colors['text_primary']}; margin: 0; line-height: 1.3;">标题（核心观点）</h1>
-        <p style="font-size: 16px; color: {colors['text_secondary']}; margin: 8px 0 0 0;">副标题/引导语</p>
+    <!-- Header -->
+    <div style="margin-bottom: 30px; flex-shrink: 0;">
+        <h1 style="font-size: 32px; font-weight: 700; color: {colors['text_primary']}; margin: 0; line-height: 1.2;">{page_info.title}</h1>
+        <p style="font-size: 16px; color: {colors['text_secondary']}; margin: 8px 0 0 0;">{page_info.content}</p>
     </div>
-    
-    <!-- 内容区 - 直接放内容，不要添加任何 "底部预留" 的 div！ -->
-    <div style="flex: 1; display: flex; gap: 32px; overflow: hidden; max-width: 100%;">
-        <!-- 你的创意内容 -->
+
+    <!-- Body (Defensive: min-height: 0 prevents overflow) -->
+    <div style="flex: 1; min-height: 0; display: flex; gap: 30px; overflow: hidden;">
+        <!-- INSERT CONTENT HERE -->
     </div>
-    
-    <!-- ⚠️ 不要在这里添加任何 "底部预留空间" 的 div！padding-bottom: 80px 已经处理了！ -->
 </div>
+```
 """
 
     def _extract_relevant_content(self, full_content: str, title: str, content_hint: str) -> str:
@@ -1012,17 +825,17 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
                     {"type": "text", "text": prompt}
                 ]
                 
-                # 添加图片（最多 5 张，避免请求过大）
-                for img in images[:5]:
+                # 添加图片
+                for img in images:
                     user_content.append({
                         "type": "image_url",
                         "image_url": {
                             "url": img['data_url'],
-                            "detail": "low"  # 使用低分辨率节省 token
+                            "detail": "high"  # 使用高分辨率模式以识别图片中的文字和细节
                         }
                     })
                 
-                console.print(f"[cyan]📷 多模态请求：包含 {min(len(images), 5)} 张图片[/cyan]")
+                console.print(f"[cyan]📷 多模态请求：包含 {len(images)} 张图片[/cyan]")
             else:
                 # 纯文本请求
                 user_content = prompt
@@ -1080,9 +893,9 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
     def _clean_html(self, html: str) -> str:
         """清理 HTML"""
         import re
-        
+
         html = html.strip()
-        
+
         # 移除 markdown 代码块
         if html.startswith('```html'):
             html = html[7:]
@@ -1090,16 +903,24 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
             html = html[3:]
         if html.endswith('```'):
             html = html[:-3]
-        
+
         # 移除 HTML 之前的解释文字
         first_tag = re.search(r'<div\s', html, re.IGNORECASE)
         if first_tag and first_tag.start() > 0:
             html = html[first_tag.start():]
-        
+
         # 移除 style 和 header 标签
         html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
         html = re.sub(r'<header[^>]*>.*?</header>', '', html, flags=re.DOTALL | re.IGNORECASE)
-        
+
+        # 注入全局无滚动条样式
+        no_scrollbar_style = """<style>
+::-webkit-scrollbar { display: none; }
+* { -ms-overflow-style: none; scrollbar-width: none; }
+</style>"""
+        if not html.startswith("<style>"):
+            html = no_scrollbar_style + "\n" + html
+
         # 转换 Markdown 加粗语法 **text** 为 HTML <strong> 标签
         # 使用非贪婪匹配 (.*?) 并允许跨行 (re.DOTALL)
         html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html, flags=re.DOTALL)
@@ -1195,5 +1016,177 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         
         for pattern, replacement in cheap_color_replacements:
             html = re.sub(pattern, replacement, html, flags=re.IGNORECASE)
-        
+
         return html.strip()
+
+    async def generate_speech_script(self, context: GenerationContext, pages: List[Dict[str, Any]]) -> str:
+        """
+        生成演讲口播稿
+
+        结合：
+        1. 原始文档内容 (context.document_content)
+        2. 生成的幻灯片结构 (pages)
+
+        目标：生成一份适合工作汇报场景的、逻辑清晰、专业得体的演讲稿
+        """
+        # 构建幻灯片结构描述
+        slides_text = ""
+        for i, page in enumerate(pages):
+            slides_text += f"\n[第 {i+1} 页] {page.get('type', 'CONTENT')} | {page.get('title', '无标题')}\n"
+            slides_text += f"核心内容: {page.get('content', '')}\n"
+            if 'image_indices' in page and page['image_indices']:
+                slides_text += f"(包含 {len(page['image_indices'])} 张图片)\n"
+
+        # 估算演讲时长
+        estimated_minutes = max(5, len(pages) * 2)
+
+        prompt = f"""
+# 角色：资深职场汇报撰稿人
+
+你是一位熟悉商务汇报、政府工作报告、企业述职的**专业撰稿人**。
+你的任务是将一份 PPT 演示文稿转化为一份**工作汇报口播稿**。
+
+---
+
+# 📝 输入材料
+
+## 1. 原始文档内容（节选）
+```
+{context.document_content[:15000]}...
+```
+
+## 2. 幻灯片结构
+```
+{slides_text}
+```
+
+## 3. 汇报背景
+- **汇报单位**: {context.organization}
+- **场景类型**: {context.scenario}
+- **预计时长**: 约 {estimated_minutes} 分钟
+
+---
+
+# � 工作汇报口播稿撰写规范
+
+## 1. 总体原则
+
+- **结论先行**：每个部分先说结论/成果，再展开细节
+- **数据说话**：用具体数据和事实支撑观点，避免空洞形容词
+- **逻辑清晰**：按照"总-分-总"或"时间线"等清晰结构组织
+- **语言得体**：正式但不生硬，自信但不浮夸
+
+## 2. 开场白规范
+
+**✅ 推荐开场方式**：
+- "各位领导、各位同事，大家好。下面由我代表[单位]，汇报[主题]。"
+- "感谢给予这次汇报机会。接下来我将从X个方面，向大家汇报[主题]。"
+- 简要说明汇报结构："今天的汇报主要包括三个部分：一是[...]，二是[...]，三是[...]。"
+
+**❌ 避免**：
+- 不要过度客套："不胜荣幸"、"诚惶诚恐"
+- 不要过于戏剧化：不需要悬念、反问式开场
+- 不要自我贬低："能力有限"、"准备不足"
+
+## 3. 正文表达规范
+
+### 段落结构（每页幻灯片）
+1. **承上启下**：用一句话过渡（简洁即可）
+2. **核心论点**：先说这一页的主要结论
+3. **数据/案例支撑**：用1-2个具体例子或数据论证
+4. **小结（可选）**：复杂内容可加一句总结
+
+### 语言风格
+- **口语化但专业**：
+  - ✅ "这张图表显示..."、"从数据来看..."、"具体来说..."
+  - ❌ "如您所见..."、"毋庸置疑..."、"众所周知..."
+  
+- **过渡自然**：
+  - ✅ "接下来看第二部分..."、"除此之外..."、"在这个基础上..."
+  - ❌ 不需要每页都有戏剧性过渡
+
+- **数据表达**：
+  - ✅ "同比增长15%，达到XXX"、"相比去年提升了X个百分点"
+  - ❌ 避免堆砌数据不解读
+
+## 4. 结尾规范
+
+**✅ 推荐结尾方式**：
+- 简要总结："以上就是本次汇报的主要内容，总结起来三句话：第一[...]，第二[...]，第三[...]。"
+- 展望或计划："下一步，我们将重点做好X项工作..."
+- 请求或感谢："以上汇报请各位领导批评指正，谢谢！"
+
+**❌ 避免**：
+- 不要突然结束，没有收尾
+- 不要过于煽情
+
+## 5. 格式要求
+
+- 用中文撰写
+- 使用 Markdown 格式
+- 每页幻灯片对应一个 `## [第X页] 标题` 段落
+- 用 `---` 分隔主要章节
+- 可用 `[过渡]` 标记需要切换幻灯片的位置
+
+---
+
+# 📋 输出格式
+
+```markdown
+# [汇报标题]
+
+## 开场白
+[简洁得体的开场，说明汇报主题和结构]
+
+---
+
+## [第1页] 封面
+[通常融入开场白，可省略单独段落]
+
+## [第2页] 目录
+[简要介绍今天汇报的几个部分]
+
+[过渡]
+
+---
+
+## [第3页] 章节标题
+[该章节的引言，概括本章要点]
+
+## [第4页] 具体内容页标题
+[结论先行 + 数据/案例支撑]
+
+[过渡]
+
+...
+
+---
+
+## 结束语
+[总结要点 + 下一步计划或请示 + 致谢]
+
+---
+*汇报单位: {context.organization} | 预计时长: {estimated_minutes}分钟*
+```
+
+---
+
+# 🚫 禁忌清单
+
+1. **不要照念PPT**：将书面语转化为口语表达
+2. **不要空洞浮夸**：避免"跨越式发展"、"质的飞跃"等大词，除非有数据支撑
+3. **不要遗漏关键数据**：原文档中的重要数字要保留并解读
+4. **不要过于冗长**：每页幻灯片对应的口播控制在100-200字左右
+
+---
+
+# 开始撰写
+
+请根据以上规范，为这份演示文稿生成一份**专业、得体、逻辑清晰**的工作汇报口播稿。
+
+**语言**: 简体中文
+**开始 ⬇️**
+"""
+        return await self._call_ai(prompt, use_reasoning=False)
+
+

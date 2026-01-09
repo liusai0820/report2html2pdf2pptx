@@ -170,43 +170,101 @@ class DocumentParser:
         markdown_content = []
         extracted_images = []  # 存储提取的图片 (base64 格式)
         
-        # 提取文档中的嵌入图片
+        # 提取文档中的嵌入图片（带压缩优化）
         try:
             import base64
+            import io
             from docx.opc.constants import RELATIONSHIP_TYPE as RT
             
+            # 尝试导入 Pillow 进行图片压缩
+            try:
+                from PIL import Image
+                has_pillow = True
+            except ImportError:
+                has_pillow = False
+                console.print("[yellow]⚠ Pillow 未安装，图片将不会被压缩[/yellow]")
+            
             image_count = 0
-            MAX_IMAGES = 10  # 限制最多提取 10 张图片，避免 API 请求过大
+            MAX_SIZE = 1024   # 最大尺寸 1024x1024（提高分辨率以保留文字细节）
+            JPEG_QUALITY = 85  # JPEG 压缩质量提高到 85%（确保文字清晰）
+            MIN_IMAGE_SIZE = 2000  # 最小图片大小（字节），小于此值认为是图标
             
             for rel in doc.part.rels.values():
-                if rel.reltype == RT.IMAGE and image_count < MAX_IMAGES:
+                if rel.reltype == RT.IMAGE:  # 不限制数量，提取所有有效图片
                     try:
                         image_blob = rel.target_part.blob
                         content_type = rel.target_part.content_type
                         
                         # 过滤掉太小的图片（可能是图标或装饰）
-                        if len(image_blob) < 5000:  # 小于 5KB 跳过
+                        if len(image_blob) < MIN_IMAGE_SIZE:  # 小于 2KB 跳过
                             continue
                         
-                        # 转换为 base64
-                        image_base64 = base64.b64encode(image_blob).decode('utf-8')
-                        
-                        # 构建 data URL
-                        data_url = f"data:{content_type};base64,{image_base64}"
-                        
-                        extracted_images.append({
-                            'data_url': data_url,
-                            'content_type': content_type,
-                            'size': len(image_blob)
-                        })
-                        image_count += 1
+                        # 压缩和缩放图片
+                        if has_pillow:
+                            try:
+                                img = Image.open(io.BytesIO(image_blob))
+                                
+                                # 转换为 RGB（处理 RGBA 或其他模式）
+                                if img.mode in ('RGBA', 'LA', 'P'):
+                                    # 创建白色背景
+                                    background = Image.new('RGB', img.size, (255, 255, 255))
+                                    if img.mode == 'P':
+                                        img = img.convert('RGBA')
+                                    background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                                    img = background
+                                elif img.mode != 'RGB':
+                                    img = img.convert('RGB')
+                                
+                                # 缩放到 MAX_SIZE 以下（保持比例）
+                                if img.width > MAX_SIZE or img.height > MAX_SIZE:
+                                    img.thumbnail((MAX_SIZE, MAX_SIZE), Image.Resampling.LANCZOS)
+                                
+                                # 压缩为 JPEG
+                                buffer = io.BytesIO()
+                                img.save(buffer, format='JPEG', quality=JPEG_QUALITY, optimize=True)
+                                compressed_blob = buffer.getvalue()
+                                
+                                # 构建 data URL
+                                image_base64 = base64.b64encode(compressed_blob).decode('utf-8')
+                                data_url = f"data:image/jpeg;base64,{image_base64}"
+                                
+                                extracted_images.append({
+                                    'data_url': data_url,
+                                    'content_type': 'image/jpeg',
+                                    'size': len(compressed_blob),
+                                    'original_size': len(image_blob)
+                                })
+                                image_count += 1
+                                
+                            except Exception as pil_err:
+                                console.print(f"[yellow]⚠ 图片压缩失败: {pil_err}，使用原图[/yellow]")
+                                # 回退到原图
+                                image_base64 = base64.b64encode(image_blob).decode('utf-8')
+                                data_url = f"data:{content_type};base64,{image_base64}"
+                                extracted_images.append({
+                                    'data_url': data_url,
+                                    'content_type': content_type,
+                                    'size': len(image_blob)
+                                })
+                                image_count += 1
+                        else:
+                            # 无 Pillow，直接使用原图
+                            image_base64 = base64.b64encode(image_blob).decode('utf-8')
+                            data_url = f"data:{content_type};base64,{image_base64}"
+                            extracted_images.append({
+                                'data_url': data_url,
+                                'content_type': content_type,
+                                'size': len(image_blob)
+                            })
+                            image_count += 1
                         
                     except Exception as img_err:
                         console.print(f"[yellow]⚠ 提取图片失败: {img_err}[/yellow]")
                         continue
             
             if extracted_images:
-                console.print(f"[green]✓[/green] 从文档中提取了 {len(extracted_images)} 张图片")
+                total_size = sum(img['size'] for img in extracted_images)
+                console.print(f"[green]✓[/green] 从文档中提取了 {len(extracted_images)} 张图片 (共 {total_size/1024:.1f} KB)")
         except Exception as e:
             console.print(f"[yellow]⚠ 图片提取过程出错: {e}[/yellow]")
         

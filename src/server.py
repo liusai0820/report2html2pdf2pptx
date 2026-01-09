@@ -55,6 +55,8 @@ import mailer
 import db
 from core.output_renderer import OutputRenderer
 from v2.image_generator import get_image_generator
+from v2.ai_designer import AIDesigner, GenerationContext
+from v2.design_system import DesignSystem
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import reporter
@@ -74,6 +76,9 @@ def adjust_color(hex_color: str, factor: float) -> str:
         return "#{:02x}{:02x}{:02x}".format(r, g, b)
     except Exception:
         return hex_color
+
+class GenerateSpeechRequest(BaseModel):
+    output_name: str
 
 class GenerateRequest(BaseModel):
     document_name: str
@@ -703,7 +708,27 @@ async def generate_with_progress(req: GenerateRequest) -> AsyncGenerator[str, No
             "pages": pages_data
         }
         yield send_event("preview_ready", "预览就绪", 70, result=preview_data)
-        
+
+        # 【新增】保存元数据 metadata.json (用于演讲稿生成等后续任务)
+        try:
+            metadata = {
+                "document_name": req.document_name,
+                "scenario": req.scenario,
+                "organization": req.organization,
+                "theme_color": req.theme_color,
+                "font_style": req.font_style,
+                "target_pages": req.target_pages,
+                "content_depth": req.content_depth,
+                "created_at": timestamp,
+                "pages": outline,
+            }
+            metadata_path = output_dir / "metadata.json"
+            import json
+            metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding='utf-8')
+            logger.info(f"Metadata saved: {metadata_path}")
+        except Exception as e:
+            logger.warning(f"Failed to save metadata in V1: {e}")
+
         # ===== Stage 6 & 7: 后台生成 PDF 和 PPTX =====
         pdf_path = None
         pptx_path = None
@@ -1142,6 +1167,83 @@ async def generate_ai_reply(feedback: FeedbackNotification, quota_info: str = ""
     except Exception as e:
         print(f"LLM generation failed: {e}")
         return None
+
+@app.post("/api/generate-speech")
+async def generate_speech(req: GenerateSpeechRequest):
+    """
+    根据已生成的演示文稿生成演讲稿
+    """
+    output_dir = Path("output") / req.output_name
+    if not output_dir.exists():
+        raise HTTPException(status_code=404, detail="演示文稿不存在")
+
+    metadata_path = output_dir / "metadata.json"
+    if not metadata_path.exists():
+        # 尝试向后兼容：如果是刚生成的但没有 metadata (极其罕见)，或者是旧的
+        # 这里我们严格一点，没有 metadata 就无法高质量生成
+        raise HTTPException(status_code=400, detail="该演示文稿不支持演讲稿生成 (元数据丢失)")
+
+    try:
+        import json
+        metadata = json.loads(metadata_path.read_text(encoding='utf-8'))
+
+        # 1. 重建上下文
+        document_name = metadata.get('document_name')
+        if not document_name:
+             raise HTTPException(status_code=400, detail="元数据损坏")
+
+        input_file = Path("input") / document_name
+
+        content = ""
+        if input_file.exists():
+             # 复用解析逻辑
+            try:
+                if input_file.suffix.lower() in ('.txt', '.md'):
+                    content = input_file.read_text(encoding='utf-8')
+                else:
+                    from document_parser import DocumentParser
+                    doc_data = DocumentParser.load_document(str(input_file))
+                    content = doc_data.get('full_content', '')
+            except Exception as e:
+                logger.warning(f"Failed to read input file {input_file}: {e}")
+
+        # 如果 content 为空，脚本生成质量会下降，但我们仍然允许生成 (基于 slide content)
+
+        # 初始化 DesignSystem
+        ds = DesignSystem.from_scenario(metadata.get('scenario', 'consulting'))
+
+        context = GenerationContext(
+            document_content=content,
+            document_name=document_name,
+            organization=metadata.get('organization', '汇报单位'),
+            scenario=metadata.get('scenario', 'consulting'),
+            design_system=ds,
+            target_pages=metadata.get('target_pages', 20),
+            content_depth=metadata.get('content_depth', 'normal')
+        )
+
+        # 2. 初始化 Designer
+        designer = AIDesigner(
+            api_key=config.OPENROUTER_API_KEY,
+            base_url=config.OPENROUTER_BASE_URL,
+            model=config.DEFAULT_MODEL
+        )
+
+        # 3. 生成演讲稿
+        pages = metadata.get('pages', [])
+        if not pages:
+             raise HTTPException(status_code=400, detail="演示文稿页面数据为空")
+
+        script = await designer.generate_speech_script(context, pages)
+
+        return {"status": "success", "script": script}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Generate speech failed: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"生成演讲稿失败: {str(e)}")
 
 # ========== 运行入口 ==========
 

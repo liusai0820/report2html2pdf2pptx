@@ -6,6 +6,7 @@ rich>=13.0.0
 # 文档处理
 python-docx>=0.8.11
 jieba>=0.42.1
+Pillow>=10.0.0
 
 # PDF 处理
 PyPDF2>=3.0.0

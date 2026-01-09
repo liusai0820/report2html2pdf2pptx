@@ -340,7 +340,7 @@ class PresentationEngine:
     <style>
         /* 统一样式系统 */
         {unified_css}
-        
+
         /* 页面容器样式 */
         body {{
             margin: 0;
@@ -351,14 +351,14 @@ class PresentationEngine:
             align-items: center;
             gap: 20px;
         }}
-        
+
         /* 幻灯片容器包装 */
         .slide-wrapper {{
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             background: white;
             page-break-after: always; /* 用于打印/PDF */
         }}
-        
+
         @media print {{
             body {{
                 margin: 0;
@@ -372,10 +372,133 @@ class PresentationEngine:
                 margin: 0;
                 padding: 0;
             }}
+            #speech-btn, .speech-modal {{ display: none !important; }}
         }}
+
+        /* 演讲稿按钮样式 */
+        @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
+        .speech-btn {{
+            position: fixed; top: 20px; right: 20px; z-index: 9999;
+            padding: 10px 20px; background: #1A365D; color: white;
+            border: none; border-radius: 4px; cursor: pointer;
+            font-family: sans-serif; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: all 0.2s; display: flex; align-items: center; gap: 8px;
+        }}
+        .speech-btn:hover {{ background: #2c5282; transform: translateY(-1px); }}
+        .speech-modal {{
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            z-index: 10000; justify-content: center; align-items: center;
+            backdrop-filter: blur(4px);
+        }}
+        .speech-modal-content {{
+            background: white; width: 800px; max-width: 90%; height: 80vh;
+            border-radius: 12px; display: flex; flex-direction: column;
+            overflow: hidden; box-shadow: 0 4px 30px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease-out;
+        }}
+        @keyframes slideIn {{ from {{ opacity: 0; transform: translateY(20px); }} to {{ opacity: 1; transform: translateY(0); }} }}
     </style>
 </head>
 <body>
+    <!-- 演讲稿生成按钮 -->
+    <button id="speech-btn" class="speech-btn">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+        生成演讲稿
+    </button>
+
+    <!-- 演讲稿模态框 -->
+    <div id="speech-modal" class="speech-modal">
+        <div class="speech-modal-content">
+            <div style="padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                <h3 style="margin: 0; font-size: 18px; color: #333; font-weight: 600;">🎙️ 演讲口播稿</h3>
+                <button onclick="document.getElementById('speech-modal').style.display='none'" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999; padding: 0 8px;">&times;</button>
+            </div>
+            <div id="speech-content" style="flex: 1; padding: 40px; overflow-y: auto; font-size: 16px; line-height: 1.8; color: #333; white-space: pre-wrap; font-family: 'PingFang SC', system-ui, sans-serif;">
+                <!-- Content injected here -->
+            </div>
+            <div style="padding: 20px; border-top: 1px solid #eee; text-align: right; background: #f8fafc; display: flex; justify-content: flex-end; gap: 12px;">
+                <button onclick="copySpeech()" style="padding: 8px 16px; background: #white; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; color: #475569; font-weight: 500;">复制全文</button>
+                <button onclick="document.getElementById('speech-modal').style.display='none'" style="padding: 8px 16px; background: #1A365D; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.getElementById('speech-btn').onclick = async function() {{
+        document.getElementById('speech-modal').style.display = 'flex';
+        const contentDiv = document.getElementById('speech-content');
+        contentDiv.innerHTML = `
+            <div style="text-align: center; color: #64748b; margin-top: 100px;">
+                <div style="display: inline-block; width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: #1A365D; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+                <p style="font-size: 16px;">AI 正在阅读幻灯片并撰写演讲稿...</p>
+                <p style="font-size: 14px; opacity: 0.7;">预计需要 15-30 秒</p>
+            </div>
+        `;
+
+        try {{
+            // Extract output name from URL
+            const pathParts = window.location.pathname.split('/');
+            let outputName = null;
+            for(let i=0; i<pathParts.length; i++) {{
+                if(pathParts[i] === 'output' && i+1 < pathParts.length) {{
+                    outputName = pathParts[i+1];
+                    break;
+                }}
+            }}
+
+            if (!outputName) {{
+                // Try getting from parent folder name if opened as file
+                const path = window.location.pathname;
+                const match = path.match(/\\/([^\\/]+)\\/presentation\\.html$/);
+                if (match) {{
+                    outputName = match[1];
+                }} else {{
+                    throw new Error("无法从 URL 获取演示文稿 ID，请确保在系统中打开");
+                }}
+            }}
+
+            const response = await fetch('/api/generate-speech', {{
+                method: 'POST',
+                headers: {{ 'Content-Type': 'application/json' }},
+                body: JSON.stringify({{ output_name: outputName }})
+            }});
+
+            if (!response.ok) {{
+                const errData = await response.json();
+                throw new Error(errData.detail || "生成请求失败");
+            }}
+
+            const data = await response.json();
+
+            // Simple markdown parsing
+            let htmlContent = data.script
+                .replace(/^# (.*$)/gim, '<h1 style="font-size: 24px; margin-top: 20px; margin-bottom: 10px; color: #1e293b;">$1</h1>')
+                .replace(/^## (.*$)/gim, '<h2 style="font-size: 20px; margin-top: 15px; margin-bottom: 8px; color: #334155;">$1</h2>')
+                .replace(/\\*\\*(.*)\\*\\*/gim, '<strong>$1</strong>')
+                .replace(/\\n/g, '<br>');
+
+            contentDiv.innerHTML = htmlContent;
+
+        }} catch (e) {{
+            contentDiv.innerHTML = `
+                <div style="color: #ef4444; text-align: center; margin-top: 100px; padding: 20px; background: #fef2f2; border-radius: 8px; max-width: 400px; margin-left: auto; margin-right: auto;">
+                    <svg style="width: 48px; height: 48px; margin-bottom: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    <div style="font-weight: bold; margin-bottom: 8px;">生成失败</div>
+                    <div>${{e.message}}</div>
+                </div>`;
+        }}
+    }};
+
+    function copySpeech() {{
+        const text = document.getElementById('speech-content').innerText;
+        navigator.clipboard.writeText(text).then(() => {{
+            const btn = document.querySelector('button[onclick="copySpeech()"]');
+            const originalText = btn.innerText;
+            btn.innerText = '已复制!';
+            setTimeout(() => btn.innerText = originalText, 2000);
+        }});
+    }}
+    </script>
     {"".join(wrapped_pages)}
 </body>
 </html>"""

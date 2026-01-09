@@ -93,57 +93,57 @@ export const generatePresentationStream = (data, onProgress) => {
         fetch(`${API_BASE}/generate-v2`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...data, engine: 'v2' }), 
+            body: JSON.stringify({ ...data, engine: 'v2' }),
         })
-        .then(response => {
-            if (!response.ok) {
-                return response.text().then(text => {
-                    throw new Error(`HTTP ${response.status}: ${text}`);
-                });
-            }
-            
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            
-            function processText(text) {
-                buffer += text;
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || ''; // 保留最后一个不完整的行
-                
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        try {
-                            const event = JSON.parse(line.slice(6));
-                            onProgress(event);
-                            
-                            if (event.stage === 'done') {
-                                resolve(event.result);
-                            } else if (event.stage === 'error') {
-                                reject(new Error(event.message));
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`HTTP ${response.status}: ${text}`);
+                    });
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                function processText(text) {
+                    buffer += text;
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || ''; // 保留最后一个不完整的行
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const event = JSON.parse(line.slice(6));
+                                onProgress(event);
+
+                                if (event.stage === 'done') {
+                                    resolve(event.result);
+                                } else if (event.stage === 'error') {
+                                    reject(new Error(event.message));
+                                }
+                            } catch (e) {
+                                console.warn('Failed to parse SSE event:', line);
                             }
-                        } catch (e) {
-                            console.warn('Failed to parse SSE event:', line);
                         }
                     }
                 }
-            }
-            
-            function read() {
-                reader.read().then(({ done, value }) => {
-                    if (done) {
-                        // 处理剩余的 buffer
-                        if (buffer) processText('');
-                        return;
-                    }
-                    processText(decoder.decode(value, { stream: true }));
-                    read();
-                }).catch(reject);
-            }
-            
-            read();
-        })
-        .catch(reject);
+
+                function read() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            // 处理剩余的 buffer
+                            if (buffer) processText('');
+                            return;
+                        }
+                        processText(decoder.decode(value, { stream: true }));
+                        read();
+                    }).catch(reject);
+                }
+
+                read();
+            })
+            .catch(reject);
     });
 };
 
@@ -159,4 +159,18 @@ export const getOutputUrl = (path) => {
         return `${baseUrl}/output/${match[1]}`;
     }
     return path;
+};
+
+// 生成演讲稿
+export const generateSpeechScript = async (outputName) => {
+    const response = await fetch(`${API_BASE}/generate-speech`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ output_name: outputName }),
+    });
+    if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.detail || '演讲稿生成失败');
+    }
+    return response.json();
 };
