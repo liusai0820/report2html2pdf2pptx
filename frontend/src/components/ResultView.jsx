@@ -11,10 +11,387 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, MonitorPlay, LayoutGrid, PanelLeft, ChevronLeft, ChevronRight, X, Loader2, ZoomIn, ZoomOut, Sparkles, Zap, Mic } from 'lucide-react';
+import { Download, MonitorPlay, LayoutGrid, PanelLeft, ChevronLeft, ChevronRight, X, Loader2, ZoomIn, ZoomOut, Sparkles, Zap, Mic, Copy, Check, Type, Moon, Sun, BookOpen, Download as DownloadIcon } from 'lucide-react';
 import { getOutputUrl, generateSpeechScript } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import FeedbackModal from './FeedbackModal';
+
+// 演讲稿阅读器组件 - 编辑杂志风格
+const SpeechScriptModal = ({ isOpen, onClose, content, loading, error }) => {
+    const [fontSize, setFontSize] = useState(16); // 16px, 18px, 20px, 22px
+    const [theme, setTheme] = useState('light'); // 'light' | 'sepia' | 'dark'
+    const [copied, setCopied] = useState(false);
+    const contentRef = useRef(null);
+
+    if (!isOpen) return null;
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(content);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleDownload = () => {
+        const blob = new Blob([content], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '演讲稿.md';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    // 主题颜色配置
+    const themes = {
+        light: {
+            bg: '#FDFCFB',
+            contentBg: '#FFFFFF',
+            text: '#1A1A1A',
+            textSecondary: '#525252',
+            border: '#E5E5E5',
+            accent: '#2563EB',
+            headerBg: 'linear-gradient(to bottom, #FFFFFF, #F9FAFB)'
+        },
+        sepia: {
+            bg: '#F4F1EA',
+            contentBg: '#FAF8F3',
+            text: '#3A3226',
+            textSecondary: '#6B5D4F',
+            border: '#D4CFC4',
+            accent: '#92400E',
+            headerBg: 'linear-gradient(to bottom, #FAF8F3, #F4F1EA)'
+        },
+        dark: {
+            bg: '#1A1A1A',
+            contentBg: '#232323',
+            text: '#E5E5E5',
+            textSecondary: '#A3A3A3',
+            border: '#404040',
+            accent: '#60A5FA',
+            headerBg: 'linear-gradient(to bottom, #232323, #1A1A1A)'
+        }
+    };
+
+    const currentTheme = themes[theme];
+
+    // Markdown 转 HTML（增强版）
+    const renderMarkdown = (md) => {
+        return md
+            .replace(/^# (.*$)/gim, '<h1 class="speech-h1">$1</h1>')
+            .replace(/^## (.*$)/gim, '<h2 class="speech-h2">$1</h2>')
+            .replace(/^### (.*$)/gim, '<h3 class="speech-h3">$1</h3>')
+            .replace(/\*\*(.*?)\*\*/gim, '<strong class="speech-strong">$1</strong>')
+            .replace(/\*(.*?)\*/gim, '<em class="speech-em">$1</em>')
+            .replace(/^- (.*$)/gim, '<li class="speech-li">$1</li>')
+            .replace(/\[过渡\]/gim, '<span class="speech-transition">⌘ 过渡</span>')
+            .replace(/\[停顿\]/gim, '<span class="speech-pause">⏸ 停顿</span>')
+            .replace(/---/g, '<hr class="speech-divider" />')
+            .replace(/\n\n/g, '</p><p class="speech-p">')
+            .replace(/^(.+)$/gim, (match) => {
+                if (match.startsWith('<h') || match.startsWith('<li') || match.startsWith('<hr') || match.startsWith('<span')) {
+                    return match;
+                }
+                return `<p class="speech-p">${match}</p>`;
+            });
+    };
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300"
+            style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                backdropFilter: 'blur(8px)'
+            }}
+            onClick={onClose}
+        >
+            <div
+                className="w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
+                style={{
+                    backgroundColor: currentTheme.bg,
+                    fontFamily: "'Newsreader', 'Source Serif Pro', 'Noto Serif SC', Georgia, serif"
+                }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* 精致的顶部工具栏 */}
+                <div
+                    className="flex-shrink-0 px-8 py-5 border-b flex items-center justify-between"
+                    style={{
+                        background: currentTheme.headerBg,
+                        borderColor: currentTheme.border
+                    }}
+                >
+                    <div className="flex items-center gap-4">
+                        <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: currentTheme.accent + '15' }}
+                        >
+                            <Mic className="w-5 h-5" style={{ color: currentTheme.accent }} />
+                        </div>
+                        <div>
+                            <h2
+                                className="text-xl font-bold tracking-tight"
+                                style={{
+                                    color: currentTheme.text,
+                                    fontFamily: "'Inter', 'PingFang SC', sans-serif"
+                                }}
+                            >
+                                演讲口播稿
+                            </h2>
+                            <p className="text-xs mt-0.5" style={{ color: currentTheme.textSecondary }}>
+                                Speech Script
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {/* 字号调节 */}
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-lg border" style={{ borderColor: currentTheme.border }}>
+                            <Type className="w-3.5 h-3.5" style={{ color: currentTheme.textSecondary }} />
+                            {[14, 16, 18, 20].map((size) => (
+                                <button
+                                    key={size}
+                                    onClick={() => setFontSize(size)}
+                                    className="px-2 py-1 text-xs font-medium rounded transition-all"
+                                    style={{
+                                        color: fontSize === size ? currentTheme.accent : currentTheme.textSecondary,
+                                        backgroundColor: fontSize === size ? currentTheme.accent + '15' : 'transparent'
+                                    }}
+                                >
+                                    {size === 14 ? 'S' : size === 16 ? 'M' : size === 18 ? 'L' : 'XL'}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* 主题切换 */}
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-lg border" style={{ borderColor: currentTheme.border }}>
+                            {[
+                                { key: 'light', icon: Sun, label: '日间' },
+                                { key: 'sepia', icon: BookOpen, label: '护眼' },
+                                { key: 'dark', icon: Moon, label: '夜间' }
+                            ].map(({ key, icon: Icon }) => (
+                                <button
+                                    key={key}
+                                    onClick={() => setTheme(key)}
+                                    className="p-1.5 rounded transition-all"
+                                    style={{
+                                        color: theme === key ? currentTheme.accent : currentTheme.textSecondary,
+                                        backgroundColor: theme === key ? currentTheme.accent + '15' : 'transparent'
+                                    }}
+                                >
+                                    <Icon className="w-3.5 h-3.5" />
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="w-px h-6 mx-1" style={{ backgroundColor: currentTheme.border }} />
+
+                        {/* 操作按钮 */}
+                        <button
+                            onClick={handleCopy}
+                            disabled={!content || loading}
+                            className="p-2 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            style={{ color: currentTheme.textSecondary }}
+                            title="复制全文"
+                        >
+                            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                        <button
+                            onClick={handleDownload}
+                            disabled={!content || loading}
+                            className="p-2 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            style={{ color: currentTheme.textSecondary }}
+                            title="下载文稿"
+                        >
+                            <DownloadIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="p-2 rounded-lg transition-all"
+                            style={{ color: currentTheme.textSecondary }}
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* 主内容区域 */}
+                <div
+                    ref={contentRef}
+                    className="flex-1 overflow-y-auto px-12 py-10"
+                    style={{
+                        backgroundColor: currentTheme.contentBg,
+                        scrollBehavior: 'smooth'
+                    }}
+                >
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center h-full" style={{ color: currentTheme.textSecondary }}>
+                            <div className="relative w-16 h-16 mb-6">
+                                <div
+                                    className="absolute inset-0 rounded-full border-2 border-t-transparent animate-spin"
+                                    style={{ borderColor: currentTheme.accent, borderTopColor: 'transparent' }}
+                                />
+                                <Mic className="absolute inset-0 m-auto w-6 h-6" style={{ color: currentTheme.accent }} />
+                            </div>
+                            <p className="text-lg font-medium mb-2" style={{ color: currentTheme.text }}>
+                                AI 正在阅读幻灯片并撰写演讲稿
+                            </p>
+                            <p className="text-sm" style={{ color: currentTheme.textSecondary }}>
+                                预计需要 15-30 秒，请稍候...
+                            </p>
+                            <div className="mt-6 flex gap-1">
+                                {[0, 1, 2].map((i) => (
+                                    <div
+                                        key={i}
+                                        className="w-2 h-2 rounded-full animate-pulse"
+                                        style={{
+                                            backgroundColor: currentTheme.accent,
+                                            animationDelay: `${i * 150}ms`
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    ) : error ? (
+                        <div className="flex flex-col items-center justify-center h-full">
+                            <div
+                                className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                                style={{ backgroundColor: '#FEE2E2' }}
+                            >
+                                <X className="w-8 h-8 text-red-500" />
+                            </div>
+                            <p className="text-lg font-semibold text-red-600 mb-2">生成失败</p>
+                            <p className="text-sm text-red-500">{error}</p>
+                        </div>
+                    ) : (
+                        <article
+                            className="max-w-3xl mx-auto speech-content"
+                            style={{
+                                fontSize: `${fontSize}px`,
+                                lineHeight: fontSize <= 16 ? '1.8' : '1.75',
+                                color: currentTheme.text
+                            }}
+                        >
+                            <div
+                                dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+                            />
+                        </article>
+                    )}
+                </div>
+
+                {/* 自定义样式 */}
+                <style jsx>{`
+                    .speech-content {
+                        animation: fadeIn 0.5s ease-out;
+                    }
+
+                    @keyframes fadeIn {
+                        from { opacity: 0; transform: translateY(10px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+
+                    .speech-h1 {
+                        font-size: 2em;
+                        font-weight: 700;
+                        margin: 2em 0 0.75em 0;
+                        letter-spacing: -0.02em;
+                        line-height: 1.2;
+                        color: ${currentTheme.text};
+                        font-family: 'Inter', 'PingFang SC', sans-serif;
+                    }
+
+                    .speech-h1:first-child {
+                        margin-top: 0;
+                    }
+
+                    .speech-h2 {
+                        font-size: 1.5em;
+                        font-weight: 600;
+                        margin: 1.5em 0 0.5em 0;
+                        letter-spacing: -0.01em;
+                        line-height: 1.3;
+                        color: ${currentTheme.text};
+                        font-family: 'Inter', 'PingFang SC', sans-serif;
+                    }
+
+                    .speech-h3 {
+                        font-size: 1.25em;
+                        font-weight: 600;
+                        margin: 1.25em 0 0.5em 0;
+                        color: ${currentTheme.textSecondary};
+                        font-family: 'Inter', 'PingFang SC', sans-serif;
+                    }
+
+                    .speech-p {
+                        margin: 1em 0;
+                        text-align: justify;
+                        text-justify: inter-character;
+                    }
+
+                    .speech-strong {
+                        font-weight: 600;
+                        color: ${currentTheme.accent};
+                    }
+
+                    .speech-em {
+                        font-style: italic;
+                        color: ${currentTheme.textSecondary};
+                    }
+
+                    .speech-li {
+                        margin: 0.5em 0 0.5em 1.5em;
+                        list-style: disc;
+                    }
+
+                    .speech-transition,
+                    .speech-pause {
+                        display: inline-block;
+                        padding: 0.125em 0.5em;
+                        margin: 0 0.25em;
+                        border-radius: 0.25em;
+                        font-size: 0.875em;
+                        font-weight: 500;
+                        font-family: 'Inter', 'PingFang SC', sans-serif;
+                    }
+
+                    .speech-transition {
+                        background-color: ${currentTheme.accent}15;
+                        color: ${currentTheme.accent};
+                    }
+
+                    .speech-pause {
+                        background-color: ${currentTheme.textSecondary}15;
+                        color: ${currentTheme.textSecondary};
+                    }
+
+                    .speech-divider {
+                        margin: 2em 0;
+                        border: none;
+                        height: 1px;
+                        background: linear-gradient(to right, transparent, ${currentTheme.border}, transparent);
+                    }
+
+                    /* 自定义滚动条 */
+                    .speech-content::-webkit-scrollbar {
+                        width: 8px;
+                    }
+
+                    .speech-content::-webkit-scrollbar-track {
+                        background: ${currentTheme.bg};
+                    }
+
+                    .speech-content::-webkit-scrollbar-thumb {
+                        background: ${currentTheme.border};
+                        border-radius: 4px;
+                    }
+
+                    .speech-content::-webkit-scrollbar-thumb:hover {
+                        background: ${currentTheme.textSecondary};
+                    }
+                `}</style>
+            </div>
+        </div>
+    );
+};
 
 // Turbo 升级弹窗组件 - 瑞士杂志风格
 const TurboUpgradeModal = ({ isOpen, onClose }) => {
@@ -673,77 +1050,15 @@ export default function ResultView({ result, downloads, isProcessing, generation
                 onClose={() => setShowTurboModal(false)}
             />
 
-            {/* 演讲稿弹窗 */}
+            {/* 演讲稿弹窗 - 编辑杂志风格 */}
             {showSpeechModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)' }}>
-                    <div className="bg-white w-[800px] max-w-[90%] h-[80vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        {/* Header */}
-                        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                                    <Mic className="w-4 h-4 text-indigo-600" />
-                                </div>
-                                <h3 className="text-lg font-semibold text-slate-800">演讲口播稿</h3>
-                            </div>
-                            <button
-                                onClick={() => setShowSpeechModal(false)}
-                                className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
-                            >
-                                <X className="w-5 h-5 text-slate-500" />
-                            </button>
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-6">
-                            {speechLoading ? (
-                                <div className="flex flex-col items-center justify-center h-full text-slate-500">
-                                    <div className="w-10 h-10 border-3 border-slate-200 border-t-indigo-600 rounded-full animate-spin mb-4" style={{ borderWidth: '3px' }}></div>
-                                    <p className="text-base">AI 正在阅读幻灯片并撰写演讲稿...</p>
-                                    <p className="text-sm text-slate-400 mt-1">预计需要 15-30 秒</p>
-                                </div>
-                            ) : speechError ? (
-                                <div className="flex flex-col items-center justify-center h-full text-red-500">
-                                    <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
-                                        <X className="w-6 h-6" />
-                                    </div>
-                                    <p className="font-medium">生成失败</p>
-                                    <p className="text-sm mt-1">{speechError}</p>
-                                </div>
-                            ) : (
-                                <div
-                                    className="prose prose-slate max-w-none text-base leading-relaxed"
-                                    style={{ fontFamily: "'PingFang SC', 'Noto Sans SC', system-ui, sans-serif", whiteSpace: 'pre-wrap' }}
-                                    dangerouslySetInnerHTML={{
-                                        __html: speechContent
-                                            .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-6 mb-3 text-slate-800">$1</h1>')
-                                            .replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-4 mb-2 text-slate-700">$1</h2>')
-                                            .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
-                                    }}
-                                />
-                            )}
-                        </div>
-
-                        {/* Footer */}
-                        <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-3 bg-slate-50">
-                            <button
-                                onClick={() => {
-                                    navigator.clipboard.writeText(speechContent);
-                                    // 可选：显示复制成功提示
-                                }}
-                                disabled={!speechContent || speechLoading}
-                                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                复制全文
-                            </button>
-                            <button
-                                onClick={() => setShowSpeechModal(false)}
-                                className="px-4 py-2 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors"
-                            >
-                                关闭
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <SpeechScriptModal
+                    isOpen={showSpeechModal}
+                    onClose={() => setShowSpeechModal(false)}
+                    content={speechContent}
+                    loading={speechLoading}
+                    error={speechError}
+                />
             )}
         </div>
     );
