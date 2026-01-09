@@ -54,6 +54,7 @@ class GenerationContext:
     bg_image_source: str = "none"   # 背景图来源: 'none', 'unsplash', 'ai'
     report_type: str = ""           # AI 提炼的报告类型（如"产业研究报告"）
     ai_org_name: str = ""           # AI 提炼的汇报单位（优先于 organization）
+    images: List[Dict] = None       # 文档中提取的图片列表 (base64 格式)
 
 
 # ============================================================================
@@ -226,7 +227,8 @@ class AIDesigner:
         """
         prompt = self._build_outline_prompt(context)
         # 大纲规划开启 Reasoning，让 AI 深度思考结构
-        response = await self._call_ai(prompt, use_reasoning=True)
+        # 如果有图片，传递给 AI 进行多模态理解
+        response = await self._call_ai(prompt, use_reasoning=True, images=context.images)
         return self._parse_outline(response)
     
     async def generate_page(
@@ -322,6 +324,18 @@ class AIDesigner:
         }
         depth_hint = depth_guidance.get(context.content_depth, depth_guidance["normal"])
         
+        # 图片说明（如果有的话）
+        image_section = ""
+        if context.images and len(context.images) > 0:
+            image_section = f"""
+### 📷 文档附图（共 {len(context.images)} 张）
+
+⚠️ **请仔细分析附带的图片**，这些图片来自原始文档：
+- 图片可能包含重要的数据图表、框架图、流程图等
+- 请从图片中提取关键信息，整合到大纲规划中
+- 图表中的数据是可信的原始数据，可以在正文页中引用
+"""
+        
         return f"""
 # 大纲规划任务
 
@@ -334,7 +348,7 @@ class AIDesigner:
 ```
 {context.document_content[:50000]}
 ```
-
+{image_section}
 ### 项目信息
 - 文档名称：{context.document_name}
 - 汇报单位：{context.organization}
@@ -981,21 +995,44 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
         
         return result if result else content_hint
 
-    async def _call_ai(self, prompt: str, retry_count: int = 0, use_reasoning: bool = False) -> str:
+    async def _call_ai(self, prompt: str, retry_count: int = 0, use_reasoning: bool = False, images: List[Dict] = None) -> str:
         """调用 AI API
         
         Args:
             prompt: 用户提示词
             retry_count: 当前重试次数
             use_reasoning: 是否开启 Reasoning（仅对支持的模型如 gemini-3-flash-preview 生效）
+            images: 图片列表（可选）[{'data_url': 'data:image/...', 'content_type': '...'}]
         """
         try:
+            # 构建用户消息内容
+            if images and len(images) > 0:
+                # 多模态请求：包含文本和图片
+                user_content = [
+                    {"type": "text", "text": prompt}
+                ]
+                
+                # 添加图片（最多 5 张，避免请求过大）
+                for img in images[:5]:
+                    user_content.append({
+                        "type": "image_url",
+                        "image_url": {
+                            "url": img['data_url'],
+                            "detail": "low"  # 使用低分辨率节省 token
+                        }
+                    })
+                
+                console.print(f"[cyan]📷 多模态请求：包含 {min(len(images), 5)} 张图片[/cyan]")
+            else:
+                # 纯文本请求
+                user_content = prompt
+            
             # 构建基础请求参数
             request_params = {
                 "model": self.model,
                 "messages": [
                     {"role": "system", "content": DESIGNER_SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": user_content}
                 ],
                 "temperature": self.temperature,
                 "max_tokens": 16000,  # 增加输出长度限制，支持 80+ 页大纲
@@ -1027,7 +1064,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
                 wait_time = 2 * (retry_count + 1)
                 console.print(f"[yellow]⚠ 超时，{wait_time}秒后重试...[/yellow]")
                 await asyncio.sleep(wait_time)
-                return await self._call_ai(prompt, retry_count + 1, use_reasoning)
+                return await self._call_ai(prompt, retry_count + 1, use_reasoning, images)
             raise
         
         except Exception as e:
@@ -1035,7 +1072,7 @@ CONTENT|研发投入不足是制约发展的首要瓶颈|全区研发强度仅2.
                 wait_time = 2 * (retry_count + 1)
                 console.print(f"[yellow]⚠ 失败: {str(e)[:80]}，{wait_time}秒后重试...[/yellow]")
                 await asyncio.sleep(wait_time)
-                return await self._call_ai(prompt, retry_count + 1, use_reasoning)
+                return await self._call_ai(prompt, retry_count + 1, use_reasoning, images)
             raise
 
 

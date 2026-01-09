@@ -168,6 +168,47 @@ class DocumentParser:
             raise ValueError(f"无法打开 Word 文档: {error_msg}")
         
         markdown_content = []
+        extracted_images = []  # 存储提取的图片 (base64 格式)
+        
+        # 提取文档中的嵌入图片
+        try:
+            import base64
+            from docx.opc.constants import RELATIONSHIP_TYPE as RT
+            
+            image_count = 0
+            MAX_IMAGES = 10  # 限制最多提取 10 张图片，避免 API 请求过大
+            
+            for rel in doc.part.rels.values():
+                if rel.reltype == RT.IMAGE and image_count < MAX_IMAGES:
+                    try:
+                        image_blob = rel.target_part.blob
+                        content_type = rel.target_part.content_type
+                        
+                        # 过滤掉太小的图片（可能是图标或装饰）
+                        if len(image_blob) < 5000:  # 小于 5KB 跳过
+                            continue
+                        
+                        # 转换为 base64
+                        image_base64 = base64.b64encode(image_blob).decode('utf-8')
+                        
+                        # 构建 data URL
+                        data_url = f"data:{content_type};base64,{image_base64}"
+                        
+                        extracted_images.append({
+                            'data_url': data_url,
+                            'content_type': content_type,
+                            'size': len(image_blob)
+                        })
+                        image_count += 1
+                        
+                    except Exception as img_err:
+                        console.print(f"[yellow]⚠ 提取图片失败: {img_err}[/yellow]")
+                        continue
+            
+            if extracted_images:
+                console.print(f"[green]✓[/green] 从文档中提取了 {len(extracted_images)} 张图片")
+        except Exception as e:
+            console.print(f"[yellow]⚠ 图片提取过程出错: {e}[/yellow]")
         
         # 遍历文档中的所有块级元素（段落、表格、SDT等）
         for element in doc.element.body:
@@ -241,7 +282,8 @@ class DocumentParser:
             'full_content': full_markdown,
             'pages': [],  # 空列表，让 AI 自己决定如何拆分
             'title': doc_title,
-            'style_guide': '现代企业风格，使用科技蓝和活力橙配色，1280x720分辨率'
+            'style_guide': '现代企业风格，使用科技蓝和活力橙配色，1280x720分辨率',
+            'images': extracted_images  # 文档中提取的图片 (base64 格式)
         }
     
     @staticmethod

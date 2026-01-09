@@ -54,6 +54,7 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
         # 读取文档内容
         # 简单处理：如果是 md/txt 直接读取，如果是 docx 需要解析
         content = ""
+        doc_images = []  # 存储从文档中提取的图片
         if input_file.suffix in ('.txt', '.md'):
             content = input_file.read_text(encoding='utf-8')
         else:
@@ -61,10 +62,15 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
             from document_parser import DocumentParser
             doc_data = DocumentParser.load_document(str(input_file))
             content = doc_data.get('full_content', '')
+            doc_images = doc_data.get('images', [])  # 获取提取的图片
             
         if not content:
             yield send_event("error", "文档内容为空或解析失败", 0)
             return
+        
+        # 如果有图片，通知前端
+        if doc_images:
+            yield send_event("info", f"📷 从文档中提取了 {len(doc_images)} 张图片，将用于 AI 理解", 3)
 
         # 2. 初始化引擎
         import datetime
@@ -127,7 +133,8 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
             target_pages=req.target_pages,
             content_depth=req.content_depth,
             custom_instructions=req.custom_instructions or "",  # 用户自定义指令
-            bg_image_source=getattr(req, 'bg_image_source', 'none')  # 背景图来源
+            bg_image_source=getattr(req, 'bg_image_source', 'none'),  # 背景图来源
+            images=doc_images if doc_images else None  # 文档中提取的图片
         )
         validator = SlideValidator(ds)
         
