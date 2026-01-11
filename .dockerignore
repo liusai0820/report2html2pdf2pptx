@@ -22,6 +22,7 @@ __pycache__
 .gemini-clipboard
 README.md
 docs
+!docs/development/promptv4.md
 scripts
 tests
 QUICK_START.md
