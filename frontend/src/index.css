@@ -16,11 +16,16 @@
   .text-gradient {
     @apply text-slate-900;
   }
-  
+
   .glass-card {
     @apply bg-white border border-slate-200 shadow-sm rounded-xl;
   }
-  
+
+  /* iOS Safe Area 底部内边距 */
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
   /* Custom Scrollbar for Sidebar */
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;

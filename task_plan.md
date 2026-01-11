@@ -1,85 +1,61 @@
-# Supabase 数据库优化计划
+# 内容页标题样式一致性问题
 
-> **基于真实数据库分析** (2026-01-11)
-
----
-
-## 最终结论
-
-经过深入分析，发现情况比预期好：
-
-| 问题 | 原状态 | 实际情况 |
-|------|--------|----------|
-| generations 表字段 NULL | 🔴 P0 | ✅ **新记录正常**，老记录是历史数据 |
-| custom_instructions 未传递 | 🟡 P1 | ✅ **已修复** |
-| user_events 表不存在 | 🟡 P1 | 待执行迁移 |
-| RLS 策略问题 | 待查 | ✅ 策略正常 |
+> **问题报告** (2026-01-11) - ✅ 已修复
 
 ---
 
-## Phase 1: 诊断 [completed] ✅
+## 问题描述
 
-### 1.1 RLS 策略检查 ✅
+用户截图显示内容页标题区样式不一致：
 
-执行结果：策略正常，无字段级限制。
+| 问题 | 表现 |
+|------|------|
+| 竖条颜色 | 有时蓝色、有时黄色、有时无 |
+| 文字颜色 | 有时黑色、有时蓝色 |
+| 目录标题 | "会议议程" 应为 "目录" |
 
-### 1.2 最新记录检查 ✅
-
-通过 `scripts/check_latest_generations.py` 确认：
-- `font_style`, `target_pages`, `content_depth` 等字段在新记录中正确填充
-- 老记录 NULL 是因为在代码更新前创建
-
----
-
-## Phase 2: 代码修复 [completed] ✅
-
-### 2.1 custom_instructions 传递 ✅
-
-**文件**: `frontend/src/App.jsx:218`
-
-```javascript
-custom_instructions: config.custom_instructions || null,
-```
+**根本原因**：AI 每次生成页面时自由发挥，没有强制统一的标题区模板。
 
 ---
 
-## Phase 3: 数据库优化 [pending]
+## Phase 1: 代码分析 ✅ COMPLETED
 
-### 3.1 创建 user_events 表
+### 1.1 目录页生成位置
+- ✅ `_build_agenda_prompt()` 方法 (line 568)
+- ✅ 模板中写的是"目录"，但 AI 自由改成"会议议程"
 
-执行 `migrations/optimize_database.sql` 中的 Part 5。
-
-### 3.2 创建分析视图
-
-执行 `migrations/optimize_database.sql` 中的 Part 4：
-- `analytics_user_growth`
-- `analytics_scenario_usage`
-- `analytics_user_activity`
-- `analytics_daily_overview`
-- `analytics_occupation_distribution`
-
-### 3.3 Admin.jsx 更新 ✅
-
-已添加「自定义指令」列到生成记录表格。
+### 1.2 内容页标题区
+- ✅ `_build_content_prompt()` 方法 (line 675)
+- ✅ 模板没有竖条，但 AI 随机添加装饰
+- ✅ 没有强制约束
 
 ---
 
-## 交付物
+## Phase 2: 解决方案 ✅ IMPLEMENTED
 
-| 文件 | 状态 | 说明 |
-|------|------|------|
-| `findings.md` | ✅ | 详细分析报告 |
-| `migrations/optimize_database.sql` | ✅ | 优化迁移脚本 |
-| `scripts/analyze_database.py` | ✅ | 数据库分析工具 |
-| `scripts/check_latest_generations.py` | ✅ | 最新记录检查工具 |
-| `frontend/src/App.jsx` | ✅ | 已添加 custom_instructions |
+### 修复内容
+
+| 文件 | 修改 |
+|------|------|
+| `ai_designer.py:585-587` | 目录页：强化规则 "Title MUST be exactly 目录" |
+| `ai_designer.py:773-790` | 内容页：添加 "⚠️ HEADER TEMPLATE (DO NOT MODIFY)" 强制约束 |
+
+### 关键改动
+
+1. **目录页** - 添加严格规则：
+   ```
+   ## 🚫 STRICT RULES
+   - **Title MUST be exactly "目录"** (NOT "会议议程", NOT "CONTENTS", NOT "Agenda")
+   ```
+
+2. **内容页** - 强制标题区模板：
+   ```
+   ### ⚠️ HEADER TEMPLATE (DO NOT MODIFY - Copy exactly as shown)
+   The header section below is a FIXED template. You MUST use it exactly as provided.
+   Do NOT add: vertical bars, borders, decorations, different colors, or any modifications.
+   ```
 
 ---
 
-## 下一步
-
-1. 在 Supabase SQL Editor 执行 `migrations/optimize_database.sql`（可选，用于创建分析视图和 user_events 表）
-
----
-
-_最后更新: 2026-01-11_
+_创建时间: 2026-01-11_
+_修复时间: 2026-01-11_
