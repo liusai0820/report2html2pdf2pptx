@@ -4,6 +4,8 @@ Supabase 数据库交互模块
 @input:  config (SUPABASE_SERVICE_ROLE_KEY, VITE_SUPABASE_URL)
 @output: add_generation_quota(user_id, amount) -> 更新用户配额
 @output: get_daily_report() -> 包含各项运营数据的字典
+@output: get_speech_script(generation_id) -> 获取缓存的演讲稿
+@output: save_speech_script(generation_id, user_id, content) -> 保存演讲稿
 @pos:    后端管理员级数据库操作，被 server.py 反馈处理调用
 
 ⚠️ 一旦我被更新，务必更新：
@@ -218,8 +220,72 @@ def get_daily_report() -> dict:
              logger.warning(f"Could not query feedbacks table: {e}")
              
         return stats
-        
+
     except Exception as e:
         logger.error(f"Error generating daily report: {e}")
         return stats
+
+
+# ========== 演讲稿缓存 ==========
+
+def get_speech_script(generation_id: str) -> str | None:
+    """获取已缓存的演讲稿
+
+    Args:
+        generation_id: 演示文稿的 output_name
+
+    Returns:
+        演讲稿内容 (Markdown)，如果不存在返回 None
+    """
+    client = get_client()
+    if not client:
+        return None
+
+    try:
+        res = client.table("speech_scripts") \
+            .select("content") \
+            .eq("generation_id", generation_id) \
+            .single() \
+            .execute()
+
+        if res.data:
+            return res.data.get("content")
+        return None
+
+    except Exception as e:
+        # 如果记录不存在，supabase 会抛出异常
+        logger.debug(f"Speech script not found for {generation_id}: {e}")
+        return None
+
+
+def save_speech_script(generation_id: str, user_id: str, content: str) -> bool:
+    """保存演讲稿到数据库
+
+    Args:
+        generation_id: 演示文稿的 output_name
+        user_id: 用户 ID
+        content: 演讲稿 Markdown 内容
+
+    Returns:
+        是否保存成功
+    """
+    client = get_client()
+    if not client:
+        return False
+
+    try:
+        # 使用 upsert 来处理重复生成的情况
+        client.table("speech_scripts").upsert({
+            "generation_id": generation_id,
+            "user_id": user_id,
+            "content": content,
+            "updated_at": datetime.now().isoformat()
+        }, on_conflict="generation_id").execute()
+
+        logger.info(f"Saved speech script for {generation_id}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error saving speech script: {e}")
+        return False
 

@@ -2,7 +2,7 @@
  * api.js - 后端 API 通信层
  *
  * @input:  VITE_API_URL 环境变量, 后端HTTP端点
- * @output: fetchScenarios, uploadFile, generatePresentationStream, getOutputUrl 等API函数
+ * @output: fetchScenarios, uploadFile, generatePresentationStream, getOutputUrl, getSpeechScript, generateSpeechScript 等API函数
  * @pos:    前端与后端的桥梁，封装所有HTTP请求和SSE流处理
  *
  * ⚠️ 一旦我被更新，务必更新：
@@ -161,12 +161,21 @@ export const getOutputUrl = (path) => {
     return path;
 };
 
+// 获取缓存的演讲稿
+export const getSpeechScript = async (outputName) => {
+    const response = await fetch(`${API_BASE}/speech/${encodeURIComponent(outputName)}`);
+    if (!response.ok) {
+        throw new Error('获取演讲稿失败');
+    }
+    return response.json();
+};
+
 // 生成演讲稿
-export const generateSpeechScript = async (outputName) => {
+export const generateSpeechScript = async (outputName, userId) => {
     const response = await fetch(`${API_BASE}/generate-speech`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ output_name: outputName }),
+        body: JSON.stringify({ output_name: outputName, user_id: userId }),
     });
     if (!response.ok) {
         const errData = await response.json();

@@ -476,7 +476,7 @@ const Admin = () => {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                             <thead>
                                 <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
-                                    {['用户', '职业', '文档名称', '页数', '场景', '生成时间'].map((h, i) => (
+                                    {['用户', '职业', '文档名称', '页数', '场景', '自定义指令', '生成时间'].map((h, i) => (
                                         <th key={i} style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, fontSize: '11px', color: '#64748B' }}>{h}</th>
                                     ))}
                                 </tr>
@@ -515,6 +515,24 @@ const Admin = () => {
                                             <td style={{ padding: '14px 16px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gen['文档名'] || gen.document_name || '—'}</td>
                                             <td style={{ padding: '14px 16px', fontFamily: 'monospace' }}>{gen['页数'] || gen.actual_pages || '—'}</td>
                                             <td style={{ padding: '14px 16px', color: '#64748B' }}>{scenario}</td>
+                                            <td style={{ padding: '14px 16px', maxWidth: '200px' }} title={gen.custom_instructions || ''}>
+                                                {gen.custom_instructions ? (
+                                                    <span style={{
+                                                        display: 'block',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                        color: '#2563EB',
+                                                        fontSize: '12px'
+                                                    }}>
+                                                        {gen.custom_instructions.length > 30
+                                                            ? gen.custom_instructions.slice(0, 30) + '...'
+                                                            : gen.custom_instructions}
+                                                    </span>
+                                                ) : (
+                                                    <span style={{ color: '#CBD5E1', fontSize: '12px' }}>—</span>
+                                                )}
+                                            </td>
                                             <td style={{ padding: '14px 16px', color: '#94A3B8', fontSize: '12px', whiteSpace: 'nowrap' }}>
                                                 {formatBeijingTime(gen['生成时间(北京)'] || gen.created_at)}
                                             </td>

@@ -79,6 +79,7 @@ def adjust_color(hex_color: str, factor: float) -> str:
 
 class GenerateSpeechRequest(BaseModel):
     output_name: str
+    user_id: str  # 用户 ID，用于保存演讲稿到数据库
 
 class GenerateRequest(BaseModel):
     document_name: str
@@ -1168,6 +1169,25 @@ async def generate_ai_reply(feedback: FeedbackNotification, quota_info: str = ""
         print(f"LLM generation failed: {e}")
         return None
 
+# ========== 演讲稿 API ==========
+
+@app.get("/api/speech/{output_name}")
+async def get_speech(output_name: str):
+    """
+    获取已缓存的演讲稿
+
+    Returns:
+        - {"status": "found", "script": content} 如果存在缓存
+        - {"status": "not_found"} 如果不存在
+    """
+    cached_script = db.get_speech_script(output_name)
+
+    if cached_script:
+        return {"status": "found", "script": cached_script}
+    else:
+        return {"status": "not_found"}
+
+
 @app.post("/api/generate-speech")
 async def generate_speech(req: GenerateSpeechRequest):
     """
@@ -1235,6 +1255,9 @@ async def generate_speech(req: GenerateSpeechRequest):
              raise HTTPException(status_code=400, detail="演示文稿页面数据为空")
 
         script = await designer.generate_speech_script(context, pages)
+
+        # 4. 保存到数据库
+        db.save_speech_script(req.output_name, req.user_id, script)
 
         return {"status": "success", "script": script}
 

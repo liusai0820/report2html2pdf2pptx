@@ -215,6 +215,7 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
               target_pages: config.target_pages,
               content_depth: config.content_depth,
               organization: config.organization || null,
+              custom_instructions: config.custom_instructions || null,
               // 实际生成结果
               output_dir: event.result.output_dir || null,
               actual_pages: event.result.pages_count || event.result.pages?.length || 0

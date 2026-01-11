@@ -11,13 +11,88 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, MonitorPlay, LayoutGrid, PanelLeft, ChevronLeft, ChevronRight, X, Loader2, ZoomIn, ZoomOut, Sparkles, Zap, Mic, Copy, Check, Type, Moon, Sun, BookOpen, Download as DownloadIcon } from 'lucide-react';
-import { getOutputUrl, generateSpeechScript } from '../api';
+import { Download, MonitorPlay, LayoutGrid, PanelLeft, ChevronLeft, ChevronRight, X, Loader2, ZoomIn, ZoomOut, Sparkles, Zap, Mic, Copy, Check, Type, Moon, Sun, BookOpen, Download as DownloadIcon, Presentation, MessageSquare } from 'lucide-react';
+import { getOutputUrl, generateSpeechScript, getSpeechScript } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import FeedbackModal from './FeedbackModal';
 
+// 演讲稿按页解析器
+// 将 Markdown 按 ## [第X页] 或 ## [第X-Y页] 拆分
+function parseSpeechByPage(markdown) {
+    if (!markdown) return [];
+
+    const sections = [];
+    // 匹配 ## [第X页] 或 ## [第X-Y页] 或 ## 开场白 等标题
+    const regex = /^## \[第(\d+)(?:-(\d+))?页\](.*)$|^## (开场白|结束语|结语)(.*)$/gim;
+
+    let lastIndex = 0;
+    let lastEndPage = 0;
+    let match;
+
+    // 找到所有匹配
+    const matches = [];
+    while ((match = regex.exec(markdown)) !== null) {
+        matches.push({
+            index: match.index,
+            fullMatch: match[0],
+            startPage: match[1] ? parseInt(match[1]) : null,
+            endPage: match[2] ? parseInt(match[2]) : (match[1] ? parseInt(match[1]) : null),
+            specialSection: match[4] || null, // 开场白/结束语
+            titleSuffix: match[3] || match[5] || ''
+        });
+    }
+
+    // 处理每个匹配，提取内容
+    for (let i = 0; i < matches.length; i++) {
+        const current = matches[i];
+        const nextIndex = i + 1 < matches.length ? matches[i + 1].index : markdown.length;
+
+        // 提取该章节的内容（不包括标题本身）
+        const contentStart = current.index + current.fullMatch.length;
+        const content = markdown.slice(contentStart, nextIndex).trim();
+
+        if (current.specialSection) {
+            // 开场白或结束语
+            sections.push({
+                type: current.specialSection,
+                pages: current.specialSection === '开场白' ? [1] : [],
+                title: current.specialSection + current.titleSuffix,
+                content: content
+            });
+        } else {
+            // 普通页面章节
+            const pages = [];
+            for (let p = current.startPage; p <= current.endPage; p++) {
+                pages.push(p);
+            }
+            sections.push({
+                type: 'page',
+                pages: pages,
+                title: `第${current.startPage}${current.endPage > current.startPage ? `-${current.endPage}` : ''}页${current.titleSuffix}`,
+                content: content
+            });
+        }
+    }
+
+    return sections;
+}
+
+// 根据当前页码获取对应的演讲稿段落
+function getSpeechForPage(sections, pageNumber) {
+    for (const section of sections) {
+        if (section.pages && section.pages.includes(pageNumber)) {
+            return section;
+        }
+    }
+    // 如果没有精确匹配，返回开场白（第1页）或最后一个章节
+    if (pageNumber === 1) {
+        return sections.find(s => s.type === '开场白') || sections[0];
+    }
+    return sections[sections.length - 1];
+}
+
 // 演讲稿阅读器组件 - 编辑杂志风格
-const SpeechScriptModal = ({ isOpen, onClose, content, loading, error }) => {
+const SpeechScriptModal = ({ isOpen, onClose, content, loading, error, onEnterPresenterMode }) => {
     const [fontSize, setFontSize] = useState(16); // 16px, 18px, 20px, 22px
     const [theme, setTheme] = useState('light'); // 'light' | 'sepia' | 'dark'
     const [copied, setCopied] = useState(false);
@@ -204,6 +279,27 @@ const SpeechScriptModal = ({ isOpen, onClose, content, loading, error }) => {
                         >
                             <DownloadIcon className="w-4 h-4" />
                         </button>
+
+                        <div className="w-px h-6 mx-1" style={{ backgroundColor: currentTheme.border }} />
+
+                        {/* 演讲者模式按钮 */}
+                        <button
+                            onClick={() => {
+                                onClose();
+                                onEnterPresenterMode && onEnterPresenterMode();
+                            }}
+                            disabled={!content || loading}
+                            className="px-3 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 text-sm font-medium"
+                            style={{
+                                color: currentTheme.accent,
+                                backgroundColor: currentTheme.accent + '15'
+                            }}
+                            title="进入演讲者模式"
+                        >
+                            <Presentation className="w-4 h-4" />
+                            <span>演讲者模式</span>
+                        </button>
+
                         <button
                             onClick={onClose}
                             className="p-2 rounded-lg transition-all"
@@ -393,6 +489,295 @@ const SpeechScriptModal = ({ isOpen, onClose, content, loading, error }) => {
     );
 };
 
+// 演讲者模式视图 - 左右分栏（幻灯片 + 演讲稿）
+const PresenterModeView = ({ isOpen, onClose, pages, speechContent, activeIndex, setActiveIndex, getOutputUrl }) => {
+    const [fontSize, setFontSize] = useState(18);
+    const speechSections = parseSpeechByPage(speechContent);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleKeyDown = (e) => {
+            const totalPages = pages?.length || 0;
+            if (totalPages === 0) return;
+
+            switch (e.key) {
+                case 'ArrowRight':
+                case 'ArrowDown':
+                case ' ':
+                    e.preventDefault();
+                    setActiveIndex(prev => Math.min(totalPages - 1, prev + 1));
+                    break;
+                case 'ArrowLeft':
+                case 'ArrowUp':
+                    e.preventDefault();
+                    setActiveIndex(prev => Math.max(0, prev - 1));
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    onClose();
+                    break;
+                case 'Home':
+                    e.preventDefault();
+                    setActiveIndex(0);
+                    break;
+                case 'End':
+                    e.preventDefault();
+                    setActiveIndex(totalPages - 1);
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, pages?.length, setActiveIndex, onClose]);
+
+    if (!isOpen) return null;
+
+    const currentSection = getSpeechForPage(speechSections, activeIndex + 1);
+    const totalPages = pages?.length || 0;
+
+    // 简单的 Markdown 渲染
+    const renderMarkdown = (md) => {
+        if (!md) return '';
+        return md
+            .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+            .replace(/\[过渡\]/gim, '<span class="presenter-transition">⌘ 切换幻灯片</span>')
+            .replace(/\[停顿\]/gim, '<span class="presenter-pause">⏸ 停顿</span>')
+            .replace(/^- (.*$)/gim, '<li>$1</li>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br/>');
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 bg-slate-900 flex">
+            {/* 左侧：幻灯片预览区 (60%) */}
+            <div className="w-[60%] h-full flex flex-col bg-black">
+                {/* 顶部工具栏 */}
+                <div className="flex-shrink-0 h-12 bg-slate-800/80 flex items-center justify-between px-4">
+                    <div className="flex items-center gap-3">
+                        <Presentation className="w-5 h-5 text-indigo-400" />
+                        <span className="text-white/90 font-medium text-sm">演讲者模式</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-white/60 text-sm">
+                            {activeIndex + 1} / {totalPages}
+                        </span>
+                        <button
+                            onClick={onClose}
+                            className="p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* 幻灯片展示 */}
+                <div className="flex-1 flex items-center justify-center p-6">
+                    <div className="w-full h-full flex items-center justify-center">
+                        <PresenterSlideView
+                            url={pages[activeIndex] ? getOutputUrl(pages[activeIndex].url) : ''}
+                        />
+                    </div>
+                </div>
+
+                {/* 底部导航 */}
+                <div className="flex-shrink-0 h-20 bg-slate-800/50 flex items-center justify-center gap-4 px-4">
+                    <button
+                        onClick={() => setActiveIndex(Math.max(0, activeIndex - 1))}
+                        disabled={activeIndex === 0}
+                        className="p-3 rounded-full bg-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/20 transition-colors"
+                    >
+                        <ChevronLeft className="w-6 h-6" />
+                    </button>
+
+                    {/* 缩略图导航 */}
+                    <div className="flex gap-2 overflow-x-auto max-w-[60%] py-2 px-1">
+                        {pages.slice(Math.max(0, activeIndex - 2), Math.min(totalPages, activeIndex + 3)).map((page, idx) => {
+                            const realIdx = Math.max(0, activeIndex - 2) + idx;
+                            return (
+                                <button
+                                    key={realIdx}
+                                    onClick={() => setActiveIndex(realIdx)}
+                                    className={`flex-shrink-0 w-16 h-9 rounded border-2 overflow-hidden transition-all ${
+                                        realIdx === activeIndex
+                                            ? 'border-indigo-500 ring-2 ring-indigo-500/30'
+                                            : 'border-white/20 hover:border-white/40'
+                                    }`}
+                                >
+                                    <div className="w-full h-full bg-slate-700 flex items-center justify-center text-[10px] text-white/60">
+                                        {realIdx + 1}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <button
+                        onClick={() => setActiveIndex(Math.min(totalPages - 1, activeIndex + 1))}
+                        disabled={activeIndex === totalPages - 1}
+                        className="p-3 rounded-full bg-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/20 transition-colors"
+                    >
+                        <ChevronRight className="w-6 h-6" />
+                    </button>
+                </div>
+            </div>
+
+            {/* 右侧：演讲稿区 (40%) */}
+            <div className="w-[40%] h-full flex flex-col bg-slate-50">
+                {/* 演讲稿头部 */}
+                <div className="flex-shrink-0 h-12 bg-white border-b border-slate-200 flex items-center justify-between px-4">
+                    <div className="flex items-center gap-2">
+                        <Mic className="w-4 h-4 text-indigo-600" />
+                        <span className="font-medium text-slate-800 text-sm">
+                            {currentSection?.title || `第 ${activeIndex + 1} 页`}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setFontSize(Math.max(14, fontSize - 2))}
+                            className="p-1.5 rounded text-slate-500 hover:bg-slate-100"
+                        >
+                            <ZoomOut className="w-4 h-4" />
+                        </button>
+                        <span className="text-xs text-slate-400 w-8 text-center">{fontSize}</span>
+                        <button
+                            onClick={() => setFontSize(Math.min(28, fontSize + 2))}
+                            className="p-1.5 rounded text-slate-500 hover:bg-slate-100"
+                        >
+                            <ZoomIn className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* 演讲稿内容 */}
+                <div className="flex-1 overflow-y-auto p-6">
+                    {currentSection ? (
+                        <div
+                            className="presenter-speech-content"
+                            style={{
+                                fontSize: `${fontSize}px`,
+                                lineHeight: '1.8',
+                                color: '#1a1a1a'
+                            }}
+                            dangerouslySetInnerHTML={{ __html: renderMarkdown(currentSection.content) }}
+                        />
+                    ) : (
+                        <div className="text-slate-400 text-center py-10">
+                            暂无该页的演讲稿内容
+                        </div>
+                    )}
+                </div>
+
+                {/* 快捷键提示 */}
+                <div className="flex-shrink-0 h-10 bg-slate-100 border-t border-slate-200 flex items-center justify-center gap-6 text-xs text-slate-500">
+                    <span><kbd className="px-1.5 py-0.5 bg-white rounded border">←</kbd> 上一页</span>
+                    <span><kbd className="px-1.5 py-0.5 bg-white rounded border">→</kbd> 下一页</span>
+                    <span><kbd className="px-1.5 py-0.5 bg-white rounded border">Esc</kbd> 退出</span>
+                </div>
+            </div>
+
+            {/* 演讲者模式样式 */}
+            <style jsx>{`
+                .presenter-speech-content p {
+                    margin-bottom: 1em;
+                }
+                .presenter-speech-content li {
+                    margin-left: 1.5em;
+                    list-style: disc;
+                }
+                .presenter-speech-content strong {
+                    color: #2563eb;
+                    font-weight: 600;
+                }
+                .presenter-transition {
+                    display: inline-block;
+                    background: #dbeafe;
+                    color: #1d4ed8;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    font-size: 0.875em;
+                    font-weight: 500;
+                    margin: 4px 0;
+                }
+                .presenter-pause {
+                    display: inline-block;
+                    background: #fef3c7;
+                    color: #92400e;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    font-size: 0.875em;
+                    font-weight: 500;
+                    margin: 4px 0;
+                }
+            `}</style>
+        </div>
+    );
+};
+
+// 演讲者模式中的幻灯片视图
+function PresenterSlideView({ url }) {
+    const containerRef = useRef(null);
+    const [scale, setScale] = useState(1);
+
+    useEffect(() => {
+        const updateScale = () => {
+            if (!containerRef.current) return;
+            const { width, height } = containerRef.current.getBoundingClientRect();
+            if (width === 0 || height === 0) return;
+            const scaleX = width / 1280;
+            const scaleY = height / 720;
+            setScale(Math.min(scaleX, scaleY) * 0.95);
+        };
+
+        const observer = new ResizeObserver(updateScale);
+        if (containerRef.current) observer.observe(containerRef.current);
+        updateScale();
+        setTimeout(updateScale, 100);
+
+        return () => observer.disconnect();
+    }, []);
+
+    if (!url) return null;
+
+    const scaledWidth = 1280 * scale;
+    const scaledHeight = 720 * scale;
+
+    return (
+        <div ref={containerRef} className="w-full h-full flex items-center justify-center">
+            <div
+                style={{
+                    width: `${scaledWidth}px`,
+                    height: `${scaledHeight}px`,
+                    overflow: 'hidden',
+                    borderRadius: '8px',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                    flexShrink: 0
+                }}
+            >
+                <div
+                    style={{
+                        width: '1280px',
+                        height: '720px',
+                        transform: `scale(${scale})`,
+                        transformOrigin: 'top left'
+                    }}
+                >
+                    <iframe
+                        src={url}
+                        className="w-full h-full border-0 bg-white"
+                        title="Presenter slide"
+                        scrolling="no"
+                    />
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // Turbo 升级弹窗组件 - 瑞士杂志风格
 const TurboUpgradeModal = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
@@ -528,6 +913,9 @@ export default function ResultView({ result, downloads, isProcessing, generation
     const [speechContent, setSpeechContent] = useState('');
     const [speechLoading, setSpeechLoading] = useState(false);
     const [speechError, setSpeechError] = useState(null);
+
+    // 演讲者模式状态
+    const [showPresenterMode, setShowPresenterMode] = useState(false);
 
     // 如果正在处理中，模拟进度
     const [progress, setProgress] = useState(0);
@@ -843,8 +1231,17 @@ export default function ResultView({ result, downloads, isProcessing, generation
                                     // 从 result 中获取 output_name
                                     const outputName = result?.output_name || result?.html?.match(/output\/([^\/]+)/)?.[1];
                                     if (!outputName) throw new Error('无法获取演示文稿 ID');
-                                    const data = await generateSpeechScript(outputName);
-                                    setSpeechContent(data.script);
+
+                                    // 1. 先检查缓存
+                                    const cached = await getSpeechScript(outputName);
+                                    if (cached.status === 'found') {
+                                        setSpeechContent(cached.script);
+                                    } else {
+                                        // 2. 没有缓存，生成新的（需要 user_id）
+                                        if (!user?.id) throw new Error('请先登录');
+                                        const data = await generateSpeechScript(outputName, user.id);
+                                        setSpeechContent(data.script);
+                                    }
                                 } catch (err) {
                                     setSpeechError(err.message);
                                 } finally {
@@ -856,6 +1253,16 @@ export default function ResultView({ result, downloads, isProcessing, generation
                         >
                             <Mic className="w-4 h-4" />
                             <span>演讲稿</span>
+                        </button>
+
+                        {/* 反馈按钮 */}
+                        <button
+                            onClick={() => setShowFeedbackModal(true)}
+                            className="h-9 px-3 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                            title="提交反馈"
+                        >
+                            <MessageSquare className="w-4 h-4" />
+                            <span>反馈</span>
                         </button>
 
                         <div className="h-6 w-px bg-slate-200 mx-2" />
@@ -1058,8 +1465,20 @@ export default function ResultView({ result, downloads, isProcessing, generation
                     content={speechContent}
                     loading={speechLoading}
                     error={speechError}
+                    onEnterPresenterMode={() => setShowPresenterMode(true)}
                 />
             )}
+
+            {/* 演讲者模式 - 左右分栏 */}
+            <PresenterModeView
+                isOpen={showPresenterMode}
+                onClose={() => setShowPresenterMode(false)}
+                pages={pages}
+                speechContent={speechContent}
+                activeIndex={activeIndex}
+                setActiveIndex={setActiveIndex}
+                getOutputUrl={getOutputUrl}
+            />
         </div>
     );
 }
