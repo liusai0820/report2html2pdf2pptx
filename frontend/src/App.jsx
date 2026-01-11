@@ -501,14 +501,7 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
               <div className="absolute inset-0 bg-dot-pattern opacity-[0.05]" />
 
               {activeScenarioData && (
-                <div className="relative z-10 flex flex-col items-center gap-8 w-full max-w-4xl">
-                  <div className="text-center space-y-2">
-                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight">预览您的演示风格</h3>
-                    <p className="text-slate-500">
-                      AI 将基于「{activeScenarioData.name.split('/')[0]}」场景为您定制内容
-                    </p>
-                  </div>
-
+                <div className="relative z-10 flex flex-col items-center w-full max-w-4xl">
                   {/* CSS-based Theme Preview Card */}
                   <ThemePreviewCard
                     color={customColor || activeScenarioData.color || '#000'}
@@ -944,9 +937,9 @@ function Section({ title, step, children }) {
 }
 
 // Custom Component to render style guide metadata nicely
-function StyleGuideInfo({ data }) {
+function StyleGuideInfo({ data, selectedColor }) {
   if (!data) return null;
-  const { description, tags, colors } = data;
+  const { description, tags } = data;
 
   return (
     <motion.div
@@ -971,24 +964,22 @@ function StyleGuideInfo({ data }) {
         )}
       </div>
 
-      {colors && colors.length > 0 && (
+      {selectedColor && (
         <div className="min-w-[200px] space-y-3">
           <h4 className="font-semibold text-slate-900 text-sm">主题配色</h4>
           <div className="flex flex-wrap gap-3">
-            {colors.map((c, i) => (
-              <div key={i} className="flex flex-col items-center gap-1.5 group cursor-pointer relative">
-                <div
-                  className="w-10 h-10 rounded-lg shadow-sm border border-slate-100 ring-2 ring-transparent group-hover:ring-slate-200 transition-all"
-                  style={{ background: c.color }}
-                />
-                <span className="text-[10px] text-slate-400 font-mono uppercase">{c.label}</span>
+            <div className="flex flex-col items-center gap-1.5 group cursor-pointer relative">
+              <div
+                className="w-10 h-10 rounded-lg shadow-sm border border-slate-100 ring-2 ring-transparent group-hover:ring-slate-200 transition-all"
+                style={{ background: selectedColor }}
+              />
+              <span className="text-[10px] text-slate-400 font-mono uppercase">{selectedColor}</span>
 
-                {/* Tooltip */}
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  {c.color}
-                </div>
+              {/* Tooltip */}
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                当前主题色
               </div>
-            ))}
+            </div>
           </div>
         </div>
       )}
@@ -1129,25 +1120,36 @@ function ThemePreviewCard({ color, scenario }) {
                     --brand: ${color} !important;
                     --accent: ${color} !important;
                 }
-                body { 
-                    overflow: hidden; 
-                    margin: 0;
-                    padding: 0;
-                    width: 1280px;
-                    height: 720px;
-                    position: relative;
+                body {
+                    overflow: hidden !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    width: 1280px !important;
+                    height: 720px !important;
+                    min-height: 720px !important;
+                    max-height: 720px !important;
+                    position: relative !important;
+                    display: block !important;
+                    background: transparent !important;
                 }
-                
+
+                .slide {
+                    position: absolute !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    margin: 0 !important;
+                }
+
                 /* Reset slide positioning to ensure they stack perfectly at 0,0 */
-                .slide-container { 
-                    display: none !important; 
+                .slide-container {
+                    display: none !important;
                     position: absolute !important;
                     top: 0 !important;
                     left: 0 !important;
                     margin: 0 !important;
                     transform: none !important; /* Remove any internal transforms */
                 }
-                
+
                 .slide-container:nth-of-type(${page + 1}) { display: flex !important; }
             </style>
         `;
@@ -1166,7 +1168,7 @@ function ThemePreviewCard({ color, scenario }) {
 
   return (
     <div className="w-full flex flex-col gap-6">
-      <StyleGuideInfo data={metaData} />
+      <StyleGuideInfo data={metaData} selectedColor={color} />
 
       {/* Preview Card */}
       <motion.div
