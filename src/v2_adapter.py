@@ -190,7 +190,8 @@ async def generate_v2_stream(req) -> AsyncGenerator[str, None]:
                         content=page_data.get('content', ''),
                         page_num=index + 1,
                         total_pages=total_pages,
-                        section_num=page_data.get('section_num', 0)
+                        section_num=page_data.get('section_num', 0),
+                        image_indices=page_data.get('image_indices', None)  # 传递图片索引
                     )
                     
                     # 确定是否需要传递自定义配图 Prompt

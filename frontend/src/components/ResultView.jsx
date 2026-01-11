@@ -539,6 +539,13 @@ const PresenterModeView = ({ isOpen, onClose, pages, speechContent, activeIndex,
     const currentSection = getSpeechForPage(speechSections, activeIndex + 1);
     const totalPages = pages?.length || 0;
 
+    // 计算当前页在章节内的位置
+    const sectionPages = currentSection?.pages || [];
+    const positionInSection = sectionPages.indexOf(activeIndex + 1);
+    const sectionProgress = sectionPages.length > 1
+        ? ((positionInSection + 1) / sectionPages.length) * 100
+        : 100;
+
     // 简单的 Markdown 渲染
     const renderMarkdown = (md) => {
         if (!md) return '';
@@ -584,8 +591,8 @@ const PresenterModeView = ({ isOpen, onClose, pages, speechContent, activeIndex,
                     </div>
                 </div>
 
-                {/* 底部导航 */}
-                <div className="flex-shrink-0 h-20 bg-slate-800/50 flex items-center justify-center gap-4 px-4">
+                {/* 底部导航 - 统一的翻页控制 */}
+                <div className="flex-shrink-0 h-16 bg-slate-800/50 flex items-center justify-center gap-4 px-4">
                     <button
                         onClick={() => setActiveIndex(Math.max(0, activeIndex - 1))}
                         disabled={activeIndex === 0}
@@ -628,29 +635,45 @@ const PresenterModeView = ({ isOpen, onClose, pages, speechContent, activeIndex,
 
             {/* 右侧：演讲稿区 (40%) */}
             <div className="w-[40%] h-full flex flex-col bg-slate-50">
-                {/* 演讲稿头部 */}
-                <div className="flex-shrink-0 h-12 bg-white border-b border-slate-200 flex items-center justify-between px-4">
-                    <div className="flex items-center gap-2">
-                        <Mic className="w-4 h-4 text-indigo-600" />
-                        <span className="font-medium text-slate-800 text-sm">
-                            {currentSection?.title || `第 ${activeIndex + 1} 页`}
-                        </span>
+                {/* 演讲稿头部 - 显示当前页和章节信息 */}
+                <div className="flex-shrink-0 bg-white border-b border-slate-200">
+                    <div className="h-12 flex items-center justify-between px-4">
+                        <div className="flex items-center gap-2">
+                            <Mic className="w-4 h-4 text-indigo-600" />
+                            <span className="font-medium text-slate-800 text-sm">
+                                第 {activeIndex + 1} 页
+                            </span>
+                            {currentSection && sectionPages.length > 1 && (
+                                <span className="text-slate-400 text-sm">
+                                    · {currentSection.title}
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setFontSize(Math.max(14, fontSize - 2))}
+                                className="p-1.5 rounded text-slate-500 hover:bg-slate-100"
+                            >
+                                <ZoomOut className="w-4 h-4" />
+                            </button>
+                            <span className="text-xs text-slate-400 w-8 text-center">{fontSize}</span>
+                            <button
+                                onClick={() => setFontSize(Math.min(28, fontSize + 2))}
+                                className="p-1.5 rounded text-slate-500 hover:bg-slate-100"
+                            >
+                                <ZoomIn className="w-4 h-4" />
+                            </button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                        <button
-                            onClick={() => setFontSize(Math.max(14, fontSize - 2))}
-                            className="p-1.5 rounded text-slate-500 hover:bg-slate-100"
-                        >
-                            <ZoomOut className="w-4 h-4" />
-                        </button>
-                        <span className="text-xs text-slate-400 w-8 text-center">{fontSize}</span>
-                        <button
-                            onClick={() => setFontSize(Math.min(28, fontSize + 2))}
-                            className="p-1.5 rounded text-slate-500 hover:bg-slate-100"
-                        >
-                            <ZoomIn className="w-4 h-4" />
-                        </button>
-                    </div>
+                    {/* 章节进度条 */}
+                    {sectionPages.length > 1 && (
+                        <div className="h-1 bg-slate-100">
+                            <div
+                                className="h-full bg-indigo-500 transition-all duration-300"
+                                style={{ width: `${sectionProgress}%` }}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* 演讲稿内容 */}
@@ -670,13 +693,6 @@ const PresenterModeView = ({ isOpen, onClose, pages, speechContent, activeIndex,
                             暂无该页的演讲稿内容
                         </div>
                     )}
-                </div>
-
-                {/* 快捷键提示 */}
-                <div className="flex-shrink-0 h-10 bg-slate-100 border-t border-slate-200 flex items-center justify-center gap-6 text-xs text-slate-500">
-                    <span><kbd className="px-1.5 py-0.5 bg-white rounded border">←</kbd> 上一页</span>
-                    <span><kbd className="px-1.5 py-0.5 bg-white rounded border">→</kbd> 下一页</span>
-                    <span><kbd className="px-1.5 py-0.5 bg-white rounded border">Esc</kbd> 退出</span>
                 </div>
             </div>
 

@@ -39,6 +39,7 @@ class PageInfo:
     page_num: int = 0   # 页码
     total_pages: int = 0  # 总页数
     section_num: int = 0  # 章节号（用于 SECTION 页）
+    image_indices: List[int] = None  # 该页关联的图片索引列表（0-indexed）
 
 
 @dataclass
@@ -246,15 +247,14 @@ Convert image pixels into a structured "Digital Twin" text format for HTML recon
             # 直接返回 HTML 模板，不需要调用 AI
             html = prompt.replace("__DIRECT_HTML__", "").strip()
             return self._clean_html(html)
-        
+
         # 【方案 C】描述 + 图片双保险
         # prompt 中已包含预解析的图片描述，同时发送原图供 AI 验证
         images_to_pass = None
         if page_info.type == "CONTENT" and context.images and len(context.images) > 0:
-            image_indices = getattr(page_info, 'image_indices', None) or page_info.__dict__.get('image_indices', [])
-            if image_indices:
+            if page_info.image_indices:
                 images_to_pass = []
-                for idx in image_indices:
+                for idx in page_info.image_indices:
                     if 0 <= idx < len(context.images):
                         images_to_pass.append(context.images[idx])
                 if images_to_pass:
@@ -691,10 +691,9 @@ Begin Architecture:
 
         # 图片说明 logic
         image_instruction = ""
-        image_indices = getattr(page_info, 'image_indices', None) or page_info.__dict__.get('image_indices', [])
-        if image_indices and context.image_descriptions and len(context.image_descriptions) > 0:
+        if page_info.image_indices and context.image_descriptions and len(context.image_descriptions) > 0:
             related_descriptions = []
-            for idx in image_indices:
+            for idx in page_info.image_indices:
                 if 0 <= idx < len(context.image_descriptions):
                     related_descriptions.append(f"### Image {idx+1} Content:\n{context.image_descriptions[idx]}")
 
