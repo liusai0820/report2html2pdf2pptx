@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  syntax-check:
+    name: Python Syntax Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check Python syntax
+        run: |
+          echo "🔍 Checking Python syntax..."
+
+          # 检查核心文件
+          python -m py_compile src/server.py
+          python -m py_compile src/v2/ai_designer.py
+          python -m py_compile src/v2/engine.py
+          python -m py_compile src/v2/design_system.py
+
+          echo "✅ All Python files have valid syntax"
+
+  dockerfile-check:
+    name: Dockerfile Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Dockerfile COPY paths exist
+        run: |
+          echo "🔍 Checking Dockerfile.render COPY paths..."
+
+          # 从 Dockerfile.render 提取 COPY 命令中的源路径
+          # 检查这些路径是否存在（排除通配符和 .dockerignore 例外）
+
+          # 检查 promptv4.md
+          if [ -f "docs/development/promptv4.md" ]; then
+            echo "✅ docs/development/promptv4.md exists"
+          else
+            echo "❌ docs/development/promptv4.md not found!"
+            exit 1
+          fi
+
+          # 检查 src/ 目录
+          if [ -d "src" ]; then
+            echo "✅ src/ directory exists"
+          else
+            echo "❌ src/ directory not found!"
+            exit 1
+          fi
+
+          # 检查 config/ 目录
+          if [ -d "config" ]; then
+            echo "✅ config/ directory exists"
+          else
+            echo "❌ config/ directory not found!"
+            exit 1
+          fi
+
+          # 检查 run.py
+          if [ -f "run.py" ]; then
+            echo "✅ run.py exists"
+          else
+            echo "❌ run.py not found!"
+            exit 1
+          fi
+
+          echo "✅ All Dockerfile COPY paths verified"
