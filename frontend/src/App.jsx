@@ -496,7 +496,7 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="w-full h-full flex flex-col items-center justify-start pt-20 px-12 pb-12 bg-slate-50 relative overflow-hidden"
+              className="w-full h-full flex flex-col items-center justify-center px-12 bg-slate-50 relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-dot-pattern opacity-[0.05]" />
 
