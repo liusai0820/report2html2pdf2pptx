@@ -12,7 +12,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Loader2, AlertCircle, Layout, ChevronLeft, ChevronRight, LogOut, User, ChevronDown, Check } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle, Layout, ChevronLeft, ChevronRight, LogOut, User, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import Hero from './components/Hero';
 import UploadZone from './components/UploadZone';
 import ScenarioSelector from './components/ScenarioSelector';
@@ -73,6 +73,21 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
   // App State
   const [customColor, setCustomColor] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // 侧边栏折叠状态
+
+  // 📱 移动端状态
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileConfigExpanded, setMobileConfigExpanded] = useState(true); // 移动端配置区展开状态
+  const previewRef = React.useRef(null); // 用于滚动到预览区
+
+  // 检测移动端
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Real-time Data
   const [status, setStatus] = useState('idle'); // idle, generating, preview
@@ -156,6 +171,15 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
       return;
     }
 
+    // 📱 移动端：折叠配置区并滚动到预览区
+    if (isMobile) {
+      setMobileConfigExpanded(false);
+      // 延迟滚动，等待状态更新
+      setTimeout(() => {
+        previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+
     // Reset State
     setStatus('generating');
     setErrorMsg('');
@@ -234,7 +258,9 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
   };
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 text-slate-900 font-sans overflow-hidden">
+    <>
+      {/* ========== 桌面端布局 (md+) ========== */}
+      <div className="hidden md:flex h-screen w-full bg-slate-50 text-slate-900 font-sans overflow-hidden">
 
       {/* LEFT SIDEBAR */}
       <div
@@ -470,7 +496,7 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="w-full h-full flex flex-col items-center justify-center p-12 bg-slate-50 relative overflow-hidden"
+              className="w-full h-full flex flex-col items-center justify-start pt-20 px-12 pb-12 bg-slate-50 relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-dot-pattern opacity-[0.05]" />
 
@@ -607,6 +633,301 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
         </AnimatePresence>
       </div>
     </div>
+
+      {/* ========== 移动端布局 (<md) ========== */}
+      <div className="md:hidden flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans">
+
+        {/* 📱 移动端配置区 - 可折叠 */}
+        <div className="bg-white border-b border-slate-200 shadow-sm">
+          {/* 用户信息栏 - 简化版 */}
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center">
+                <User className="w-4 h-4 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-medium text-slate-700 truncate max-w-[150px]">
+                  {user?.email || '用户'}
+                </span>
+                {profile && (
+                  <span className={`text-[10px] ${canGenerate ? 'text-emerald-500' : 'text-red-500'}`}>
+                    剩余 {quotaRemaining}/{profile.generation_quota} 次
+                  </span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={onLogout}
+              className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* 折叠式配置区 */}
+          <div>
+            {/* 折叠标题栏 */}
+            <button
+              onClick={() => setMobileConfigExpanded(!mobileConfigExpanded)}
+              className="w-full px-4 py-3 flex items-center justify-between bg-slate-50/50 hover:bg-slate-100/50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-slate-600" />
+                <span className="text-sm font-semibold text-slate-800">配置演示文稿</span>
+                {selectedFile && (
+                  <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">
+                    已选文件
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {status === 'generating' && (
+                  <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium animate-pulse">
+                    生成中 {Math.round(progress)}%
+                  </span>
+                )}
+                {mobileConfigExpanded ? (
+                  <ChevronUp className="w-5 h-5 text-slate-400" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-slate-400" />
+                )}
+              </div>
+            </button>
+
+            {/* 配置内容 - 可折叠 */}
+            <AnimatePresence>
+              {mobileConfigExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-4 py-4 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                    {/* 上传区域 */}
+                    <Section title="上传文档" step="1">
+                      <UploadZone
+                        selectedFile={selectedFile}
+                        onFileSelect={setSelectedFile}
+                        onUpload={handleUpload}
+                      />
+                    </Section>
+
+                    {/* 场景选择 */}
+                    <Section title="选择场景" step="2">
+                      <ScenarioSelector
+                        scenarios={scenarios}
+                        selected={selectedScenario}
+                        onSelect={setSelectedScenario}
+                        customColor={customColor}
+                        onColorChange={setCustomColor}
+                      />
+                    </Section>
+
+                    {/* 生成设置 - 移动端默认折叠 */}
+                    <Section title="生成设置" step="3">
+                      <ConfigPanel config={config} onChange={setConfig} />
+                    </Section>
+
+                    {/* 🔐 管理员面板 */}
+                    {isAdmin && (
+                      <Section title="🔐 管理员" step="★">
+                        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-3">
+                          <label className="block text-xs font-medium text-purple-700 mb-2">
+                            AI 模型选择
+                          </label>
+                          <select
+                            value={selectedModel || ''}
+                            onChange={(e) => setSelectedModel(e.target.value || null)}
+                            className="w-full px-3 py-2 text-sm border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                          >
+                            <option value="">默认 (使用配置文件模型)</option>
+                            {adminModels.map(model => (
+                              <option key={model.id} value={model.id}>
+                                {model.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </Section>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* 📱 移动端预览/生成区域 */}
+        <div ref={previewRef} className="flex-1 bg-slate-100 min-h-[300px] relative">
+          <AnimatePresence mode="wait">
+            {/* IDLE 状态 */}
+            {status === 'idle' && (
+              <motion.div
+                key="mobile-idle"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full flex flex-col items-center justify-center p-6 bg-slate-50"
+              >
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 mx-auto bg-slate-100 rounded-2xl flex items-center justify-center">
+                    <Sparkles className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-800">准备生成</h3>
+                  <p className="text-sm text-slate-500 max-w-xs">
+                    上传文档并选择场景后，点击下方按钮开始生成演示文稿
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* GENERATING 状态 */}
+            {status === 'generating' && !previewData && (
+              <motion.div
+                key="mobile-generating"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full flex flex-col items-center justify-center p-6"
+              >
+                <div className="w-full max-w-sm space-y-6 text-center">
+                  <div className="space-y-2">
+                    <div className="text-5xl font-bold text-slate-900 tracking-tighter tabular-nums">
+                      {Math.round(progress)}%
+                    </div>
+                    <div className="text-sm text-slate-500 font-medium animate-pulse">
+                      {progressMessage}
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-slate-900"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress}%` }}
+                      transition={{ ease: "easeOut" }}
+                    />
+                  </div>
+
+                  {/* 移动端大纲网格 - 2列 */}
+                  {outlineData.length > 0 && (
+                    <div className="mt-6 w-full text-left">
+                      <div className="flex items-center justify-between mb-3 px-1">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                          生成大纲 ({outlineData.length}页)
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto custom-scrollbar p-1">
+                        {outlineData.slice(0, 8).map((page, i) => {
+                          const pageProgress = ((i + 1) / outlineData.length) * 100;
+                          const isCompleted = progress > pageProgress;
+                          return (
+                            <div
+                              key={i}
+                              className={`aspect-video bg-white rounded border p-2 flex flex-col justify-between transition-all ${
+                                isCompleted
+                                  ? 'border-emerald-200 bg-emerald-50/30'
+                                  : 'border-slate-200'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="h-1.5 w-1/2 bg-slate-200 rounded-sm opacity-40" />
+                                {isCompleted && (
+                                  <div className="w-3 h-3 rounded-full bg-emerald-500 flex items-center justify-center">
+                                    <Check className="w-2 h-2 text-white" strokeWidth={3} />
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-[8px] text-slate-600 line-clamp-1 font-medium">
+                                {page.title}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {outlineData.length > 8 && (
+                          <div className="aspect-video bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
+                            <span className="text-xs text-slate-400">+{outlineData.length - 8} 页</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* PREVIEW 状态 */}
+            {status === 'preview' && previewData && (
+              <motion.div
+                key="mobile-preview"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full h-full"
+              >
+                <ResultView
+                  result={previewData}
+                  downloads={downloads}
+                  isProcessing={progress < 100}
+                  generationId={currentGenerationId}
+                  documentName={selectedFile?.name}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* 📱 移动端底部固定生成按钮 */}
+        <div className="flex-shrink-0 px-4 py-3 bg-white border-t border-slate-200 shadow-lg safe-area-pb">
+          {!canGenerate && (
+            <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded-lg text-center">
+              <p className="text-xs text-amber-700 font-medium">🔒 免费额度已用完</p>
+            </div>
+          )}
+          <button
+            onClick={handleGenerate}
+            disabled={!selectedFile || !canGenerate || (status === 'generating' && !previewData)}
+            className={`
+              w-full py-3.5 px-5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden group
+              ${!selectedFile || !canGenerate || (status === 'generating' && !previewData)
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                : 'bg-slate-900 text-white active:scale-[0.98] shadow-lg'
+              }
+            `}
+          >
+            {/* Hover 光效 */}
+            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out pointer-events-none" />
+            {status === 'generating' && !previewData ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>AI 正在思考...</span>
+              </>
+            ) : status === 'preview' ? (
+              <>
+                <Sparkles className="w-4 h-4" />
+                <span>重新生成</span>
+              </>
+            ) : !canGenerate ? (
+              <span>额度已用完</span>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                <span>开始生成</span>
+              </>
+            )}
+          </button>
+
+          {errorMsg && (
+            <div className="mt-2 flex items-start gap-2 text-xs text-red-600 bg-red-50 p-2 rounded-lg border border-red-100">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span className="leading-tight">{errorMsg}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
 

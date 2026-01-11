@@ -4,785 +4,160 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>年终述职/总结 - Preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
+            --primary: #1A365D;
+            --accent: #ED8936;
+            --text-primary: #1A202C;
+            --text-secondary: #718096;
+            --background: #FFFFFF;
+            --slide-width: 1280px;
+            --slide-height: 720px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-    --primary: #1A365D;
-    --primary-light: #2B6CB0;
-    --primary-dark: #0D1B2A;
-    --accent: #ED8936;
-    --text-primary: #2D3748;
-    --text-secondary: #4A5568;
-    --text-light: #A0AEC0;
-    --background: #FFFFFF;
-    --background-alt: #EDF2F7;
-    --border: #E2E8F0;
-    --success: #38A169;
-    --warning: #DD6B20;
-    --error: #FF3B30;
-    
-    /* 兼容旧变量名 */
-    --deep-blue: #1A365D;
-    --bright-blue: #2B6CB0;
-    --text-main: #2D3748;
-    --text-sub: #4A5568;
-    --bg-gray: #EDF2F7;
-    --line-gray: #E2E8F0;
-
-
-    --font-family: "Microsoft YaHei", "微软雅黑", "PingFang SC", sans-serif;
-    --font-family-heading: "Microsoft YaHei", "微软雅黑", "Heiti SC", sans-serif;
-    --font-family-mono: "Monaco", "Courier New", monospace;
-    
-    --size-cover-title: 52px;
-    --size-page-title: 34px;
-    --size-section-title: 44px;
-    --size-heading: 22px;
-    --size-body: 18px;
-    --size-small: 14px;
-    --size-footer: 14px;
-    
-    --line-height-heading: 1.3;
-    --line-height-body: 1.6;
-    
-    --weight-normal: 400;
-    --weight-bold: 700;
-
-
-    --slide-width: 1280px;
-    --slide-height: 720px;
-    --padding-h: 60px;
-    --padding-v: 40px;
-    --gap-large: 60px;
-    --gap-medium: 30px;
-    --gap-small: 15px;
-    --border-radius: 4px;
-
-}
-
-
-/* ============================================
-   基础样式 - 年终述职风格
-   ============================================ */
-
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-html, body {
-    font-family: var(--font-family);
-    font-size: var(--size-body);
-    line-height: var(--line-height-body);
-    color: var(--text-primary);
-    background: var(--background);
-}
-
-/* 全局列表样式重置 - 防止浏览器默认符号与自定义符号重复 */
-ul, ol {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
-.slide-container {
-    width: var(--slide-width);
-    height: var(--slide-height);
-    background: var(--background);
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    font-family: var(--font-family);
-    page-break-after: always;
-}
-
-/* 通用页脚 */
-.slide-footer {
-    height: 50px;
-    padding: 0 var(--padding-h);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: var(--size-footer);
-    color: var(--text-light);
-    font-family: var(--font-family);
-}
-
-/* 内容区域 - 防溢出设计 */
-.content-area {
-    flex: 1;
-    padding: var(--padding-v) var(--padding-h);
-    display: flex;
-    flex-direction: column;
-    font-family: var(--font-family);
-    overflow: hidden; /* 防溢出最后防线 */
-    max-height: calc(var(--slide-height) - 50px); /* 扣除页脚高度 */
-}
-
-/* 标题区域 */
-.title-box {
-    margin-bottom: var(--gap-medium);
-}
-
-.page-title {
-    font-size: var(--size-page-title);
-    color: var(--primary);
-    line-height: var(--line-height-heading);
-    font-weight: var(--weight-bold);
-    font-family: var(--font-family-heading);
-}
-
-/* 标题排版优化 - 防止单字换行 */
-h1, h2, h3, h4, 
-.main-title, .sub-title, 
-.page-title, .section-title, 
-.closing-title {
-    text-wrap: balance;
-    word-break: break-word;
-}
-
-
-/* ============================================
-   封面页样式 (Annual Review - Bright & Clean)
-   ============================================ */
-.cover-slide {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 80px 100px;
-    position: relative;
-    /* 清爽的蓝白渐变背景 */
-    background: linear-gradient(120deg, #ffffff 0%, #f0f7ff 100%);
-    color: #1e293b;
-    overflow: hidden;
-}
-
-/* 左侧装饰线 */
-.cover-slide::before {
-    content: "";
-    position: absolute;
-    top: 0; bottom: 0; left: 0;
-    width: 15px;
-    background: var(--primary);
-}
-
-/* 动态年份水印 */
-.cover-slide::after {
-    content: "2025";
-    position: absolute;
-    right: 20px;
-    bottom: -60px;
-    font-size: 280px;
-    font-weight: 900;
-    color: var(--primary);
-    opacity: 0.06;
-    z-index: 0;
-    font-family: var(--font-family-heading);
-    letter-spacing: -10px;
-}
-
-.cover-top {
-    position: relative;
-    z-index: 2;
-    margin-bottom: 40px;
-}
-
-.doc-type {
-    display: inline-block;
-    font-size: 16px;
-    color: white;
-    background: var(--primary); /* 醒目的标签 */
-    padding: 6px 16px;
-    letter-spacing: 2px;
-    font-weight: bold;
-    text-transform: uppercase;
-    margin-bottom: 30px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-}
-
-.brand-line { display: none; }
-
-.main-title {
-    position: relative;
-    z-index: 2;
-    font-size: 72px;
-    line-height: 1.1;
-    font-weight: 800;
-    margin-bottom: 20px;
-    color: #0f172a;
-    letter-spacing: -1px;
-}
-
-.sub-title {
-    position: relative;
-    z-index: 2;
-    font-size: 32px;
-    color: #64748b;
-    font-weight: 300;
-}
-
-.cover-bottom {
-    position: relative;
-    z-index: 2;
-    margin-top: 80px;
-    display: flex;
-    gap: 40px;
-    align-items: center;
-}
-
-.footer-item {
-    font-size: 16px;
-    color: #475569;
-    font-weight: 500;
-    background: white;
-    padding: 10px 20px;
-    border: 1px solid #e2e8f0;
-    border-radius: 30px;
-}
-
-
-/* ============================================
-   章节过场页样式 (Annual Review)
-   ============================================ */
-
-.section-slide {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 80px;
-    color: #ffffff;
-    position: relative;
-    overflow: hidden;
-}
-
-.section-bg-pattern {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    opacity: 0.05;
-    background-image: radial-gradient(#fff 1px, transparent 1px);
-    background-size: 30px 30px;
-}
-
-.section-content {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-}
-
-.section-number {
-    font-size: 120px;
-    font-weight: var(--weight-bold);
-    color: rgba(255,255,255,0.2);
-    line-height: 0.8;
-    margin-bottom: 20px;
-    font-family: var(--font-family-heading);
-}
-
-.section-line {
-    width: 80px;
-    height: 4px;
-    background: var(--accent);
-    margin: 0 auto 30px auto;
-}
-
-.section-title {
-    font-size: var(--size-section-title);
-    font-weight: var(--weight-bold);
-    color: #ffffff;
-    margin-bottom: 20px;
-    line-height: var(--line-height-heading);
-    font-family: var(--font-family-heading);
-}
-
-.section-desc {
-    font-size: var(--size-body);
-    color: rgba(255,255,255,0.8);
-    line-height: var(--line-height-body);
-    font-family: var(--font-family);
-}
-
-
-/* ============================================
-   正文页样式
-   ============================================ */
-
-/* 布局容器 - 防溢出 */
-.layout-box {
-    flex: 1;
-    display: flex;
-    gap: var(--gap-large);
-    overflow: hidden; /* 裁剪溢出内容 */
-    min-height: 0; /* 允许flex收缩 */
-}
-
-.two-col > .col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0; /* 允许收缩 */
-    overflow: hidden;
-}
-
-.three-col > .col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
-}
-
-/* 子标题 */
-.sub-head {
-    font-size: var(--size-heading);
-    color: var(--primary);
-    margin-bottom: 20px;
-    border-left: 6px solid var(--primary-light);
-    padding-left: 15px;
-    line-height: 1;
-    font-family: var(--font-family-heading);
-    font-weight: var(--weight-bold);
-}
-
-/* 列表 */
-.big-list {
-    list-style: none;
-}
-
-.big-list li {
-    font-size: var(--size-body);
-    color: var(--text-primary);
-    line-height: var(--line-height-body);
-    margin-bottom: 20px;
-    position: relative;
-    padding-left: 30px;
-    font-family: var(--font-family);
-}
-
-.big-list li::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 10px;
-    width: 10px;
-    height: 10px;
-    background: var(--primary-light);
-    border-radius: 2px;
-}
-
-/* 数据卡片 */
-.data-card {
-    background: var(--background-alt);
-    padding: 20px 25px;
-    border-top: 4px solid var(--primary-light);
-    border-radius: var(--border-radius);
-    flex-shrink: 0;
-}
-
-.data-val {
-    font-size: 48px;
-    color: var(--primary);
-    font-weight: var(--weight-bold);
-    margin-bottom: 8px;
-    font-family: var(--font-family-heading);
-    line-height: 1;
-}
-
-.data-lbl {
-    font-size: var(--size-small);
-    color: var(--text-secondary);
-    font-family: var(--font-family);
-}
-
-/* 底部结论框 */
-.bottom-box {
-    margin-top: auto;
-    background: var(--background-alt);
-    padding: 20px 25px;
-    border-left: 8px solid var(--primary);
-    border-radius: var(--border-radius);
-    flex-shrink: 0;
-}
-
-.bottom-text {
-    font-size: 22px;
-    color: var(--primary);
-    font-weight: var(--weight-bold);
-    line-height: 1.5;
-    font-family: var(--font-family);
-}
-
-/* 文本块 */
-.text-block {
-    margin-bottom: var(--gap-medium);
-}
-
-/* 引用块 */
-.quote-block {
-    border-left: 4px solid var(--primary-light);
-    padding-left: 20px;
-    font-style: italic;
-    color: var(--text-secondary);
-}
-
-
-/* ============================================
-   目录页样式
-   ============================================ */
-
-.catalog-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--gap-medium);
-}
-
-.catalog-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 30px;
-    padding: 20px 0;
-    border-bottom: 1px solid var(--border);
-}
-
-.catalog-item:last-child {
-    border-bottom: none;
-}
-
-.catalog-idx {
-    font-size: 48px;
-    font-weight: var(--weight-bold);
-    color: var(--primary-light);
-    opacity: 0.3;
-    line-height: 1;
-    min-width: 80px;
-    font-family: var(--font-family-heading);
-}
-
-.catalog-content {
-    flex: 1;
-}
-
-.catalog-name {
-    font-size: var(--size-heading);
-    color: var(--primary);
-    font-weight: var(--weight-bold);
-    margin-bottom: 8px;
-    font-family: var(--font-family-heading);
-}
-
-.catalog-desc {
-    font-size: var(--size-body);
-    color: var(--text-secondary);
-    font-family: var(--font-family);
-}
-
-
-/* ============================================
-   封底页样式
-   ============================================ */
-
-.closing-slide {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    padding: 80px;
-    background: var(--background);
-}
-
-.closing-title {
-    font-size: 56px;
-    color: var(--primary);
-    font-weight: var(--weight-bold);
-    margin-bottom: 40px;
-    letter-spacing: 20px;
-    font-family: var(--font-family-heading);
-}
-
-.closing-contact {
-    font-size: var(--size-body);
-    color: var(--text-secondary);
-    line-height: 2;
-    font-family: var(--font-family);
-}
-
-
-/* ============================================
-   通用组件样式
-   ============================================ */
-
-/* 表格 */
-.clean-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 18px;
-    font-family: var(--font-family);
-}
-
-.clean-table th {
-    text-align: left;
-    padding: 15px;
-    background: var(--background-alt);
-    color: var(--primary);
-    border-bottom: 2px solid var(--primary);
-    font-family: var(--font-family);
-    font-weight: var(--weight-bold);
-}
-
-.clean-table td {
-    padding: 15px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-primary);
-    font-family: var(--font-family);
-}
-
-.clean-table tr:hover td {
-    background: var(--background-alt);
-}
-
-/* 指标堆叠 */
-.metric-stack {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--gap-medium);
-}
-
-.metric-item {
-    text-align: center;
-    padding: 20px;
-    background: var(--background-alt);
-    border-radius: var(--border-radius);
-}
-
-.metric-value {
-    font-size: 36px;
-    font-weight: var(--weight-bold);
-    color: var(--primary);
-    margin-bottom: 8px;
-}
-
-.metric-label {
-    font-size: var(--size-small);
-    color: var(--text-secondary);
-}
-
-/* 高亮框 */
-.highlight-box {
-    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
-    color: white;
-    padding: 20px 30px;
-    border-radius: var(--border-radius);
-    font-weight: var(--weight-bold);
-}
-
-/* 标签 */
-.tag {
-    display: inline-block;
-    padding: 4px 12px;
-    background: var(--background-alt);
-    color: var(--primary);
-    border-radius: 20px;
-    font-size: var(--size-small);
-    margin-right: 8px;
-    margin-bottom: 8px;
-}
-
-/* 进度条 */
-.progress-bar {
-    height: 8px;
-    background: var(--background-alt);
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--primary-light) 0%, var(--primary) 100%);
-    border-radius: 4px;
-}
-
-/* 时间线 */
-.timeline {
-    position: relative;
-    padding-left: 30px;
-}
-
-.timeline::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: var(--border);
-}
-
-.timeline-item {
-    position: relative;
-    margin-bottom: 30px;
-}
-
-.timeline-item::before {
-    content: "";
-    position: absolute;
-    left: -34px;
-    top: 5px;
-    width: 10px;
-    height: 10px;
-    background: var(--primary-light);
-    border-radius: 50%;
-}
-
-.timeline-date {
-    font-size: var(--size-small);
-    color: var(--text-light);
-    margin-bottom: 5px;
-}
-
-.timeline-content {
-    font-size: var(--size-body);
-    color: var(--text-primary);
-}
-
-
-/* ============================================
-   图表样式
-   ============================================ */
-
-.chart-container {
-    width: 100%;
-    max-height: 350px; /* 限制最大高度，防溢出 */
-    min-height: 200px;
-    position: relative;
-    background: #fff;
-    border-radius: 8px;
-    padding: 10px;
-    flex-shrink: 0;
-}
-
-.chart-container > div {
-    width: 100% !important;
-    height: 100% !important;
-}
-
-.chart-title {
-    font-size: var(--size-heading);
-    color: var(--primary);
-    text-align: center;
-    margin-bottom: var(--gap-small);
-    font-weight: var(--weight-bold);
-}
-
-.chart-subtitle {
-    font-size: var(--size-small);
-    color: var(--text-secondary);
-    text-align: center;
-    margin-bottom: var(--gap-medium);
-}
-
-
-/* ============================================
-   打印优化
-   ============================================ */
-
-@media print {
-    .slide-container {
-        break-inside: avoid;
-        page-break-after: always;
-    }
-    
-    .section-slide {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-    
-    .data-card,
-    .bottom-box,
-    .highlight-box {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-}
-
-@page {
-    size: 1280px 720px;
-    margin: 0;
-}
-
-
-/* 年终述职特有样式 */
-.section-slide {
-    background: linear-gradient(135deg, #1A365D 0%, #2D3748 100%);
-}
-.data-card {
-    border-top: 4px solid #ED8936;
-}
-.data-val {
-    color: #2B6CB0;
-}
-/* 成果高亮 */
-.achievement-highlight {
-    background: linear-gradient(90deg, #ED8936 0%, #DD6B20 100%);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 4px;
-    display: inline-block;
-}
-
-        
-        /* Fix for preview sizing */
         body {
-            transform-origin: top left;
-            overflow: hidden;
-            background: #e0e0e0;
+            font-family: 'Noto Sans SC', -apple-system, sans-serif;
+            background: #EDF2F7;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+            padding: 40px;
         }
-        .slide-container {
-            width: 1280px;
-            height: 720px;
-            overflow: hidden;
+
+        .slide {
+            width: var(--slide-width);
+            height: var(--slide-height);
+            background: var(--background);
             position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            /* Scale down to fit if needed, but usually iframe handles this */
+            overflow: hidden;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.12);
         }
+
+        /* 顶部渐变色条 - 年终述职的进取感 */
+        .slide::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+        }
+
+        /* 右侧装饰数字 */
+        .year-badge {
+            position: absolute;
+            right: 80px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 200px;
+            font-weight: 900;
+            color: rgba(26, 54, 93, 0.04);
+            line-height: 1;
+            letter-spacing: -10px;
+        }
+
+        .content {
+            position: absolute;
+            left: 100px;
+            right: 400px;
+            top: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 80px 0;
+        }
+
+        .label {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 32px;
+        }
+
+        .label::before {
+            content: "";
+            width: 40px;
+            height: 2px;
+            background: var(--accent);
+        }
+
+        .title {
+            font-size: 54px;
+            font-weight: 900;
+            color: var(--text-primary);
+            line-height: 1.2;
+            letter-spacing: -1px;
+            margin-bottom: 24px;
+        }
+
+        .subtitle {
+            font-size: 19px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            max-width: 500px;
+        }
+
+        .footer {
+            position: absolute;
+            left: 100px;
+            right: 100px;
+            bottom: 56px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #E2E8F0;
+            padding-top: 20px;
+        }
+
+        .meta {
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 32px;
+        }
+
+        /* Hidden metadata for frontend */
+        .preview-header { display: none; }
     </style>
-    <!-- Preview Metadata for Frontend Extraction -->
-    <div class="preview-header" style="display:none;">
-        <p>标签: 年终述职/总结</p>
-        <div class="color-swatch" style="background-color: #1A365D">#1A365D</div>
-        <div class="description">适用于年终总结、工作汇报、述职报告等场合，稳重大气，突出成果</div>
-    </div>
 </head>
 <body>
+    <div class="preview-header">
+        <p>标签: 年终述职/总结</p>
+        <div class="color-swatch" style="background-color: #1A365D">#1A365D</div>
+        <div class="description">适用于年度工作总结、个人述职、团队汇报等场合，专业务实，数据驱动</div>
+    </div>
 
-    <!-- Cover Page -->
-    <div class="slide-container cover-slide">
-        <!-- Cover content structure matching CSS generator expectations -->
-        <div class="cover-top">
-            <div class="doc-type">演示文档</div>
-            <div class="brand-line"></div>
+    <div class="slide">
+        <div class="year-badge">26</div>
+
+        <div class="content">
+            <div class="label">演示文档</div>
+            <h1 class="title">年终述职/总结</h1>
+            <p class="subtitle">AI 智能生成的演示文稿预览 - 风格: 年终述职风格</p>
         </div>
-        
-        <div class="main-title">年终述职/总结</div>
-        <div class="sub-title">AI 智能生成的演示文稿预览 - 风格: 年终述职风格</div>
-        
-        <div class="cover-bottom">
-            <div class="footer-row">
-                <div class="footer-item">汇报人：SlideCraft AI</div>
-                <div class="footer-item">日期：2024年12月</div>
+
+        <div class="footer">
+            <div class="meta">
+                <span>汇报人：SlideCraft AI</span>
+                <span>日期：2026年1月</span>
             </div>
         </div>
     </div>
-
 </body>
 </html>

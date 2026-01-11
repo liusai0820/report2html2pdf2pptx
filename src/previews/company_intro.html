@@ -4,769 +4,170 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公司/项目介绍 - Preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
+            --primary: #0A0A0A;
+            --accent: #00D4FF;
+            --text-primary: #0A0A0A;
+            --text-secondary: #6B6B6B;
+            --background: #FFFFFF;
+            --slide-width: 1280px;
+            --slide-height: 720px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-    --primary: #0A0A0A;
-    --primary-light: #3182CE;
-    --primary-dark: #000000;
-    --accent: #00D4FF;
-    --text-primary: #1A1A1A;
-    --text-secondary: #4A4A4A;
-    --text-light: #8A8A8A;
-    --background: #FFFFFF;
-    --background-alt: #F7F7F7;
-    --border: #E5E5E5;
-    --success: #00A86B;
-    --warning: #FF9500;
-    --error: #FF3B30;
-    
-    /* 兼容旧变量名 */
-    --deep-blue: #0A0A0A;
-    --bright-blue: #3182CE;
-    --text-main: #1A1A1A;
-    --text-sub: #4A4A4A;
-    --bg-gray: #F7F7F7;
-    --line-gray: #E5E5E5;
-
-
-    --font-family: "SF Pro Display", "Microsoft YaHei", "PingFang SC", sans-serif;
-    --font-family-heading: "Microsoft YaHei", "微软雅黑", "Heiti SC", sans-serif;
-    --font-family-mono: "Monaco", "Courier New", monospace;
-    
-    --size-cover-title: 60px;
-    --size-page-title: 38px;
-    --size-section-title: 52px;
-    --size-heading: 26px;
-    --size-body: 20px;
-    --size-small: 16px;
-    --size-footer: 14px;
-    
-    --line-height-heading: 1.3;
-    --line-height-body: 1.6;
-    
-    --weight-normal: 400;
-    --weight-bold: 700;
-
-
-    --slide-width: 1280px;
-    --slide-height: 720px;
-    --padding-h: 80px;
-    --padding-v: 50px;
-    --gap-large: 80px;
-    --gap-medium: 30px;
-    --gap-small: 15px;
-    --border-radius: 4px;
-
-}
-
-
-/* ============================================
-   基础样式 - 公司介绍风格
-   ============================================ */
-
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-html, body {
-    font-family: var(--font-family);
-    font-size: var(--size-body);
-    line-height: var(--line-height-body);
-    color: var(--text-primary);
-    background: var(--background);
-}
-
-/* 全局列表样式重置 - 防止浏览器默认符号与自定义符号重复 */
-ul, ol {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
-.slide-container {
-    width: var(--slide-width);
-    height: var(--slide-height);
-    background: var(--background);
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    font-family: var(--font-family);
-    page-break-after: always;
-}
-
-/* 通用页脚 */
-.slide-footer {
-    height: 50px;
-    padding: 0 var(--padding-h);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: var(--size-footer);
-    color: var(--text-light);
-    font-family: var(--font-family);
-}
-
-/* 内容区域 - 防溢出设计 */
-.content-area {
-    flex: 1;
-    padding: var(--padding-v) var(--padding-h);
-    display: flex;
-    flex-direction: column;
-    font-family: var(--font-family);
-    overflow: hidden; /* 防溢出最后防线 */
-    max-height: calc(var(--slide-height) - 50px); /* 扣除页脚高度 */
-}
-
-/* 标题区域 */
-.title-box {
-    margin-bottom: var(--gap-medium);
-}
-
-.page-title {
-    font-size: var(--size-page-title);
-    color: var(--primary);
-    line-height: var(--line-height-heading);
-    font-weight: var(--weight-bold);
-    font-family: var(--font-family-heading);
-}
-
-/* 标题排版优化 - 防止单字换行 */
-h1, h2, h3, h4, 
-.main-title, .sub-title, 
-.page-title, .section-title, 
-.closing-title {
-    text-wrap: balance;
-    word-break: break-word;
-}
-
-
-/* ============================================
-   封面页样式 (Tech/Company - Light Mode)
-   ============================================ */
-
-.cover-slide {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 80px;
-    position: relative;
-    background: #f8fafc; /* 科技灰白 */
-    color: #0f172a; /* 深蓝字 */
-}
-
-/* 浅色网格背景 */
-.cover-slide::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-image: 
-        linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px);
-    background-size: 30px 30px;
-}
-
-.cover-top { margin-bottom: 20px; position: relative; z-index: 1; }
-
-.doc-type {
-    display: inline-block;
-    padding: 6px 12px;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 4px;
-    font-size: 14px;
-    color: var(--primary);
-    letter-spacing: 1px;
-    width: fit-content;
-    font-family: var(--font-family-mono);
-}
-
-.main-title {
-    position: relative;
-    z-index: 1;
-    font-size: 64px;
-    line-height: 1.1;
-    margin-top: 20px;
-    margin-bottom: 30px;
-    font-weight: bold;
-    font-family: var(--font-family-heading);
-    /* 渐变但保持高可读性 */
-    background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.sub-title {
-    position: relative;
-    z-index: 1;
-    font-size: 24px;
-    color: #64748b;
-    font-weight: 300;
-}
-
-.cover-bottom {
-    margin-top: 80px;
-    border-top: 2px solid #e2e8f0;
-    padding-top: 20px;
-    position: relative;
-    z-index: 1;
-}
-
-.footer-item {
-    font-size: 14px;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-
-/* ============================================
-   章节过场页样式 (Tech)
-   ============================================ */
-
-.section-slide {
-    background: #0f172a;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    padding: 100px;
-    position: relative;
-    overflow: hidden;
-    color: white;
-}
-
-/* 科技网格背景 */
-.section-slide::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-image: 
-        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-    background-size: 50px 50px;
-}
-
-.section-number {
-    font-size: 80px;
-    font-family: var(--font-family-mono);
-    color: var(--primary-light);
-    border: 1px solid var(--primary-light);
-    padding: 10px 30px;
-    margin-right: 60px;
-    background: rgba(0,0,0,0.3);
-    border-radius: 4px;
-}
-
-.section-content {
-    flex: 1;
-    position: relative;
-    z-index: 1;
-}
-
-.section-title {
-    font-size: 48px;
-    font-weight: bold;
-    color: white;
-    margin-bottom: 20px;
-    letter-spacing: 1px;
-}
-
-.section-line {
-    width: 100%;
-    height: 1px;
-    background: linear-gradient(90deg, var(--accent) 0%, transparent 100%);
-    margin-bottom: 20px;
-}
-
-.section-desc {
-    font-size: 18px;
-    color: #94a3b8;
-    font-family: var(--font-family-mono);
-}
-
-
-/* ============================================
-   正文页样式
-   ============================================ */
-
-/* 布局容器 - 防溢出 */
-.layout-box {
-    flex: 1;
-    display: flex;
-    gap: var(--gap-large);
-    overflow: hidden; /* 裁剪溢出内容 */
-    min-height: 0; /* 允许flex收缩 */
-}
-
-.two-col > .col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0; /* 允许收缩 */
-    overflow: hidden;
-}
-
-.three-col > .col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
-}
-
-/* 子标题 */
-.sub-head {
-    font-size: var(--size-heading);
-    color: var(--primary);
-    margin-bottom: 20px;
-    border-left: 6px solid var(--primary-light);
-    padding-left: 15px;
-    line-height: 1;
-    font-family: var(--font-family-heading);
-    font-weight: var(--weight-bold);
-}
-
-/* 列表 */
-.big-list {
-    list-style: none;
-}
-
-.big-list li {
-    font-size: var(--size-body);
-    color: var(--text-primary);
-    line-height: var(--line-height-body);
-    margin-bottom: 20px;
-    position: relative;
-    padding-left: 30px;
-    font-family: var(--font-family);
-}
-
-.big-list li::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 10px;
-    width: 10px;
-    height: 10px;
-    background: var(--primary-light);
-    border-radius: 2px;
-}
-
-/* 数据卡片 */
-.data-card {
-    background: var(--background-alt);
-    padding: 20px 25px;
-    border-top: 4px solid var(--primary-light);
-    border-radius: var(--border-radius);
-    flex-shrink: 0;
-}
-
-.data-val {
-    font-size: 48px;
-    color: var(--primary);
-    font-weight: var(--weight-bold);
-    margin-bottom: 8px;
-    font-family: var(--font-family-heading);
-    line-height: 1;
-}
-
-.data-lbl {
-    font-size: var(--size-small);
-    color: var(--text-secondary);
-    font-family: var(--font-family);
-}
-
-/* 底部结论框 */
-.bottom-box {
-    margin-top: auto;
-    background: var(--background-alt);
-    padding: 20px 25px;
-    border-left: 8px solid var(--primary);
-    border-radius: var(--border-radius);
-    flex-shrink: 0;
-}
-
-.bottom-text {
-    font-size: 22px;
-    color: var(--primary);
-    font-weight: var(--weight-bold);
-    line-height: 1.5;
-    font-family: var(--font-family);
-}
-
-/* 文本块 */
-.text-block {
-    margin-bottom: var(--gap-medium);
-}
-
-/* 引用块 */
-.quote-block {
-    border-left: 4px solid var(--primary-light);
-    padding-left: 20px;
-    font-style: italic;
-    color: var(--text-secondary);
-}
-
-
-/* ============================================
-   目录页样式
-   ============================================ */
-
-.catalog-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--gap-medium);
-}
-
-.catalog-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 30px;
-    padding: 20px 0;
-    border-bottom: 1px solid var(--border);
-}
-
-.catalog-item:last-child {
-    border-bottom: none;
-}
-
-.catalog-idx {
-    font-size: 48px;
-    font-weight: var(--weight-bold);
-    color: var(--primary-light);
-    opacity: 0.3;
-    line-height: 1;
-    min-width: 80px;
-    font-family: var(--font-family-heading);
-}
-
-.catalog-content {
-    flex: 1;
-}
-
-.catalog-name {
-    font-size: var(--size-heading);
-    color: var(--primary);
-    font-weight: var(--weight-bold);
-    margin-bottom: 8px;
-    font-family: var(--font-family-heading);
-}
-
-.catalog-desc {
-    font-size: var(--size-body);
-    color: var(--text-secondary);
-    font-family: var(--font-family);
-}
-
-
-/* ============================================
-   封底页样式
-   ============================================ */
-
-.closing-slide {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    padding: 80px;
-    background: var(--background);
-}
-
-.closing-title {
-    font-size: 56px;
-    color: var(--primary);
-    font-weight: var(--weight-bold);
-    margin-bottom: 40px;
-    letter-spacing: 20px;
-    font-family: var(--font-family-heading);
-}
-
-.closing-contact {
-    font-size: var(--size-body);
-    color: var(--text-secondary);
-    line-height: 2;
-    font-family: var(--font-family);
-}
-
-
-/* ============================================
-   通用组件样式
-   ============================================ */
-
-/* 表格 */
-.clean-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 18px;
-    font-family: var(--font-family);
-}
-
-.clean-table th {
-    text-align: left;
-    padding: 15px;
-    background: var(--background-alt);
-    color: var(--primary);
-    border-bottom: 2px solid var(--primary);
-    font-family: var(--font-family);
-    font-weight: var(--weight-bold);
-}
-
-.clean-table td {
-    padding: 15px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-primary);
-    font-family: var(--font-family);
-}
-
-.clean-table tr:hover td {
-    background: var(--background-alt);
-}
-
-/* 指标堆叠 */
-.metric-stack {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--gap-medium);
-}
-
-.metric-item {
-    text-align: center;
-    padding: 20px;
-    background: var(--background-alt);
-    border-radius: var(--border-radius);
-}
-
-.metric-value {
-    font-size: 36px;
-    font-weight: var(--weight-bold);
-    color: var(--primary);
-    margin-bottom: 8px;
-}
-
-.metric-label {
-    font-size: var(--size-small);
-    color: var(--text-secondary);
-}
-
-/* 高亮框 */
-.highlight-box {
-    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
-    color: white;
-    padding: 20px 30px;
-    border-radius: var(--border-radius);
-    font-weight: var(--weight-bold);
-}
-
-/* 标签 */
-.tag {
-    display: inline-block;
-    padding: 4px 12px;
-    background: var(--background-alt);
-    color: var(--primary);
-    border-radius: 20px;
-    font-size: var(--size-small);
-    margin-right: 8px;
-    margin-bottom: 8px;
-}
-
-/* 进度条 */
-.progress-bar {
-    height: 8px;
-    background: var(--background-alt);
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--primary-light) 0%, var(--primary) 100%);
-    border-radius: 4px;
-}
-
-/* 时间线 */
-.timeline {
-    position: relative;
-    padding-left: 30px;
-}
-
-.timeline::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: var(--border);
-}
-
-.timeline-item {
-    position: relative;
-    margin-bottom: 30px;
-}
-
-.timeline-item::before {
-    content: "";
-    position: absolute;
-    left: -34px;
-    top: 5px;
-    width: 10px;
-    height: 10px;
-    background: var(--primary-light);
-    border-radius: 50%;
-}
-
-.timeline-date {
-    font-size: var(--size-small);
-    color: var(--text-light);
-    margin-bottom: 5px;
-}
-
-.timeline-content {
-    font-size: var(--size-body);
-    color: var(--text-primary);
-}
-
-
-/* ============================================
-   图表样式
-   ============================================ */
-
-.chart-container {
-    width: 100%;
-    max-height: 350px; /* 限制最大高度，防溢出 */
-    min-height: 200px;
-    position: relative;
-    background: #fff;
-    border-radius: 8px;
-    padding: 10px;
-    flex-shrink: 0;
-}
-
-.chart-container > div {
-    width: 100% !important;
-    height: 100% !important;
-}
-
-.chart-title {
-    font-size: var(--size-heading);
-    color: var(--primary);
-    text-align: center;
-    margin-bottom: var(--gap-small);
-    font-weight: var(--weight-bold);
-}
-
-.chart-subtitle {
-    font-size: var(--size-small);
-    color: var(--text-secondary);
-    text-align: center;
-    margin-bottom: var(--gap-medium);
-}
-
-
-/* ============================================
-   打印优化
-   ============================================ */
-
-@media print {
-    .slide-container {
-        break-inside: avoid;
-        page-break-after: always;
-    }
-    
-    .section-slide {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-    
-    .data-card,
-    .bottom-box,
-    .highlight-box {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-}
-
-@page {
-    size: 1280px 720px;
-    margin: 0;
-}
-
-
-/* 公司介绍特有样式 */
-.section-slide {
-    background: linear-gradient(135deg, #0A0A0A 0%, #1A1A2E 100%);
-}
-.section-line {
-    background: linear-gradient(90deg, #00D4FF 0%, #3182CE 100%);
-}
-.brand-line {
-    background: linear-gradient(90deg, #00D4FF 0%, #3182CE 100%);
-}
-/* 科技感数据卡片 */
-.data-card {
-    background: linear-gradient(135deg, #F7F7F7 0%, #FFFFFF 100%);
-    border-top: 3px solid #00D4FF;
-    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.1);
-}
-.data-val {
-    background: linear-gradient(90deg, #00D4FF 0%, #3182CE 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-        
-        /* Fix for preview sizing */
         body {
-            transform-origin: top left;
-            overflow: hidden;
-            background: #e0e0e0;
+            font-family: 'Noto Sans SC', -apple-system, sans-serif;
+            background: #F0F0F0;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+            padding: 40px;
         }
-        .slide-container {
-            width: 1280px;
-            height: 720px;
-            overflow: hidden;
+
+        .slide {
+            width: var(--slide-width);
+            height: var(--slide-height);
+            background: var(--background);
             position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            /* Scale down to fit if needed, but usually iframe handles this */
+            overflow: hidden;
+            box-shadow: 0 30px 100px rgba(0,0,0,0.15);
         }
+
+        /* 左下角几何装饰 */
+        .geo-shape {
+            position: absolute;
+            bottom: -100px;
+            left: -100px;
+            width: 400px;
+            height: 400px;
+            border: 60px solid rgba(0, 212, 255, 0.1);
+            border-radius: 50%;
+        }
+
+        /* 右上角点阵装饰 */
+        .dot-pattern {
+            position: absolute;
+            top: 60px;
+            right: 80px;
+            display: grid;
+            grid-template-columns: repeat(5, 8px);
+            gap: 12px;
+        }
+
+        .dot-pattern span {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            opacity: 0.6;
+        }
+
+        .content {
+            position: absolute;
+            left: 100px;
+            right: 100px;
+            top: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .label {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            color: var(--accent);
+            text-transform: uppercase;
+            margin-bottom: 28px;
+        }
+
+        .title {
+            font-size: 64px;
+            font-weight: 900;
+            color: var(--text-primary);
+            line-height: 1.1;
+            letter-spacing: -2px;
+            margin-bottom: 24px;
+        }
+
+        .title span {
+            color: var(--accent);
+        }
+
+        .subtitle {
+            font-size: 20px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: 600px;
+        }
+
+        .footer {
+            position: absolute;
+            left: 100px;
+            right: 100px;
+            bottom: 56px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .meta {
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 32px;
+        }
+
+        .brand {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: 2px;
+        }
+
+        /* Hidden metadata for frontend */
+        .preview-header { display: none; }
     </style>
-    <!-- Preview Metadata for Frontend Extraction -->
-    <div class="preview-header" style="display:none;">
-        <p>标签: 公司/项目介绍</p>
-        <div class="color-swatch" style="background-color: #0A0A0A">#0A0A0A</div>
-        <div class="description">适用于公司介绍、项目路演、产品发布等场合，现代科技感，简洁有力</div>
-    </div>
 </head>
 <body>
-
-    <!-- Cover Page -->
-    <div class="slide-container cover-slide">
-        <!-- Cover content structure matching CSS generator expectations -->
-        <div class="cover-top">
-            <div class="doc-type">演示文档</div>
-            <div class="brand-line"></div>
-        </div>
-        
-        <div class="main-title">公司/项目介绍</div>
-        <div class="sub-title">AI 智能生成的演示文稿预览 - 风格: 公司介绍风格</div>
-        
-        <div class="cover-bottom">
-            <div class="footer-row">
-                <div class="footer-item">汇报人：SlideCraft AI</div>
-                <div class="footer-item">日期：2024年12月</div>
-            </div>
-        </div>
+    <div class="preview-header">
+        <p>标签: 公司/项目介绍</p>
+        <div class="color-swatch" style="background-color: #0A0A0A">#0A0A0A</div>
+        <div class="description">适用于企业介绍、产品发布、项目路演等商业场合，现代科技感，简洁有力</div>
     </div>
 
+    <div class="slide">
+        <div class="geo-shape"></div>
+        <div class="dot-pattern">
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+        </div>
+
+        <div class="content">
+            <div class="label">演示文档</div>
+            <h1 class="title">公司<span>/</span>项目介绍</h1>
+            <p class="subtitle">AI 智能生成的演示文稿预览 - 风格: 公司介绍风格</p>
+        </div>
+
+        <div class="footer">
+            <div class="meta">
+                <span>汇报人：SlideCraft AI</span>
+                <span>日期：2026年1月</span>
+            </div>
+            <div class="brand">SLIDECRAFT.AI</div>
+        </div>
+    </div>
 </body>
 </html>
