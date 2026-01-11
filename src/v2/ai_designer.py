@@ -744,6 +744,7 @@ The user provided images for this slide. Use their content:
 - **Safety**: `overflow: hidden` on ALL cards is MANDATORY.
 - **Images**: `object-fit: contain` always.
 - **Typography**: No walls of text. Use Cards, Grids, or big numbers.
+- **🚫 NO CSS Classes**: ALL styles MUST be inline `style="..."`. Never use `class="..."` (e.g., NO `.row`, `.check`, `.card`). Each element needs complete inline styles.
 
 **2. Visual Hierarchy**
 - **Title**: {colors['text_primary']} (Bold)
