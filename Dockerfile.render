@@ -61,7 +61,7 @@ RUN npm ci --only=production 2>/dev/null || npm install --only=production
 # 复制应用代码
 COPY src/ ./src/
 COPY config/ ./config/
-COPY promptv4.md ./
+COPY docs/development/promptv4.md ./
 COPY run.py ./
 
 # 创建目录
