@@ -581,9 +581,9 @@ Begin Architecture:
 - **Typography**: Sans-serif. Title 32px.
 - **Layout**: List or 2-Column Grid (if >5 items).
 - **Safety**: `overflow: hidden`.
-- **Language**: Chinese Only (No "CONTENTS").
 
-## 🚫 BANS
+## 🚫 STRICT RULES
+- **Title MUST be exactly "目录"** (NOT "会议议程", NOT "CONTENTS", NOT "Agenda")
 - NO Intro/Outro text. ONLY the list.
 
 ## OUTPUT (HTML Only)
@@ -770,17 +770,21 @@ Use CSS Shapes for:
 **Canvas**: 1280x720. **Padding**: 50px 60px 80px.
 **Bottom 80px**: RESERVED (Do not touch).
 
+### ⚠️ HEADER TEMPLATE (DO NOT MODIFY - Copy exactly as shown)
+The header section below is a FIXED template. You MUST use it exactly as provided.
+Do NOT add: vertical bars, borders, decorations, different colors, or any modifications.
+
 ```html
 <div style="width: 1280px; height: 720px; background: #ffffff; padding: 50px 60px 80px; box-sizing: border-box; font-family: {font_family}; display: flex; flex-direction: column; overflow: hidden;">
-    <!-- Header -->
+    <!-- FIXED HEADER - DO NOT MODIFY -->
     <div style="margin-bottom: 30px; flex-shrink: 0;">
-        <h1 style="font-size: 32px; font-weight: 700; color: {colors['text_primary']}; margin: 0; line-height: 1.2;">{page_info.title}</h1>
-        <p style="font-size: 16px; color: {colors['text_secondary']}; margin: 8px 0 0 0;">{page_info.content}</p>
+        <h1 style="font-size: 32px; font-weight: 700; color: {colors['text_primary']}; margin: 0; line-height: 1.3;">{page_info.title}</h1>
+        <p style="font-size: 16px; color: {colors['text_secondary']}; margin: 12px 0 0 0;">{page_info.content}</p>
     </div>
 
-    <!-- Body (Defensive: min-height: 0 prevents overflow) -->
+    <!-- BODY - Design freely here -->
     <div style="flex: 1; min-height: 0; display: flex; gap: 30px; overflow: hidden;">
-        <!-- INSERT CONTENT HERE -->
+        <!-- INSERT YOUR CONTENT HERE -->
     </div>
 </div>
 ```
