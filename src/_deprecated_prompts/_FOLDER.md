@@ -1,6 +1,9 @@
-# /src/prompts - Prompt 工程系统
+# /src/_deprecated_prompts - ⚠️ 已弃用的 V1 Prompt 系统
 
-> ⚠️ **一旦我所属的文件夹有所变化，请更新我。**
+> 🚫 **此目录已弃用！当前生产系统使用 `/src/v2/ai_designer.py`**
+>
+> V2 引擎的场景 Prompt 已内置于 `ai_designer.py` 的 `SCENARIO_PROMPTS` 字典。
+> 保留此目录仅供参考，请勿修改。
 
 ## 架构 (3 行)
 
