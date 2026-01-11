@@ -12,7 +12,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Loader2, AlertCircle, Layout, ChevronLeft, ChevronRight, LogOut, User, ChevronDown } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle, Layout, ChevronLeft, ChevronRight, LogOut, User, ChevronDown, Check } from 'lucide-react';
 import Hero from './components/Hero';
 import UploadZone from './components/UploadZone';
 import ScenarioSelector from './components/ScenarioSelector';
@@ -403,12 +403,15 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
             onClick={handleGenerate}
             disabled={!selectedFile || !canGenerate || (status === 'generating' && !previewData)}
             className={`
-              w-full py-3 px-5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all duration-300
+              w-full py-3 px-5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden group
               ${!selectedFile || !canGenerate || (status === 'generating' && !previewData)
                 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                : 'bg-slate-900 text-white hover:bg-slate-800 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 shadow-md'}
+                : 'bg-slate-900 text-white hover:bg-slate-800 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 shadow-md'
+              }
             `}
           >
+            {/* Hover 光效 */}
+            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out pointer-events-none" />
             {status === 'generating' && !previewData ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -536,18 +539,35 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
                     </div>
 
                     <div className="grid grid-cols-4 gap-4 max-h-[400px] overflow-y-auto custom-scrollbar p-1">
-                      {outlineData.map((page, i) => (
+                      {outlineData.map((page, i) => {
+                        // 计算当前页是否已完成 (基于进度百分比估算)
+                        const pageProgress = ((i + 1) / outlineData.length) * 100;
+                        const isCompleted = progress > pageProgress;
+
+                        return (
                         <div
                           key={i}
-                          className="aspect-video bg-white rounded-lg border border-slate-200 p-3 shadow-sm flex flex-col justify-between group hover:border-blue-400 transition-colors"
+                          className={`aspect-video bg-white rounded-lg border p-3 shadow-sm flex flex-col justify-between group transition-all duration-300 ${
+                            isCompleted
+                              ? 'border-emerald-200 bg-emerald-50/30'
+                              : 'border-slate-200 hover:border-blue-400'
+                          }`}
                         >
-                          <div className="space-y-1.5 opacity-40">
-                            <div className="h-2 w-2/3 bg-slate-200 rounded-sm" />
-                            <div className="space-y-1">
-                              <div className="h-1 w-full bg-slate-100 rounded-sm" />
-                              <div className="h-1 w-full bg-slate-100 rounded-sm" />
-                              <div className="h-1 w-5/6 bg-slate-100 rounded-sm" />
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1.5 opacity-40 flex-1">
+                              <div className="h-2 w-2/3 bg-slate-200 rounded-sm" />
+                              <div className="space-y-1">
+                                <div className="h-1 w-full bg-slate-100 rounded-sm" />
+                                <div className="h-1 w-full bg-slate-100 rounded-sm" />
+                                <div className="h-1 w-5/6 bg-slate-100 rounded-sm" />
+                              </div>
                             </div>
+                            {/* 完成状态图标 */}
+                            {isCompleted && (
+                              <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0 ml-2">
+                                <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-end justify-between gap-2">
                             <span className="font-medium text-[10px] leading-tight text-slate-700 line-clamp-2">
@@ -558,7 +578,7 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
                             </span>
                           </div>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   </motion.div>
                 )}
