@@ -1121,23 +1121,14 @@ function ThemePreviewCard({ color, scenario }) {
                     --accent: ${color} !important;
                 }
                 body {
-                    overflow: hidden !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    width: 1280px !important;
-                    height: 720px !important;
-                    min-height: 720px !important;
-                    max-height: 720px !important;
-                    position: relative !important;
-                    display: block !important;
-                    background: transparent !important;
-                }
-
-                .slide {
-                    position: absolute !important;
-                    top: 0 !important;
-                    left: 0 !important;
-                    margin: 0 !important;
+                    overflow: hidden;
+                    margin: 0;
+                    padding: 0;
+                    width: 1280px;
+                    height: 720px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
                 }
 
                 /* Reset slide positioning to ensure they stack perfectly at 0,0 */

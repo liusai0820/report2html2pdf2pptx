@@ -211,13 +211,13 @@ app.mount("/output", StaticFiles(directory="output"), name="output")
 # ========== 场景配置 ==========
 
 SCENARIOS = [
-    {"id": "consulting", "name": "咨询研究/汇报", "desc": "政府汇报、咨询报告、研究课题"},
-    {"id": "annual_review", "name": "年终述职/总结", "desc": "年终总结、工作汇报、述职报告"},
-    {"id": "thesis_proposal", "name": "大学生开题报告", "desc": "毕业论文开题、答辩汇报"},
-    {"id": "company_intro", "name": "公司/项目介绍", "desc": "公司介绍、项目路演、产品发布"},
-    {"id": "academic", "name": "学术研究/答辩", "desc": "学术报告、论文答辩、研究分享"},
-    {"id": "creative", "name": "创意/营销", "desc": "品牌推广、营销方案、创意提案"},
-    {"id": "government", "name": "政府公文", "desc": "政府报告、政策解读、党建汇报"},
+    {"id": "consulting", "name": "咨询研究/汇报", "desc": "政府汇报、咨询报告、研究课题", "color": "#0A1628"},
+    {"id": "annual_review", "name": "年终述职/总结", "desc": "年终总结、工作汇报、述职报告", "color": "#1A365D"},
+    {"id": "thesis_proposal", "name": "大学生开题报告", "desc": "毕业论文开题、答辩汇报", "color": "#1E40AF"},
+    {"id": "company_intro", "name": "公司/项目介绍", "desc": "公司介绍、项目路演、产品发布", "color": "#00D4FF"},
+    {"id": "academic", "name": "学术研究/答辩", "desc": "学术报告、论文答辩、研究分享", "color": "#1E3A5F"},
+    {"id": "creative", "name": "创意/营销", "desc": "品牌推广、营销方案、创意提案", "color": "#E94560"},
+    {"id": "government", "name": "政府公文", "desc": "政府报告、政策解读、党建汇报", "color": "#8B1538"},
 ]
 
 # ========== API Endpoints ==========
