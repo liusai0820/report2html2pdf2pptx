@@ -262,95 +262,95 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
       {/* ========== 桌面端布局 (md+) ========== */}
       <div className="hidden md:flex h-screen w-full bg-slate-50 text-slate-900 font-sans overflow-hidden">
 
-      {/* LEFT SIDEBAR */}
-      <div
-        className={`flex-shrink-0 bg-white border-r border-slate-200 h-full flex flex-col z-20 shadow-sm transition-all duration-300 ease-in-out relative ${sidebarCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-[380px]'
-          }`}
-      >
-        <div className="px-6 py-4 flex-1 overflow-y-auto custom-scrollbar">
-          {/* User Info Bar */}
-          <div className="relative mb-4 pb-3 border-b border-slate-100">
-            <button
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-                <div className="flex flex-col items-start">
-                  <span className="text-xs font-medium text-slate-700 truncate max-w-[160px]">
-                    {user?.email || '用户'}
-                  </span>
-                  {profile ? (
-                    <span className={`text-[10px] ${canGenerate ? 'text-emerald-500' : 'text-red-500'}`}>
-                      剩余 {quotaRemaining}/{profile.generation_quota} 次
+        {/* LEFT SIDEBAR */}
+        <div
+          className={`flex-shrink-0 bg-white border-r border-slate-200 h-full flex flex-col z-20 shadow-sm transition-all duration-300 ease-in-out relative ${sidebarCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-[380px]'
+            }`}
+        >
+          <div className="px-6 py-4 flex-1 overflow-y-auto custom-scrollbar">
+            {/* User Info Bar */}
+            <div className="relative mb-4 pb-3 border-b border-slate-100">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="text-xs font-medium text-slate-700 truncate max-w-[160px]">
+                      {user?.email || '用户'}
                     </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-400">加载中...</span>
-                  )}
-                </div>
-              </div>
-              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
-            </button>
-
-            {/* User Dropdown Menu */}
-            {showUserMenu && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
-                {/* Contact for Upgrade */}
-                <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/80">
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span className="text-xs font-bold text-slate-800">🚀 升级额度 / 技术支持</span>
+                    {profile ? (
+                      <span className={`text-[10px] ${canGenerate ? 'text-emerald-500' : 'text-red-500'}`}>
+                        剩余 {quotaRemaining}/{profile.generation_quota} 次
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400">加载中...</span>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    {/* WeChat */}
-                    <div className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-slate-200 shadow-sm group hover:border-blue-400 hover:shadow-md transition-all">
-                      <div className="flex items-center gap-2.5">
-                        <span className="w-5 h-5 flex items-center justify-center bg-[#07C160]/10 text-[#07C160] rounded-sm">
-                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M8.7 15.3l-.4 2.1 1.7-1.1c.5.2 1 .2 1.5.2 3.6 0 6.5-2.6 6.5-5.8 0-3.2-2.9-5.8-6.5-5.8-3.6 0-6.5 2.6-6.5 5.8 0 1.9 1 3.6 2.6 4.7 0 .1-.1.4-.9 1.6 1.4-.2 2.7-.8 2.7-.8zM20.2 12c.5 0 .9 0 1.4.1.2-2.5-1.7-4.6-4.9-4.6-4.1 0-7.3 3-7.3 6.9 0 .5.1.9.2 1.4 1.1-.9 2.5-1.4 4.1-1.4 3.6 0 6.5 2.7 6.5 6 0 1-.3 2-.8 2.8 1.9-.3 3.6-1.5 3.6-3.8 0-1.2-.5-2.3-1.4-3.1.5-.7 1.5-2.6 1.5-2.6-1.9.3-3.1 1.1-3.1 1.1.1-.3.2-.5.2-.8z" /></svg>
-                        </span>
-                        <div>
-                          <div className="text-[10px] text-slate-400 leading-none mb-0.5">微信 (点击复制)</div>
-                          <div className="text-xs font-mono font-medium text-slate-700 select-all cursor-text hover:text-blue-600">liusai0820</div>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* User Dropdown Menu */}
+              {showUserMenu && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
+                  {/* Contact for Upgrade */}
+                  <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/80">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <span className="text-xs font-bold text-slate-800">🚀 升级额度 / 技术支持</span>
+                    </div>
+                    <div className="space-y-2">
+                      {/* WeChat */}
+                      <div className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-slate-200 shadow-sm group hover:border-blue-400 hover:shadow-md transition-all">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-5 h-5 flex items-center justify-center bg-[#07C160]/10 text-[#07C160] rounded-sm">
+                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M8.7 15.3l-.4 2.1 1.7-1.1c.5.2 1 .2 1.5.2 3.6 0 6.5-2.6 6.5-5.8 0-3.2-2.9-5.8-6.5-5.8-3.6 0-6.5 2.6-6.5 5.8 0 1.9 1 3.6 2.6 4.7 0 .1-.1.4-.9 1.6 1.4-.2 2.7-.8 2.7-.8zM20.2 12c.5 0 .9 0 1.4.1.2-2.5-1.7-4.6-4.9-4.6-4.1 0-7.3 3-7.3 6.9 0 .5.1.9.2 1.4 1.1-.9 2.5-1.4 4.1-1.4 3.6 0 6.5 2.7 6.5 6 0 1-.3 2-.8 2.8 1.9-.3 3.6-1.5 3.6-3.8 0-1.2-.5-2.3-1.4-3.1.5-.7 1.5-2.6 1.5-2.6-1.9.3-3.1 1.1-3.1 1.1.1-.3.2-.5.2-.8z" /></svg>
+                          </span>
+                          <div>
+                            <div className="text-[10px] text-slate-400 leading-none mb-0.5">微信 (点击复制)</div>
+                            <div className="text-xs font-mono font-medium text-slate-700 select-all cursor-text hover:text-blue-600">liusai0820</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Email */}
+                      <div className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-slate-200 shadow-sm group hover:border-blue-400 hover:shadow-md transition-all">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-5 h-5 flex items-center justify-center bg-blue-50 text-blue-500 rounded-sm">
+                            <span className="text-xs font-bold">@</span>
+                          </span>
+                          <div>
+                            <div className="text-[10px] text-slate-400 leading-none mb-0.5">邮箱</div>
+                            <div className="text-xs font-mono font-medium text-slate-700 select-all cursor-text hover:text-blue-600">liusai64@gmail.com</div>
+                          </div>
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Email */}
-                    <div className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-slate-200 shadow-sm group hover:border-blue-400 hover:shadow-md transition-all">
-                      <div className="flex items-center gap-2.5">
-                        <span className="w-5 h-5 flex items-center justify-center bg-blue-50 text-blue-500 rounded-sm">
-                          <span className="text-xs font-bold">@</span>
-                        </span>
-                        <div>
-                          <div className="text-[10px] text-slate-400 leading-none mb-0.5">邮箱</div>
-                          <div className="text-xs font-mono font-medium text-slate-700 select-all cursor-text hover:text-blue-600">liusai64@gmail.com</div>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="p-1.5">
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        onLogout();
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>退出登录</span>
+                    </button>
                   </div>
                 </div>
+              )}
+            </div>
 
-                <div className="p-1.5">
-                  <button
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      onLogout();
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>退出登录</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+            <Hero />
 
-          <Hero />
-
-          <div className="space-y-5">
-            {/* 用户历史记录 (云端部署暂不支持历史记录) 
+            <div className="space-y-5">
+              {/* 用户历史记录 (云端部署暂不支持历史记录) 
             <UserHistoryPanel
               userId={user?.id}
               onLoad={handleLoadHistory}
@@ -358,274 +358,274 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
             />
             */}
 
-            <Section title="上传文档" step="1">
-              <UploadZone
-                selectedFile={selectedFile}
-                onFileSelect={setSelectedFile}
-                onUpload={handleUpload}
-              />
-              {/* 历史输出选择器 - 仅开发模式显示 */}
-              {import.meta.env.DEV && (
-                <div className="mt-2">
-                  <HistoryOutputSelector
-                    onLoad={handleLoadHistory}
-                    isLoading={status === 'generating'}
-                  />
-                </div>
-              )}
-            </Section>
-
-            <Section title="选择场景" step="2">
-              <ScenarioSelector
-                scenarios={scenarios}
-                selected={selectedScenario}
-                onSelect={setSelectedScenario}
-                customColor={customColor}
-                onColorChange={setCustomColor}
-              />
-            </Section>
-
-            <Section title="生成设置" step="3">
-              <ConfigPanel config={config} onChange={setConfig} />
-            </Section>
-
-            {/* 🔐 管理员面板 - 仅对管理员可见 */}
-            {isAdmin && (
-              <Section title="🔐 管理员" step="★">
-                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-3">
-                  <label className="block text-xs font-medium text-purple-700 mb-2">
-                    AI 模型选择
-                  </label>
-                  <select
-                    value={selectedModel || ''}
-                    onChange={(e) => setSelectedModel(e.target.value || null)}
-                    className="w-full px-3 py-2 text-sm border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  >
-                    <option value="">默认 (使用配置文件模型)</option>
-                    {adminModels.map(model => (
-                      <option key={model.id} value={model.id}>
-                        {model.name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-[10px] text-purple-500 mt-1.5">
-                    ⚡ Pro 模型生成质量更高，但速度较慢
-                  </p>
-                </div>
+              <Section title="上传文档" step="1">
+                <UploadZone
+                  selectedFile={selectedFile}
+                  onFileSelect={setSelectedFile}
+                  onUpload={handleUpload}
+                />
+                {/* 历史输出选择器 - 仅开发模式显示 */}
+                {import.meta.env.DEV && (
+                  <div className="mt-2">
+                    <HistoryOutputSelector
+                      onLoad={handleLoadHistory}
+                      isLoading={status === 'generating'}
+                    />
+                  </div>
+                )}
               </Section>
+
+              <Section title="选择场景" step="2">
+                <ScenarioSelector
+                  scenarios={scenarios}
+                  selected={selectedScenario}
+                  onSelect={setSelectedScenario}
+                  customColor={customColor}
+                  onColorChange={setCustomColor}
+                />
+              </Section>
+
+              <Section title="生成设置" step="3">
+                <ConfigPanel config={config} onChange={setConfig} />
+              </Section>
+
+              {/* 🔐 管理员面板 - 仅对管理员可见 */}
+              {isAdmin && (
+                <Section title="🔐 管理员" step="★">
+                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-3">
+                    <label className="block text-xs font-medium text-purple-700 mb-2">
+                      AI 模型选择
+                    </label>
+                    <select
+                      value={selectedModel || ''}
+                      onChange={(e) => setSelectedModel(e.target.value || null)}
+                      className="w-full px-3 py-2 text-sm border border-purple-200 rounded-md bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    >
+                      <option value="">默认 (使用配置文件模型)</option>
+                      {adminModels.map(model => (
+                        <option key={model.id} value={model.id}>
+                          {model.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-purple-500 mt-1.5">
+                      ⚡ Pro 模型生成质量更高，但速度较慢
+                    </p>
+                  </div>
+                </Section>
+              )}
+            </div>
+          </div>
+
+          {/* Generate Button */}
+          <div className="px-5 py-3 border-t border-slate-100 bg-white/90 backdrop-blur-md z-10">
+            {!canGenerate && (
+              <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs text-amber-700 font-medium">🔒 免费额度已用完</p>
+                <p className="text-[10px] text-amber-600 mt-1">请联系管理员升级账户以继续使用</p>
+              </div>
+            )}
+            <button
+              onClick={handleGenerate}
+              disabled={!selectedFile || !canGenerate || (status === 'generating' && !previewData)}
+              className={`
+              w-full py-3 px-5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden group
+              ${!selectedFile || !canGenerate || (status === 'generating' && !previewData)
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-slate-900 text-white hover:bg-slate-800 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 shadow-md'
+                }
+            `}
+            >
+              {/* Hover 光效 */}
+              <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out pointer-events-none" />
+              {status === 'generating' && !previewData ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>AI 正在思考...</span>
+                </>
+              ) : status === 'preview' ? (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>重新生成</span>
+                </>
+              ) : !canGenerate ? (
+                <span>额度已用完</span>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>开始生成</span>
+                </>
+              )}
+            </button>
+
+            {errorMsg && (
+              <div className="mt-3 flex items-start gap-2 text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-100">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span className="leading-tight">{errorMsg}</span>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Generate Button */}
-        <div className="px-5 py-3 border-t border-slate-100 bg-white/90 backdrop-blur-md z-10">
-          {!canGenerate && (
-            <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-xs text-amber-700 font-medium">🔒 免费额度已用完</p>
-              <p className="text-[10px] text-amber-600 mt-1">请联系管理员升级账户以继续使用</p>
-            </div>
-          )}
-          <button
-            onClick={handleGenerate}
-            disabled={!selectedFile || !canGenerate || (status === 'generating' && !previewData)}
-            className={`
-              w-full py-3 px-5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden group
-              ${!selectedFile || !canGenerate || (status === 'generating' && !previewData)
-                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                : 'bg-slate-900 text-white hover:bg-slate-800 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 shadow-md'
-              }
-            `}
-          >
-            {/* Hover 光效 */}
-            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out pointer-events-none" />
-            {status === 'generating' && !previewData ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>AI 正在思考...</span>
-              </>
-            ) : status === 'preview' ? (
-              <>
-                <Sparkles className="w-4 h-4" />
-                <span>重新生成</span>
-              </>
-            ) : !canGenerate ? (
-              <span>额度已用完</span>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                <span>开始生成</span>
-              </>
-            )}
-          </button>
-
-          {errorMsg && (
-            <div className="mt-3 flex items-start gap-2 text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-100">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <span className="leading-tight">{errorMsg}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Sidebar Toggle Button */}
-      <button
-        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-        className={`
+        {/* Sidebar Toggle Button */}
+        <button
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          className={`
           absolute top-1/2 -translate-y-1/2 z-30 w-6 h-16 bg-white border border-slate-200 
           rounded-r-lg shadow-md flex items-center justify-center hover:bg-slate-50 
           transition-all duration-300 group
           ${sidebarCollapsed ? 'left-0' : 'left-[376px]'}
         `}
-        title={sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'}
-      >
-        {sidebarCollapsed ? (
-          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
-        ) : (
-          <ChevronLeft className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
-        )}
-      </button>
-
-      {/* RIGHT MAIN AREA */}
-      <div className="flex-1 h-full bg-slate-100 relative overflow-hidden">
-        <AnimatePresence mode="wait">
-
-          {/* IDLE: Dynamic Theme Preview */}
-          {status === 'idle' && (
-            <motion.div
-              key="idle"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="w-full h-full flex flex-col items-center justify-center px-12 bg-slate-50 relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-dot-pattern opacity-[0.05]" />
-
-              {activeScenarioData && (
-                <div className="relative z-10 flex flex-col items-center w-full max-w-4xl">
-                  {/* CSS-based Theme Preview Card */}
-                  <ThemePreviewCard
-                    color={customColor || activeScenarioData.color || '#000'}
-                    scenario={activeScenarioData}
-                  />
-                </div>
-              )}
-            </motion.div>
+          title={sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'}
+        >
+          {sidebarCollapsed ? (
+            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
+          ) : (
+            <ChevronLeft className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
           )}
+        </button>
 
-          {/* GENERATING */}
-          {status === 'generating' && !previewData && (
-            <motion.div
-              key="generating"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, x: -50 }}
-              className="w-full h-full flex flex-col items-center justify-center p-8 relative"
-            >
-              <div className="w-full max-w-2xl space-y-12 text-center z-10">
-                <div className="space-y-4">
-                  <div className="text-7xl font-bold text-slate-900 tracking-tighter tabular-nums">
-                    {Math.round(progress)}%
+        {/* RIGHT MAIN AREA */}
+        <div className="flex-1 h-full bg-slate-100 relative overflow-hidden">
+          <AnimatePresence mode="wait">
+
+            {/* IDLE: Dynamic Theme Preview */}
+            {status === 'idle' && (
+              <motion.div
+                key="idle"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full flex flex-col items-center justify-center px-12 bg-slate-50 relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-dot-pattern opacity-[0.05]" />
+
+                {activeScenarioData && (
+                  <div className="relative z-10 flex flex-col items-center w-full max-w-4xl">
+                    {/* CSS-based Theme Preview Card */}
+                    <ThemePreviewCard
+                      color={customColor || activeScenarioData.color || '#000'}
+                      scenario={activeScenarioData}
+                    />
                   </div>
-                  <div className="text-lg text-slate-500 font-medium animate-pulse flex items-center justify-center gap-2">
-                    {progressMessage}
-                  </div>
-                </div>
+                )}
+              </motion.div>
+            )}
 
-                {/* Progress Bar */}
-                <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-slate-900"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progress}%` }}
-                    transition={{ ease: "easeOut" }}
-                  />
-                </div>
-
-                {/* Outline Preview Grid (If Ready) */}
-                {outlineData.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-12 w-full text-left"
-                  >
-                    <div className="flex items-center justify-between mb-4 px-1">
-                      <span className="text-sm font-semibold text-slate-500 uppercase tracking-widest">
-                        生成大纲 ({outlineData.length}页)
-                      </span>
-                      <span className="text-xs text-slate-400 bg-white px-2 py-1 rounded-full border border-slate-100 shadow-sm">
-                        正在细化内容...
-                      </span>
+            {/* GENERATING */}
+            {status === 'generating' && !previewData && (
+              <motion.div
+                key="generating"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, x: -50 }}
+                className="w-full h-full flex flex-col items-center justify-center p-8 relative"
+              >
+                <div className="w-full max-w-2xl space-y-12 text-center z-10">
+                  <div className="space-y-4">
+                    <div className="text-7xl font-bold text-slate-900 tracking-tighter tabular-nums">
+                      {Math.round(progress)}%
                     </div>
+                    <div className="text-lg text-slate-500 font-medium animate-pulse flex items-center justify-center gap-2">
+                      {progressMessage}
+                    </div>
+                  </div>
 
-                    <div className="grid grid-cols-4 gap-4 max-h-[400px] overflow-y-auto custom-scrollbar p-1">
-                      {outlineData.map((page, i) => {
-                        // 计算当前页是否已完成 (基于进度百分比估算)
-                        const pageProgress = ((i + 1) / outlineData.length) * 100;
-                        const isCompleted = progress > pageProgress;
+                  {/* Progress Bar */}
+                  <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-slate-900"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress}%` }}
+                      transition={{ ease: "easeOut" }}
+                    />
+                  </div>
 
-                        return (
-                        <div
-                          key={i}
-                          className={`aspect-video bg-white rounded-lg border p-3 shadow-sm flex flex-col justify-between group transition-all duration-300 ${
-                            isCompleted
-                              ? 'border-emerald-200 bg-emerald-50/30'
-                              : 'border-slate-200 hover:border-blue-400'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1.5 opacity-40 flex-1">
-                              <div className="h-2 w-2/3 bg-slate-200 rounded-sm" />
-                              <div className="space-y-1">
-                                <div className="h-1 w-full bg-slate-100 rounded-sm" />
-                                <div className="h-1 w-full bg-slate-100 rounded-sm" />
-                                <div className="h-1 w-5/6 bg-slate-100 rounded-sm" />
+                  {/* Outline Preview Grid (If Ready) */}
+                  {outlineData.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-12 w-full text-left"
+                    >
+                      <div className="flex items-center justify-between mb-4 px-1">
+                        <span className="text-sm font-semibold text-slate-500 uppercase tracking-widest">
+                          生成大纲 ({outlineData.length}页)
+                        </span>
+                        <span className="text-xs text-slate-400 bg-white px-2 py-1 rounded-full border border-slate-100 shadow-sm">
+                          正在细化内容...
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-4 max-h-[400px] overflow-y-auto custom-scrollbar p-1">
+                        {outlineData.map((page, i) => {
+                          // 计算当前页是否已完成 (基于进度百分比估算)
+                          const pageProgress = ((i + 1) / outlineData.length) * 100;
+                          const isCompleted = progress > pageProgress;
+
+                          return (
+                            <div
+                              key={i}
+                              className={`aspect-video bg-white rounded-lg border p-3 shadow-sm flex flex-col justify-between group transition-all duration-300 ${isCompleted
+                                ? 'border-emerald-200 bg-emerald-50/30'
+                                : 'border-slate-200 hover:border-blue-400'
+                                }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="space-y-1.5 opacity-40 flex-1">
+                                  <div className="h-2 w-2/3 bg-slate-200 rounded-sm" />
+                                  <div className="space-y-1">
+                                    <div className="h-1 w-full bg-slate-100 rounded-sm" />
+                                    <div className="h-1 w-full bg-slate-100 rounded-sm" />
+                                    <div className="h-1 w-5/6 bg-slate-100 rounded-sm" />
+                                  </div>
+                                </div>
+                                {/* 完成状态图标 */}
+                                {isCompleted && (
+                                  <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0 ml-2">
+                                    <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-end justify-between gap-2">
+                                <span className="font-medium text-[10px] leading-tight text-slate-700 line-clamp-2">
+                                  {page.title}
+                                </span>
+                                <span className="text-[10px] font-mono text-slate-300 shrink-0">
+                                  {i + 1}
+                                </span>
                               </div>
                             </div>
-                            {/* 完成状态图标 */}
-                            {isCompleted && (
-                              <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0 ml-2">
-                                <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-end justify-between gap-2">
-                            <span className="font-medium text-[10px] leading-tight text-slate-700 line-clamp-2">
-                              {page.title}
-                            </span>
-                            <span className="text-[10px] font-mono text-slate-300 shrink-0">
-                              {i + 1}
-                            </span>
-                          </div>
-                        </div>
-                      )})}
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-            </motion.div>
-          )}
+                          )
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              </motion.div>
+            )}
 
-          {/* PREVIEW */}
-          {status === 'preview' && previewData && (
-            <motion.div
-              key="preview"
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="w-full h-full"
-            >
-              <ResultView
-                result={previewData}
-                downloads={downloads}
-                isProcessing={progress < 100}
-                generationId={currentGenerationId}
-                documentName={selectedFile?.name}
-              />
-            </motion.div>
-          )}
+            {/* PREVIEW */}
+            {status === 'preview' && previewData && (
+              <motion.div
+                key="preview"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full h-full"
+              >
+                <ResultView
+                  result={previewData}
+                  downloads={downloads}
+                  isProcessing={progress < 100}
+                  generationId={currentGenerationId}
+                  documentName={selectedFile?.name}
+                />
+              </motion.div>
+            )}
 
-        </AnimatePresence>
+          </AnimatePresence>
+        </div>
       </div>
-    </div>
 
       {/* ========== 移动端布局 (<md) ========== */}
       <div className="md:hidden flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans">
@@ -783,9 +783,9 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="w-full h-full flex flex-col items-center justify-center p-6"
+                className="w-full min-h-full overflow-y-auto p-6 pb-20"
               >
-                <div className="w-full max-w-sm space-y-6 text-center">
+                <div className="w-full max-w-lg mx-auto space-y-6 text-center">
                   <div className="space-y-2">
                     <div className="text-5xl font-bold text-slate-900 tracking-tighter tabular-nums">
                       {Math.round(progress)}%
@@ -805,7 +805,7 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
                     />
                   </div>
 
-                  {/* 移动端大纲网格 - 2列 */}
+                  {/* 移动端大纲网格 - 自适应2-3列，完整显示 */}
                   {outlineData.length > 0 && (
                     <div className="mt-6 w-full text-left">
                       <div className="flex items-center justify-between mb-3 px-1">
@@ -813,18 +813,17 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
                           生成大纲 ({outlineData.length}页)
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto custom-scrollbar p-1">
-                        {outlineData.slice(0, 8).map((page, i) => {
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-1">
+                        {outlineData.map((page, i) => {
                           const pageProgress = ((i + 1) / outlineData.length) * 100;
                           const isCompleted = progress > pageProgress;
                           return (
                             <div
                               key={i}
-                              className={`aspect-video bg-white rounded border p-2 flex flex-col justify-between transition-all ${
-                                isCompleted
-                                  ? 'border-emerald-200 bg-emerald-50/30'
-                                  : 'border-slate-200'
-                              }`}
+                              className={`aspect-video bg-white rounded border p-2 flex flex-col justify-between transition-all ${isCompleted
+                                ? 'border-emerald-200 bg-emerald-50/30'
+                                : 'border-slate-200'
+                                }`}
                             >
                               <div className="flex justify-between items-start">
                                 <div className="h-1.5 w-1/2 bg-slate-200 rounded-sm opacity-40" />
@@ -840,11 +839,6 @@ function MainApp({ user, profile, onLogout, canGenerate, quotaRemaining, trackGe
                             </div>
                           );
                         })}
-                        {outlineData.length > 8 && (
-                          <div className="aspect-video bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
-                            <span className="text-xs text-slate-400">+{outlineData.length - 8} 页</span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
@@ -1064,29 +1058,13 @@ function ThemePreviewCard({ color, scenario }) {
             setTotalPages(slides.length);
             setPage(0);
 
-            // Inject script for auto-scaling
-            const autoScaleScript = `
-                            <script>
-                                function resize() {
-                                    const width = window.innerWidth;
-                                    const scale = width / 1280;
-                                    document.body.style.transform = 'scale(' + scale + ')';
-                                    document.body.style.transformOrigin = 'top left';
-                                    document.body.style.height = (720 * scale) + 'px';
-                                }
-                                window.addEventListener('resize', resize);
-                                window.addEventListener('DOMContentLoaded', resize);
-                                setTimeout(resize, 0);
-                            </script>
-                        `;
-
+            // 直接构建 HTML，缩放脚本在 srcDoc 中统一注入
             const cleanHtml = `
                             <!DOCTYPE html>
                             <html>
                             <head>${styles}</head>
                             <body>
                                 ${slidesHTML}
-                                ${autoScaleScript}
                             </body>
                             </html>
                         `;
@@ -1120,29 +1098,54 @@ function ThemePreviewCard({ color, scenario }) {
                     --brand: ${color} !important;
                     --accent: ${color} !important;
                 }
-                body {
-                    overflow: hidden;
-                    margin: 0;
-                    padding: 0;
-                    width: 1280px;
-                    height: 720px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
+                html, body {
+                    overflow: hidden !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                    background: transparent !important;
                 }
 
-                /* Reset slide positioning to ensure they stack perfectly at 0,0 */
-                .slide-container {
-                    display: none !important;
+                /* 幻灯片容器 - 完全充满，同时支持 .slide 和 .slide-container */
+                .slide, .slide-container {
                     position: absolute !important;
                     top: 0 !important;
                     left: 0 !important;
+                    width: 1280px !important;
+                    height: 720px !important;
                     margin: 0 !important;
-                    transform: none !important; /* Remove any internal transforms */
+                    transform-origin: top left !important;
+                    flex-shrink: 0 !important;
                 }
 
-                .slide-container:nth-of-type(${page + 1}) { display: flex !important; }
+                /* 多页时只显示当前页 */
+                .slide-container { display: none !important; }
+                .slide-container:nth-of-type(${page + 1}) { display: block !important; }
             </style>
+            <script>
+                function resize() {
+                    // 同时查找 .slide 和 .slide-container
+                    var slides = document.querySelectorAll('.slide, .slide-container');
+                    if (slides.length === 0) return;
+
+                    var containerWidth = window.innerWidth;
+                    var containerHeight = window.innerHeight;
+                    var slideWidth = 1280;
+                    var slideHeight = 720;
+
+                    // 16:9 完全填充，无边距
+                    var scale = containerWidth / slideWidth;
+
+                    slides.forEach(function(slide) {
+                        slide.style.transform = 'scale(' + scale + ')';
+                    });
+                }
+                window.addEventListener('resize', resize);
+                window.addEventListener('DOMContentLoaded', resize);
+                setTimeout(resize, 0);
+                setTimeout(resize, 50);
+            </script>
         `;
     return htmlContent.replace('</head>', `${injectedStyle}</head>`);
   }, [htmlContent, color, page]);

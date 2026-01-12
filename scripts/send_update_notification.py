@@ -34,7 +34,7 @@ ANNOUNCEMENTS_DIR = Path(__file__).parent.parent / "docs" / "announcements"
 
 # 当前使用的邮件模板
 CURRENT_EMAIL_TEMPLATE = "版本更新公告_2026年1月_email.html"
-EMAIL_SUBJECT = "【SlideCraft】v2.0 重磅更新：多模态理解 + 演讲稿生成，让 AI 真正看懂你的文档"
+EMAIL_SUBJECT = "【SlideCraft】v2.0 重磅更新：多模态理解 + 演讲稿生成 + 移动端适配，随时随地让 AI 真正看懂你的文档"
 
 
 def load_email_html(template_name: str) -> str:

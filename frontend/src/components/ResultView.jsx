@@ -609,11 +609,10 @@ const PresenterModeView = ({ isOpen, onClose, pages, speechContent, activeIndex,
                                 <button
                                     key={realIdx}
                                     onClick={() => setActiveIndex(realIdx)}
-                                    className={`flex-shrink-0 w-16 h-9 rounded border-2 overflow-hidden transition-all ${
-                                        realIdx === activeIndex
+                                    className={`flex-shrink-0 w-16 h-9 rounded border-2 overflow-hidden transition-all ${realIdx === activeIndex
                                             ? 'border-indigo-500 ring-2 ring-indigo-500/30'
                                             : 'border-white/20 hover:border-white/40'
-                                    }`}
+                                        }`}
                                 >
                                     <div className="w-full h-full bg-slate-700 flex items-center justify-center text-[10px] text-white/60">
                                         {realIdx + 1}
@@ -911,10 +910,13 @@ export default function ResultView({ result, downloads, isProcessing, generation
     const { user } = useAuth();
     const [activeIndex, setActiveIndex] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [viewMode, setViewMode] = useState('split'); // 'split' | 'grid'
+
+    // 移动端检测：宽度 < 768px 时默认使用 grid 视图
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const [viewMode, setViewMode] = useState(isMobile ? 'grid' : 'split'); // 'split' | 'grid'
     const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [downloadingPptx, setDownloadingPptx] = useState(false);
-    const [gridColumns, setGridColumns] = useState(4); // 网格列数控制 (1-6)
+    const [gridColumns, setGridColumns] = useState(isMobile ? 1 : 4); // 移动端默认1列，桌面端默认4列
 
     // 反馈弹窗状态
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
