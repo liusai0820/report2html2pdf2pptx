@@ -11,6 +11,7 @@ const Admin = () => {
     const [activeTab, setActiveTab] = useState('users');
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: '注册时间', direction: 'desc' });
+    const [expandedInstruction, setExpandedInstruction] = useState(null); // 用于展开自定义指令
 
     const [planType, setPlanType] = useState('pass');
     const [quota, setQuota] = useState(10);
@@ -515,19 +516,26 @@ const Admin = () => {
                                             <td style={{ padding: '14px 16px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gen['文档名'] || gen.document_name || '—'}</td>
                                             <td style={{ padding: '14px 16px', fontFamily: 'monospace' }}>{gen['页数'] || gen.actual_pages || '—'}</td>
                                             <td style={{ padding: '14px 16px', color: '#64748B' }}>{scenario}</td>
-                                            <td style={{ padding: '14px 16px', maxWidth: '200px' }} title={gen.custom_instructions || ''}>
+                                            <td style={{ padding: '14px 16px', minWidth: '150px', maxWidth: '250px' }}>
                                                 {gen.custom_instructions ? (
-                                                    <span style={{
-                                                        display: 'block',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        whiteSpace: 'nowrap',
-                                                        color: '#2563EB',
-                                                        fontSize: '12px'
-                                                    }}>
-                                                        {gen.custom_instructions.length > 30
-                                                            ? gen.custom_instructions.slice(0, 30) + '...'
-                                                            : gen.custom_instructions}
+                                                    <span
+                                                        onClick={() => setExpandedInstruction(gen.custom_instructions)}
+                                                        style={{
+                                                            display: 'block',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap',
+                                                            color: '#2563EB',
+                                                            fontSize: '12px',
+                                                            cursor: 'pointer',
+                                                            padding: '4px 8px',
+                                                            background: '#EFF6FF',
+                                                            borderRadius: '4px',
+                                                            border: '1px solid #DBEAFE'
+                                                        }}
+                                                        title="点击查看完整内容"
+                                                    >
+                                                        {gen.custom_instructions}
                                                     </span>
                                                 ) : (
                                                     <span style={{ color: '#CBD5E1', fontSize: '12px' }}>—</span>
@@ -593,6 +601,119 @@ const Admin = () => {
                             <div style={{ display: 'flex', gap: '12px' }}>
                                 <button onClick={() => setSelectedUser(null)} style={{ flex: 1, padding: '14px', border: '1px solid #E2E8F0', background: '#fff', fontSize: '13px', cursor: 'pointer' }}>取消</button>
                                 <button onClick={handleUpgrade} style={{ flex: 1, padding: '14px', border: 'none', background: '#0F172A', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>确认修改</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 自定义指令展开弹窗 */}
+            {expandedInstruction && (
+                <div
+                    onClick={() => setExpandedInstruction(null)}
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '20px',
+                        zIndex: 300
+                    }}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            background: '#fff',
+                            width: '100%',
+                            maxWidth: '600px',
+                            maxHeight: '80vh',
+                            boxShadow: '0 40px 100px -20px rgba(15, 23, 42, 0.3)',
+                            borderRadius: '8px',
+                            overflow: 'hidden'
+                        }}
+                    >
+                        <div style={{
+                            padding: '20px 24px',
+                            borderBottom: '1px solid #E2E8F0',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            background: '#F8FAFC'
+                        }}>
+                            <span style={{
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                color: '#0F172A',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                                <span style={{ fontSize: '16px' }}>📝</span>
+                                自定义指令详情
+                            </span>
+                            <button
+                                onClick={() => setExpandedInstruction(null)}
+                                style={{
+                                    border: 'none',
+                                    background: '#E2E8F0',
+                                    cursor: 'pointer',
+                                    color: '#64748B',
+                                    fontSize: '14px',
+                                    width: '28px',
+                                    height: '28px',
+                                    borderRadius: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                            >×</button>
+                        </div>
+                        <div style={{
+                            padding: '24px',
+                            maxHeight: 'calc(80vh - 80px)',
+                            overflowY: 'auto'
+                        }}>
+                            <div style={{
+                                background: '#F8FAFC',
+                                border: '1px solid #E2E8F0',
+                                borderRadius: '6px',
+                                padding: '16px 20px',
+                                fontSize: '14px',
+                                lineHeight: '1.7',
+                                color: '#334155',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word'
+                            }}>
+                                {expandedInstruction}
+                            </div>
+                            <div style={{
+                                marginTop: '16px',
+                                fontSize: '12px',
+                                color: '#94A3B8',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <span>字数：{expandedInstruction.length} 字</span>
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(expandedInstruction);
+                                        // 可以添加一个临时提示
+                                    }}
+                                    style={{
+                                        padding: '6px 12px',
+                                        border: '1px solid #E2E8F0',
+                                        background: '#fff',
+                                        borderRadius: '4px',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        color: '#64748B'
+                                    }}
+                                >
+                                    📋 复制
+                                </button>
                             </div>
                         </div>
                     </div>
