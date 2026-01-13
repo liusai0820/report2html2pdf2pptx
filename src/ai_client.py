@@ -139,6 +139,41 @@ class AIClient:
         current_title = page_data.get('title', '无标题')
         current_content = page_data.get('content', '')
         
+        # 2. 对于 SECTION 类型，直接返回固定模板，不调用 AI（确保100%一致性）
+        if specified_type == 'SECTION':
+            # 提取章节编号（如果标题中有的话）
+            import re
+            section_num_match = re.search(r'第([一二三四五六七八九十\d]+)[部分章节]|(\d+)[.、]', current_title)
+            if section_num_match:
+                section_num = section_num_match.group(1) or section_num_match.group(2)
+                # 转换中文数字为阿拉伯数字
+                num_map = {'一': '01', '二': '02', '三': '03', '四': '04', '五': '05', 
+                           '六': '06', '七': '07', '八': '08', '九': '09', '十': '10'}
+                section_num = num_map.get(section_num, section_num.zfill(2) if section_num.isdigit() else section_num)
+            else:
+                section_num = f"{page_num:02d}"
+            
+            # 清理标题（移除章节编号前缀）
+            clean_title = re.sub(r'^第[一二三四五六七八九十\d]+[部分章节]\s*[：:.]?\s*', '', current_title)
+            clean_title = re.sub(r'^\d+[.、]\s*', '', clean_title)
+            if not clean_title:
+                clean_title = current_title
+            
+            # 固定的 SECTION HTML 模板
+            section_html = f'''<style>
+::-webkit-scrollbar {{ display: none; }}
+* {{ -ms-overflow-style: none; scrollbar-width: none; }}
+</style>
+<div style="width: 1280px; height: 720px; background: #003366; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: 'Noto Sans SC', sans-serif; overflow: hidden; position: relative; box-sizing: border-box;">
+    <!-- 章节编号 -->
+    <div style="font-size: 72px; font-weight: 300; color: rgba(255, 255, 255, 0.3); margin-bottom: 16px; letter-spacing: 0.1em;">{section_num}</div>
+    <!-- 分隔线 -->
+    <div style="width: 60px; height: 3px; background: rgba(255, 255, 255, 0.6); margin-bottom: 32px;"></div>
+    <!-- 标题 -->
+    <h1 style="font-size: 42px; font-weight: 700; color: #ffffff; margin: 0; text-align: center; letter-spacing: 0.15em; line-height: 1.4;">{clean_title}</h1>
+</div>'''
+            return section_html
+        
         # 2. 页面类型判断与指令生成
         page_type_instruction = ""
         
@@ -247,6 +282,7 @@ class AIClient:
         html = await self.generate(prompt)
         html = self._clean_markdown(html)
         html = self._remove_header(html)  # 移除页眉
+        html = self._ensure_unique_chart_ids(html, page_num)  # 确保图表ID唯一
         return html
 
     def _clean_markdown(self, text: str) -> str:
@@ -269,5 +305,56 @@ class AIClient:
         
         # 2. 移除 .slide-header CSS 定义
         html = re.sub(r'\.slide-header\s*\{[^}]*\}', '', html)
+        
+        return html
+    
+    def _ensure_unique_chart_ids(self, html: str, page_num: int) -> str:
+        """
+        确保图表容器的 ID 唯一性
+        
+        问题：AI 生成的多个页面可能使用相同的 id（如 "radar_chart", "bar_chart"），
+        导致 document.getElementById() 只能找到第一个元素，后续页面的图表无法渲染。
+        
+        解决：为所有 id 添加页码后缀（如 "radar_chart" -> "radar_chart_p15"）
+        """
+        import re
+        
+        # 收集当前 HTML 中所有的 id
+        # 匹配 id="xxx" 或 id='xxx'
+        id_pattern = r'id\s*=\s*["\']([^"\']+)["\']'
+        ids_found = re.findall(id_pattern, html)
+        
+        if not ids_found:
+            return html
+        
+        # 对每个 id 进行替换，添加页码后缀
+        for old_id in set(ids_found):
+            # 跳过已经有页码后缀的 id（避免重复处理）
+            if re.search(r'_p\d+$', old_id):
+                continue
+            
+            new_id = f"{old_id}_p{page_num}"
+            
+            # 替换 HTML 属性中的 id
+            # 匹配 id="old_id" 或 id='old_id'
+            html = re.sub(
+                rf'id\s*=\s*(["\']){re.escape(old_id)}\1',
+                f'id=\\1{new_id}\\1',
+                html
+            )
+            
+            # 替换 JavaScript 中的 getElementById('old_id') 或 getElementById("old_id")
+            html = re.sub(
+                rf"getElementById\s*\(\s*(['\"]){re.escape(old_id)}\1\s*\)",
+                f"getElementById(\\1{new_id}\\1)",
+                html
+            )
+            
+            # 替换 document.querySelector('#old_id')
+            html = re.sub(
+                rf"querySelector\s*\(\s*(['\"])#{re.escape(old_id)}\1\s*\)",
+                f"querySelector(\\1#{new_id}\\1)",
+                html
+            )
         
         return html
