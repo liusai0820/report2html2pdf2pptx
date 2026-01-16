@@ -358,13 +358,16 @@ The user provided images. You MUST include them in the outline using `[IMG:1,2]`
     - Title = Core Message (Conclusion), NOT Topic.
     - Example: ✅ "营收同比增长20%" vs ❌ "营收分析".
 
-2.  **Narrative Arc (SCQA)**:
+2.  **Hierarchy (Sections vs Pages)**:
+    - **SECTION**: A major chapter (e.g., "Market Analysis", "Strategic Plan"). **Limit to 3-6 SECTIONS total.**
+    - **CONTENT**: A single slide within a section. **Each Section MUST have 3-5 Content Pages.**
+    - **CRITICAL**: Do NOT create a new SECTION for every page. Group related pages under one SECTION.
+
+3.  **Narrative Arc (SCQA)**:
     - **S**ituation (现状)
     - **C**omplication (问题/机会)
     - **Q**uestion (挑战)
     - **A**nswer (方案/路线图)
-
-3.  **MECE**: Ensure sections are Mutually Exclusive, Collectively Exhaustive.
 
 4.  **Content Density**:
     - **No Fluff**. Every page must deliver value.
@@ -378,8 +381,8 @@ The user provided images. You MUST include them in the outline using `[IMG:1,2]`
 3. `ORG_NAME|...` (Extracted or inferred)
 4. `COVER_IMG|...` (ComfyUI Prompt: Realistic, Cinematic, No Text)
 5. `CLOSING_IMG|...` (ComfyUI Prompt: Abstract, Hopeful)
-6. `SECTION|...`
-7. `CONTENT|Title (Message)|Details [IMG:x]`
+6. `SECTION|...` (Major Chapter Title - Max 6)
+7. `CONTENT|Title (Message)|Details [IMG:x]` (Slide Content)
 
 **Example**:
 TITLE|2025数字化转型战略规划
@@ -387,12 +390,15 @@ REPORT_TYPE|战略规划报告
 ORG_NAME|某某科技集团
 COVER_IMG|futuristic office with holographic data interface, cinematic lighting
 CLOSING_IMG|sunrise over smart city skyline, hopeful atmosphere
-SECTION|01 市场格局|Context
+SECTION|01 市场格局
 CONTENT|AI在各行业应用加速渗透|关键驱动力：效率、创新 [IMG:1]
-SECTION|02 核心挑战|Problem
+CONTENT|竞争对手已布局大模型|竞品分析与差距
+CONTENT|客户需求转向智能化|市场调研数据
+SECTION|02 核心挑战
 CONTENT|传统架构限制了业务敏捷性|技术债务分析
+CONTENT|数据孤岛现象严重|数据治理现状
 
-**Constraint**: Target ~{context.target_pages} pages.
+**Constraint**: Target ~{context.target_pages} pages. **Ensure reasonable section grouping (not 20 sections!).**
 
 Begin Architecture:
 """
@@ -736,31 +742,34 @@ The user provided images for this slide. Use their content:
 ```
 {image_instruction}
 
-## 🎨 DESIGN SPECS (Swiss Style)
+## 🎨 DESIGN SPECS (Swiss Style & Defensive)
 
-**1. Layout Physics (Defensive CSS)**
-- **Container**: Flexbox (Row or Column).
-- **Growth**: `flex: 1` to fill remaining space.
+**1. Mental Model: The Bento Box**
+- Divide the canvas into clear zones (Left/Right or Top/Bottom).
+- **NEVER** leave large empty white spaces. Fill them with data, key metrics, or breakdown lists.
+- **Density Rule**: A slide with <50 words is a FAILURE. Add context, examples, or data.
+
+**2. Layout Physics (Defensive CSS)**
+- **Container**: `display: flex; gap: 20px;` is the safest layout.
+- **Growth**: `flex: 1; min-height: 0;` allows items to fill space without overflowing.
 - **Safety**: `overflow: hidden` on ALL cards is MANDATORY.
 - **Images**: `object-fit: contain` always.
-- **Typography**: No walls of text. Use Cards, Grids, or big numbers.
-- **🚫 NO CSS Classes**: ALL styles MUST be inline `style="..."`. Never use `class="..."` (e.g., NO `.row`, `.check`, `.card`). Each element needs complete inline styles.
+- **Typography**:
+    - Title: {colors['text_primary']} (Bold)
+    - Highlight: {colors['primary']}
+    - Body: 14px-16px.
 
-**2. Visual Hierarchy**
-- **Title**: {colors['text_primary']} (Bold)
-- **Highlights**: {colors['primary']}
+**3. Visual Components (Pick 1-2)**
+- **Metric Card**: Big Number + Label + Trend.
+- **Process Flow**: Steps connected by arrows (→).
+- **Comparison Table**: Left vs Right columns.
+- **Chart**: ECharts (preferred for data).
 
-**3. Data Visualization (Preferred)**
+**4. Data Visualization**
 If data exists, use ECharts:
 ```html
 {echarts_template}
 ```
-
-**4. Concept Visualization (No Data)**
-Use CSS Shapes for:
-- **Process**: Flex row with arrows (→).
-- **Comparison**: Split view (Left vs Right).
-- **Grid**: Equal-height cards.
 
 {f'''
 ## 👤 USER OVERRIDE
@@ -773,19 +782,32 @@ Use CSS Shapes for:
 
 ### ⚠️ HEADER TEMPLATE (DO NOT MODIFY - Copy exactly as shown)
 The header section below is a FIXED template. You MUST use it exactly as provided.
-Do NOT add: vertical bars, borders, decorations, different colors, or any modifications.
 
 ```html
 <div style="width: 1280px; height: 720px; background: #ffffff; padding: 50px 60px 80px; box-sizing: border-box; font-family: {font_family}; display: flex; flex-direction: column; overflow: hidden;">
-    <!-- FIXED HEADER - DO NOT MODIFY -->
+    <!-- FIXED HEADER -->
     <div style="margin-bottom: 30px; flex-shrink: 0;">
         <h1 style="font-size: 32px; font-weight: 700; color: {colors['text_primary']}; margin: 0; line-height: 1.3;">{page_info.title}</h1>
         <p style="font-size: 16px; color: {colors['text_secondary']}; margin: 12px 0 0 0;">{page_info.content}</p>
     </div>
 
-    <!-- BODY - Design freely here -->
-    <div style="flex: 1; min-height: 0; display: flex; gap: 30px; overflow: hidden;">
-        <!-- INSERT YOUR CONTENT HERE -->
+    <!-- BODY - Bento Layout -->
+    <div style="flex: 1; min-height: 0; display: flex; gap: 40px; overflow: hidden;">
+
+        <!-- Example: Left Column (30%) -->
+        <div style="flex: 3; display: flex; flex-direction: column; gap: 20px; background: #f8fafc; padding: 20px; border-radius: 8px;">
+            <strong style="color: {colors['primary']}; font-size: 18px;">Key Insight</strong>
+            <p style="font-size: 14px; line-height: 1.6;">Content goes here...</p>
+        </div>
+
+        <!-- Example: Right Column (70%) -->
+        <div style="flex: 7; display: flex; flex-direction: column; gap: 20px;">
+            <!-- Row 1 -->
+            <div style="flex: 1; background: #f8fafc; padding: 20px; border-radius: 8px;">
+                <!-- Chart or Data -->
+            </div>
+        </div>
+
     </div>
 </div>
 ```
