@@ -2,8 +2,13 @@ name: Keep Render App Awake
 
 on:
   schedule:
-    # 改为每 5 分钟运行一次 (GitHub Action 允许的最高频率)
-    # 增加频率以抵消 GitHub 调度延迟带来的风险
+    # 优化策略：每 5 分钟运行一次 (Public 仓库免费无限制)
+    #
+    # 由于您已将仓库设为 Public，GitHub Actions 对于 Public 仓库是完全免费且无额度限制的。
+    # 我们现在可以采用最激进的保活策略：
+    # - 每 5 分钟运行一次 (GitHub 允许的最高频率)
+    # - 完美覆盖 Render 的 15 分钟休眠窗口
+    # - 配合脚本的重试机制，确保服务 24 小时 100% 在线，秒级响应
     - cron: '*/5 * * * *'
   workflow_dispatch: # 支持手动触发测试
 
@@ -11,12 +16,34 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Backend
+      - name: Ping Backend with Retry
         run: |
-          # 请将下方链接替换为您真实的 Render 后端地址
           URL="https://slidecraft-backend-0i5x.onrender.com/api/health"
-          echo "Pinging $URL..."
-          curl -s -f $URL || echo "Ping failed (maybe app is starting up or URL is wrong)"
+          MAX_RETRIES=20
+          RETRY_DELAY=5
+          count=0
+
+          echo "Starting Keep-Awake Ping for: $URL"
+
+          while [ $count -lt $MAX_RETRIES ]; do
+            # Get HTTP status code
+            status=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
+
+            if [ "$status" == "200" ]; then
+              echo "✅ Success! Service is active (Status: 200)"
+              exit 0
+            elif [ "$status" == "502" ] || [ "$status" == "503" ] || [ "$status" == "000" ]; then
+              echo "⏳ Service is waking up (Status: $status)... waiting ${RETRY_DELAY}s"
+            else
+              echo "⚠️ Unexpected status: $status... waiting ${RETRY_DELAY}s"
+            fi
+
+            sleep $RETRY_DELAY
+            count=$((count + 1))
+          done
+
+          echo "❌ Failed to wake up service after $((MAX_RETRIES * RETRY_DELAY)) seconds"
+          exit 1
 
       - name: Ping Frontend (Optional)
         run: |

@@ -48,6 +48,7 @@ input/
 config/.env
 config/pdfservices-api-credentials.json
 .env.render  # Render 实际配置（不提交）
+config/slidecraft-backend.env
 
 # Node
 node_modules/

@@ -15,13 +15,35 @@ echo "----------------------------------------------------"
 
 ping_url() {
     local url=$1
-    echo -n "正在请求 $url ... "
-    status=$(curl -s -o /dev/null -w "%{http_code}" "$url")
-    if [ "$status" == "200" ]; then
-        echo -e "\033[0;32m[ 成功 $status ]\033[0m"
-    else
-        echo -e "\033[0;31m[ 异常 $status ]\033[0m"
-    fi
+    local max_retries=10
+    local retry_delay=10
+    local count=0
+
+    echo "正在探测: $url"
+
+    while [ $count -lt $max_retries ]; do
+        # 获取 HTTP 状态码
+        status=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+
+        if [ "$status" == "200" ]; then
+            echo -e "\033[0;32m[ 成功 ]\033[0m 服务已激活 (Status: $status)"
+            return 0
+        elif [ "$status" == "503" ] || [ "$status" == "502" ] || [ "$status" == "000" ]; then
+            # 503/502 通常表示正在启动中 (Render Cold Start)
+            echo -e "\033[0;33m[ 启动中 ]\033[0m 服务正在唤醒... ($status)"
+            echo "等待 ${retry_delay} 秒后重试... ($((count+1))/$max_retries)"
+            sleep $retry_delay
+            count=$((count + 1))
+        else
+            echo -e "\033[0;31m[ 错误 ]\033[0m 发生异常 (Status: $status)"
+            # 其他错误也重试，以防短暂网络抖动
+            sleep $retry_delay
+            count=$((count + 1))
+        fi
+    done
+
+    echo -e "\033[0;31m[ 失败 ]\033[0m 超过最大重试次数，服务未响应。"
+    return 1
 }
 
 # 执行一次探测
