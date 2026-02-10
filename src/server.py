@@ -150,21 +150,44 @@ app.add_middleware(
 from fastapi import Request, Response, status
 from fastapi.responses import FileResponse
 import jwt
+from jwt import PyJWKClient
 
 # JWT 验证辅助函数
 def verify_jwt_token(token: str) -> Optional[dict]:
-    """验证 JWT token 并返回用户信息"""
+    """验证 JWT token 并返回用户信息 (自动适配 HS256/RS256/ES256)"""
     if not token:
         return None
     try:
-        # 从 Supabase JWT 中解析（使用 JWT服务密钥）
-        payload = jwt.decode(
-            token, 
-            config.SUPABASE_JWT_SECRET,  # 需要在 config 中添加
-            algorithms=["HS256"],
-            audience="authenticated"
-        )
-        return payload
+        # 优先尝试 JWKS (公钥) 验证 (推荐方式，支持 RS256/ES256)
+        # 构造 JWKS URL: https://<project>.supabase.co/auth/v1/jwks.json
+        if config.VITE_SUPABASE_URL:
+            try:
+                jwks_url = f"{config.VITE_SUPABASE_URL.rstrip('/')}/auth/v1/jwks.json"
+                jwks_client = PyJWKClient(jwks_url)
+                signing_key = jwks_client.get_signing_key_from_jwt(token)
+
+                return jwt.decode(
+                    token,
+                    signing_key.key,
+                    algorithms=["RS256", "ES256", "HS256"],
+                    audience="authenticated"
+                )
+            except Exception as jwks_e:
+                # 如果 JWKS 失败（例如网络问题或 token 是旧的 HS256），回退到 Secret 验证
+                # logger.debug(f"JWKS verify failed, falling back to secret: {jwks_e}")
+                pass
+
+        # 回退：尝试使用 Secret 验证 (兼容旧的 HS256)
+        if config.SUPABASE_JWT_SECRET:
+            return jwt.decode(
+                token,
+                config.SUPABASE_JWT_SECRET,
+                algorithms=["HS256"],
+                audience="authenticated"
+            )
+
+        return None
+
     except Exception as e:
         logger.warning(f"JWT验证失败: {e}")
         return None
